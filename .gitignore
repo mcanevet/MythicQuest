@@ -1,0 +1,19 @@
+# Godot 4+ specific ignores
+.godot/
+export.cfg
+.export/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Optional: Hide asset source files
+!*.svg
+*.png
+*.jpg
+*.webm
+.mcp/
+
+# Test directory - only track .opencode symlinks
+test/*
+!test/.opencode

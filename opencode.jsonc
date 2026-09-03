@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "godot-mcp-runtime": {
+      "type": "local",
+      // v3.2.3 includes the relative-projectPath fix + TDD regression test
+      // (released 05-05; shipped from our fork's fix/relative-project-path).
+      "command": ["npx", "-y", "godot-mcp-runtime@3.2.3"],
+      "enabled": true,
+      // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
+      // server's stderr into ~/.local/share/opencode/log/opencode.log —
+      // essential for diagnosing run_project bridge timeouts.
+      "env": { "DEBUG": "true" },
+    },
+  },
+  "lsp": {
+    "gdscript": {
+      "command": ["npx", "opencode-godot-lsp@1.0.1"],
+      "extensions": [".gd", ".gdshader"],
+    },
+  },
+  "agent": {
+    "build": {
+      // Structural iteration cap referenced in agents/build.md's Anti-Recursion Guards.
+      // When reached, opencode forces a text-only summary instead of relying on the
+      // model to self-count loop iterations.
+      "steps": 300,
+    },
+  },
+}
