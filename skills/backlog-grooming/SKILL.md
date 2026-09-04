@@ -24,12 +24,14 @@ Use `grep("^- \\[ \\]", "GAME_STATE.md")` to find the first unchecked task, or `
 
 No directory pre-creation needed — `write()` auto-creates parent directories.
 
-Derive the plan filename deterministically — do not hand-roll the slug. Feed the task line to [scripts/slug.sh](scripts/slug.sh):
+Derive the plan filename deterministically — do not hand-roll the slug. Feed the task line to [scripts/slug.sh](scripts/slug.sh) **one task per bash call**:
 
 ```bash
 ./.opencode/skills/backlog-grooming/scripts/slug.sh "- [ ] Task 3: Create Player entity with movement and collision [core]"
 # -> plans/03-create-player-entity-with-movement-and-collision.md
 ```
+
+> **One invocation per call, no compounds.** Batching two `slug.sh` calls with `;` or `&&` in one bash invocation gets denied by the granular bash allowlist (observed 09-04: compound commands don't match `*scripts/*.sh*` even though each part does; the agent burned 2 denials before splitting them). Run the script separately per task.
 
 Read the [full plan template](reference/plan-template.md) once, then write the plan to `plans/<num>-<slug>.md` using it. Skeleton:
 
