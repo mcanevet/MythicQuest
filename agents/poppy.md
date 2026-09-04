@@ -259,7 +259,12 @@ When validation fails:
    means the action is *forbidden*, not temporarily blocked. The worst response is to
    rephrase the command and try again — a rule-mismatched command may become a silent
    permission *ask* that nobody answers, hanging the whole build (observed 09-02: a
-   subagent spent 4+ hours stuck on an unanswered ask after its first denial). On a
+   subagent spent 4+ hours stuck on an unanswered ask after its first denial). Two
+   corollaries from benchmark runs (09-04): **compound bash commands (`a; b`, `a && b`)
+   are denied even when every part matches an allow pattern** — issue one command per
+   call. And **never open exploratory bash at all** (`ls`, `cat`, `find`, `true`) —
+   those are denials by construction; use the glob/read/grep tools instead, which are
+   unrestricted. On a
    permission-rule error: do not attempt that action again in any form, use the
    sanctioned skill/script path for the job, and if none exists return `⛔ BLOCKED`
    (format below) citing the denied action. Rule 5 above (probe ≠ unavailable) still

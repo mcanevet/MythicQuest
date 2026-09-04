@@ -203,6 +203,12 @@ See `./.opencode/skills/setup-project/reference/testing-patterns.md` (_Verificat
 **Exit code must be 0.** If the validator fails:
 - Fix all errors reported
 - Re-run validator until it passes
+
+> **One scene↔script pair per invocation.** The validator binds the script to the scene it
+> checks; it does not accept or batch multiple pairs in one call, and it does not follow
+> PackedScene instancing (a script referenced only via an instanced child scene must be
+> validated against that child scene, not the parent — observed 09-04 twice in one run:
+> agents re-derived the one-pair rule from validator failures in two different sessions).
 - Do NOT mark task complete until validation succeeds
 
 The validator checks:
