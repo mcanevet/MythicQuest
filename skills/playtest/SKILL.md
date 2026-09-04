@@ -76,7 +76,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 **Screenshots are now rare** — taken only when a violation occurs, not as primary verification.
 
-> **Script edits under a running engine require a restart.** Godot caches compiled script bytecode in a running process; after you `edit()` any `.gd` file while the engine runs, the live process keeps reporting **stale errors at phantom line numbers** — including parse errors you already fixed (observed 09-03: an agent fixed a duplicate-variable parse error, re-ran, saw the identical error pointing at the now-correct line, and burned 5+ steps hunting a nonexistent second bug before guessing "cached bytecode"). If you edited a script and the reported error doesn't match the current file contents, **do not debug the file** — `stop_project()`, relaunch, and re-register the autoload before re-validating.
+> **Script edits under a running engine require a restart.** Playtest itself never edits game files — but you may have edited a `.gd` file (e.g. fixing a parse error the validation step surfaced) while the engine this skill launched is still running. Godot caches compiled script bytecode in a running process; the live process keeps reporting **stale errors at phantom line numbers** — including parse errors you already fixed (observed 09-03: an agent fixed a duplicate-variable parse error, re-validated, saw the identical error pointing at the now-correct line, and burned 5+ steps hunting a nonexistent second bug before guessing "cached bytecode"). If you edited a script and the reported error doesn't match the current file contents, **do not debug the file** — `stop_project()`, relaunch, and re-register the autoload before re-validating.
 
 ---
 
