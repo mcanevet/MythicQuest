@@ -56,13 +56,7 @@ Thumbs.db
 
 Create `scripts/test_player.gd` — a game-agnostic test framework autoload providing `start_test()`, `get_test_report()`, and bot implementations.
 
-See [`scripts/test_player.gd`](scripts/test_player.gd) for the full implementation. Install it with a byte-exact copy — **use `bash` to `cp` the file from the skill's `scripts/` directory into the game project** (permission allows exactly this pattern; `cp` guarantees fidelity, read-then-write does not):
-
-```bash
-cp .opencode/skills/setup-project/scripts/test_player.gd scripts/test_player.gd
-```
-
-Do not retype or regenerate the file — the harness's GDScript parse gate (lint check 10) validates the canonical copy, so a divergent transcription may carry latent errors into every later playtest (observed 09-03: a hand-copied variant shipped a sibling-scope `var pos` parse error). After copying, verify the result loads: the copy must pass the skill's validation with zero parse errors before proceeding.
+See [`scripts/test_player.gd`](scripts/test_player.gd) for the full implementation. Install it with the skill's installer — **`bash scripts/install_test_player.sh <game-project-root>`** — which copies byte-identically and refuses to overwrite a drifted file. Do not retype or regenerate the file: the harness's parse gate validates the canonical copy, so a divergent transcription can carry latent errors into every later playtest (observed 09-03: a hand-copied variant shipped a sibling-scope `var pos` parse error).
 
 > **Project organization conventions** (file/dir names `snake_case`, node names `PascalCase`, third-party code in `addons/`, `.gdignore` for non-imported folders): consult `./.opencode/skills/create-scene-with-script/reference/godot-best-practices.md` §8. The scene/architecture practices (hierarchy, coupling, autoload discipline) live there too and apply to everything built after this step.
 

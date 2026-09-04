@@ -27,6 +27,7 @@ var _nav_agent = null
 var _navigation_goal = null
 
 var _last_time = 0.0
+var _warmup_remaining = 3  # settled-ticks required before timing/invariants count
 var _rule_prev_values: Dictionary = {}  # rule_name -> {value, tick} sampled at previous invariant pass
 var _frame_time_buffer_size = 300
 var _ticks_per_second = 60
@@ -105,8 +106,23 @@ func finish_test() -> Dictionary:
 
 func _physics_process(delta):
 	if not _running: return
-	
+
 	var current_time = Time.get_ticks_msec() / 1000.0
+	# Warm-up: the first physics ticks after launch include engine startup
+	# (shader compilation, resource streaming) measured as 25,000-40,000ms
+	# "frames" — not game performance (observed 09-04: p99 = 40324ms on a
+	# healthy 16ms run, false fps_stable violations). Discard samples until
+	# three consecutive sub-100ms ticks say the engine has settled.
+	if _warmup_remaining > 0:
+		if _last_time > 0:
+			var frame_ms = (current_time - _last_time) * 1000.0
+			if frame_ms < 100.0:
+				_warmup_remaining -= 1
+			else:
+				_warmup_remaining = 3
+		_last_time = current_time
+		_frame_count += 1
+		return
 	if _last_time > 0:
 		var frame_ms = (current_time - _last_time) * 1000.0
 		_metrics.frame_times.append(frame_ms)
@@ -398,11 +414,35 @@ func _check_bounds(rule_name: String, rule: Dictionary):
 	var max_y = rule.get("max_y", 10000)
 	var min_z = rule.get("min_z", null)
 	var max_z = rule.get("max_z", null)
+	var targets = rule.get("targets", [])
 	var root = get_tree().root if get_tree() else null
 	if not root: return
-	_check_bounds_recursive(root, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
+	if targets.is_empty():
+		# Default: gameplay nodes only. Container/structural nodes (scene roots
+		# at origin, backgrounds, UI anchored to the viewport) legitimately sit
+		# at (0,0) — flagging them makes every run report false positives
+		# (observed 09-04: /root/root at origin and a paddle Collision child
+		# using offset coords fired 899x/run and masked real signal).
+		# Gameplay = physics bodies + positioned visuals — the nodes that can
+		# actually leave the play area.
+		_walk_bounds_gameplay(root, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
+	else:
+		# Explicit targets: node paths or "group:<name>" — opt-in exact checking
+		for target in targets:
+			if typeof(target) == TYPE_STRING and target.begins_with("group:"):
+				for n in get_tree().get_nodes_in_group(target.substr(6)):
+					_check_bounds_node(n, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
+			elif typeof(target) == TYPE_STRING:
+				var n = root.get_node_or_null(NodePath(String(target)))
+				if n:
+					_check_bounds_node(n, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
 
-func _check_bounds_recursive(node: Node, rule_name: String, min_x, max_x, min_y, max_y, min_z, max_z):
+func _is_gameplay_bounds_node(node: Node) -> bool:
+	return node is PhysicsBody2D or node is PhysicsBody3D \
+		or node is Sprite2D or node is Sprite3D \
+		or node is TextureRect or node is ColorRect
+
+func _check_bounds_node(node: Node, rule_name: String, min_x, max_x, min_y, max_y, min_z, max_z):
 	if node is Node2D:
 		var pos = node.position
 		if pos.x < min_x or pos.x > max_x or pos.y < min_y or pos.y > max_y:
@@ -417,8 +457,12 @@ func _check_bounds_recursive(node: Node, rule_name: String, min_x, max_x, min_y,
 		if not in_bounds:
 			var detail = "Out of bounds (3D): (%f, %f, %f)" % [pos3d.x, pos3d.y, pos3d.z]
 			_report_violation(rule_name, str(node.get_path()), detail)
+
+func _walk_bounds_gameplay(node: Node, rule_name: String, min_x, max_x, min_y, max_y, min_z, max_z):
+	if _is_gameplay_bounds_node(node):
+		_check_bounds_node(node, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
 	for child in node.get_children():
-		_check_bounds_recursive(child, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
+		_walk_bounds_gameplay(child, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)
 
 func _check_null_refs(rule_name: String):
 	var root = get_tree().root if get_tree() else null
