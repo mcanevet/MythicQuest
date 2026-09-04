@@ -16,12 +16,32 @@ if [ ! -f "GAME_STATE.md" ]; then
 fi
 echo "✓ OK: GAME_STATE.md exists"
 
-# Check 2: No task should still be [in progress] after log-result ran
-if grep -q '\[in progress\]' GAME_STATE.md; then
-    echo "❌ FAIL: GAME_STATE.md still has a task marked [in progress] — log-result did not complete the status update" >&2
-    errors=$((errors+1))
+# Check 2: No task should still be [in progress] after log-result ran.
+# Scope: tasks OTHER than the one being logged (batched delegations
+# legitimately groom the next task to [in progress] before validating the
+# current one — observed 09-04: agent had to temporarily revert Task 2 to
+# unchecked to validate Task 1, then restore it; pointless state churn that
+# risks losing the plan-file link on restore). With TASK_ID given, only an
+# in-progress line matching THAT task is a failure. Without TASK_ID, any
+# in-progress line fails (unchanged global check).
+if [ -n "$TASK_ID" ]; then
+    if grep -E "^- \[in progress\] (Task (#)?${TASK_ID}:|#?${TASK_ID}[.:] )" GAME_STATE.md | grep -q .; then
+        echo "❌ FAIL: Task ${TASK_ID} still [in progress] — log-result did not complete its status update" >&2
+        errors=$((errors+1))
+    else
+        others=$(grep -c '\[in progress\]' GAME_STATE.md || true)
+        if [ "$others" -gt 0 ]; then
+            echo "ℹ️  INFO: $others other task(s) [in progress] (batched delegation) — not a Task ${TASK_ID} failure" >&2
+        fi
+        echo "✓ OK: Task '${TASK_ID}' not left [in progress]"
+    fi
 else
-    echo "✓ OK: No task left [in progress]"
+    if grep -q '\[in progress\]' GAME_STATE.md; then
+        echo "❌ FAIL: GAME_STATE.md still has a task marked [in progress] — log-result did not complete the status update" >&2
+        errors=$((errors+1))
+    else
+        echo "✓ OK: No task left [in progress]"
+    fi
 fi
 
 # Check 3: If TASK_ID provided, that specific task line must be marked [x]
