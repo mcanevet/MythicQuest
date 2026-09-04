@@ -20,6 +20,15 @@
 #       `var pos` across if/elif sibling scopes (GDScript rejects same-name vars
 #       in sibling scopes) — latent parse error invisible to all other checks,
 #       detonating in every consumer project at setup time.
+#  11. Misleading actor wording — second-person edit imperatives ("you edit…",
+#       "after you edited…") in SKILL.md misattribute file mutation to the wrong
+#       actor: a reader assumes the SKILL edits files when it was the CALLER who
+#       did (observed 09-04: playtest's stale-bytecode gotcha read as "playtest
+#       edits scripts" — playtest never edits game files; the edit was a
+#       mid-playtest caller fix). Lines carrying actor attribution ("never
+#       edits", "caller", "may have edited") are exempt; skills whose core
+#       purpose IS editing (create-scene-with-script, log-result) opt out with
+#       a self-documenting marker line: <!-- lint: this skill edits files by design -->
 #
 # Usage: ./scripts/lint_skills.sh
 # Exit codes: 0 = clean, 1 = violations found
@@ -66,6 +75,21 @@ if [ -n "$alt_hits" ]; then
   printf '%s\n' "$alt_hits"
   warn "alternative-path wording found — state the sanctioned recovery (→ BLOCKED) instead"
 fi
+
+# 11. Misleading actor wording — see header note above.
+edit_skill_hits=""
+for sm in skills/*/SKILL.md; do
+  [ -f "$sm" ] || continue
+  if grep -q '<!-- lint: this skill edits files by design -->' "$sm"; then
+    continue
+  fi
+  hits=$(grep -niE "(you|after you|when you) (edit|edited|modify|changed?|write|wrote|create|created|saved?) " "$sm" \
+    | grep -viE "never edits?|(do not|dont) edit|caller|may have (edit|chang)|edits? by design|SKILL itself never" || true)
+  if [ -n "$hits" ]; then
+    printf '%s\n' "$hits" | sed "s|^|$sm: |"
+    warn "second-person edit imperative in SKILL.md — attribute file edits to the acting skill or mark the caller explicitly"
+  fi
+done
 
 # 10. GDScript parse check — every skills/*/scripts/*.gd must parse headless.
 # Motivated by 09-03 incident: shipped test_player.gd with duplicate `var pos`
