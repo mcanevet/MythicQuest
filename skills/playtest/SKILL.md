@@ -131,9 +131,11 @@ Quick check after creating a single scene. Pass the scene path via the `scene` p
     "invariants": [
         {"name": "no_crash", "rule": "no_fatal_errors"},
         {"name": "no_physics_blowup", "rule": "nodes_finite"},
+        {"name": "stay_on_screen", "rule": "nodes_in_bounds", "min_x": -200, "max_x": 1480, "min_y": -200, "max_y": 920},
         {"name": "fps_stable", "rule": "custom", "path": "_meta.frame_ms_p99", "check": "below", "value": 33.3}
     ]
 })`
+> **Bounds rationale:** the defaults above are viewport-sized (1280×720) plus a generous margin. Entities legitimately leaving the screen during normal play (camera-follow games, wrap-around fields) violate this — that is a *finding about the game's current state*, not a validator bug: before ship, either walls/camera logic confines actors or the scenario widens bounds DELIBERATELY (with a note in the report), never by silently dropping the invariant. *Observed 09-04 (mimo):* default scene-verify passed while a wall-less ball flew to (3510, −2510) — a "clean PASS" that actually meant "physics runs, containment not yet built."
 3. Get report via `get_test_report()`
 4. If `violations.is_empty()`, PASS. Otherwise, take 1-2 screenshots for each violation type.
 

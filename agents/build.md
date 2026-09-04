@@ -202,6 +202,8 @@ task({
 
 **However, to help the auto-compaction work efficiently, do this after Step 3:**
 
+> Tool note: the `grep` tool searches **recursively from the given path** — given a directory path it also matches inside `plans/*.completed.md`. Pass the exact FILE path (e.g. `<project>/GAME_STATE.md`) and, when counting unchecked tasks, filter to lines starting `- [ ]` or `- [x]` so archived plan-file echoes of task text don't inflate the count (observed 09-04: root confused by 23 matches vs 14 real tasks, twice).
+
 1. Re-read `GAME_STATE.md` and the linked plan file from disk (discard your cached mental state).
 2. `grep("^- \\[ \\]", "GAME_STATE.md")` to see remaining unchecked tasks.
 3. `grep("BLOCKED", "GAME_STATE.md")` to check for blockers (empty result means none).
