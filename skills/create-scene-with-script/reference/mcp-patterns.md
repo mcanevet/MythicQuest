@@ -93,6 +93,23 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 > coordination problem — let one session finish its runtime phase before the
 > other starts. File writes (implementation) always run freely in parallel.
 
+> ⚠️ **Long-bodied `run_script` → timeout + stuck "in flight" slot.** A
+> `run_script` whose body waits in-engine (loops, timers, empirical tuning
+> measurements) can exceed the MCP client timeout (~60s): the client reports
+> `MCP error -32001: Request timed out`, but the script **keeps executing
+> server-side and holds the single command slot**. Every retry is rejected
+> with "another command ('run_script') is in flight", and `stop_project` +
+> `run_project` cycles may NOT clear it if the long script's in-engine wait
+> survives the restart path (observed 09-04: tuning probes wedged the slot
+> across THREE bridge restarts, ~4 min of futile cycling, before a deliberate
+> `sleep 60` — waiting out the server-side script lifetime — freed it).
+> Sanctioned recovery: after the first `-32001` on `run_script`, do NOT
+> hammer retries; issue `bash sleep <client-timeout>` once (60s), then retry.
+> If the retry still hits "in flight", that is the `⛔ BLOCKED:` terminus.
+> Prevention: keep probe scripts under the client timeout — poll state in
+> short runs (return intermediate readings, re-invoke) instead of one
+> long-waiting script body.
+
 > ⚠️ **GDScript compile errors (error 43) in probe scripts.** A failing
 > `run_script` costs a full engine round-trip (~10–30s). Before the FIRST
 > `run_script` call, lint the probe script (`validate.sh` or headless
