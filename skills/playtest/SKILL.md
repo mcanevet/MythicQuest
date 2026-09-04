@@ -2,9 +2,9 @@
 name: playtest
 description: >-
   Run automated playtesting with scenario-based invariants for game development QA. Use after
-  implementing features, during development checks, or for final quality assurance. Supports four
-  modes: scene-verify (quick dev checks after scene creation), functional (exhaustive mechanic
-  verification), vision (creative alignment assessment), and critique (player experience evaluation).
+  implementing features, during development checks, or for final quality assurance. Supports five
+  modes: fast-verify (cheapest — mandatory per-task smoke check), scene-verify (quick dev checks after scene creation),
+  functional (exhaustive mechanic verification), vision (creative alignment assessment), and critique (player experience evaluation).
 ---
 
 > **Screenshot workflow:** `godot-mcp-runtime:take_screenshot()` → `read(path)` → write analysis (`Scene`/`Entity`/`Issues`/`Verdict`/`Next`). Do not substitute `godot-mcp-runtime:run_script` structural checks for `read()` — that's a known failure mode.
@@ -20,7 +20,7 @@ description: >-
 
 ## What I do
 
-Four execution modes (scene-verify, functional, vision, critique), each with a distinct evaluator lens. **Always uses `background=true`** (invisible window — deterministic screenshots, no display interference with the agent's own environment).
+Five execution modes (fast-verify, scene-verify, functional, vision, critique), each with a distinct evaluator lens. **Always uses `background=true`** (invisible window — deterministic screenshots, no display interference with the agent's own environment).
 
 ### Step 0: MCP Health Check (MANDATORY)
 
@@ -50,7 +50,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 ## Parameters
 
-- **mode**: `"scene-verify"` \| `"functional"` \| `"vision"` \| `"critique"`
+- **mode**: `"fast-verify"` \| `"scene-verify"` \| `"functional"` \| `"vision"` \| `"critique"`
 - **scene**: Scene path — required for `scene-verify` only (e.g. `"res://scenes/player.tscn"`)
 - **scenario**: Scenario config path — optional, overrides default scenario for mode
 
@@ -75,6 +75,46 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 > ⚠️ **Never run pkill yourself** (any variant): the MCP server process (`npx godot-mcp-runtime`) contains "godot" in its command line and broad patterns kill it — permanently removing all engine tools for the session. Even the previously-safe quoted `pkill -f 'godot --path'` is now forbidden: permission rules string-match (not argv-parse), and repeated denials push models toward unquoted forms that killed a live run. Use the blessed script instead: `bash("./.opencode/skills/create-scene-with-script/scripts/stop_engine.sh")`. See the Critical warning in `create-scene-with-script/reference/mcp-patterns.md`.
 
 **Screenshots are now rare** — taken only when a violation occurs, not as primary verification.
+
+> **Script edits under a running engine require a restart.** Godot caches compiled script bytecode in a running process; after you `edit()` any `.gd` file while the engine runs, the live process keeps reporting **stale errors at phantom line numbers** — including parse errors you already fixed (observed 09-03: an agent fixed a duplicate-variable parse error, re-ran, saw the identical error pointing at the now-correct line, and burned 5+ steps hunting a nonexistent second bug before guessing "cached bytecode"). If you edited a script and the reported error doesn't match the current file contents, **do not debug the file** — `stop_project()`, relaunch, and re-register the autoload before re-validating.
+
+---
+
+## Mode: fast-verify
+
+**When:** Immediately after creating/editing a scene or script, before logging the task complete. Default per-task verification — roughly one-third the cost of `scene-verify`.
+**Purpose:** Catch load-time crashes, parse errors, and gross runtime breakage WITHOUT the full 15-second chaos gauntlet. This mode exists so that "playtest is slow" is never a reason to skip verification (observed 09-04, ling run: the build agent skipped playtest entirely on 4 tasks "to avoid timeouts" — a sanctioned-path violation born of cost pressure. The cheap sanctioned path removes that incentive).
+
+**You MUST run at least this mode after every scene/script change before marking a task `[x]`.** Skipping verification entirely is prohibited — if even fast-verify cannot run (MCP down, engine won't start), the outcome is a `⛔ BLOCKED:` report, not an unverified `[x]`.
+
+### Workflow
+
+1. Ensure harness autoload (Common Workflow step 1)
+2. Launch Godot with `background=true`, scene as `scene` parameter
+3. Run a 5-second chaos scenario — same baseline invariants as scene-verify, shorter duration:
+   ```
+   start_test(scenario={
+       "bot": {"type": "chaos", "seed": 42, "input_rate_hz": 10},
+       "duration_s": 5,
+       "invariants": [
+           {"name": "no_crash", "rule": "no_fatal_errors"},
+           {"name": "no_physics_blowup", "rule": "nodes_finite"},
+           {"name": "fps_stable", "rule": "custom", "path": "_meta.frame_ms_p99", "check": "below", "value": 33.3}
+       ]
+   })
+   ```
+4. `get_test_report()` → if `violations.is_empty()`, PASS
+5. Finish: `stop_project()` + `remove_autoload` (Common Workflow step 5)
+
+### Scope and limits
+
+- Covers: parse errors, autoload failures, crash-on-load, NaN/Inf blowups, FPS floor
+- Does NOT cover: gameplay logic, score/rate invariants, mechanics correctness — those need `scene-verify` (per-scene) or `functional` (pre-ship)
+- A fast-verify PASS is necessary but not sufficient for task completion when the task added interactive mechanics — follow with `scene-verify` in the same delegation if the entity has invariants in `tests/scenarios/`
+
+### Success Criteria
+- Scene loads, 5s scenario completes, zero violations
+- Verdict reported (PASS/FAIL)
 
 ---
 

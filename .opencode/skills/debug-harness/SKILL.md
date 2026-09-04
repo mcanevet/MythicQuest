@@ -65,6 +65,17 @@ header for usage. Key metric: `time_updated` deltas. A session with no update
 in >60s **and zero tool-call activity** likely stalled — but confirm via
 reasoning traces first (see Gotchas below).
 
+For **root-session** stalls use [`scripts/watch_root.sh`](scripts/watch_root.sh)
+instead — it watches the root's own part activity AND its child-tree freshness.
+Motivation (observed 09-04, ling run): a root can emit one truncated mega-step
+(`finish: length` at high context) and sit brain-dead for hours with the opencode
+process alive while **no subagents run** — `watch_session.sh` on any child shows
+nothing because there are no children to watch. `watch_root.sh` fires only when
+root parts are stale *and* no child session updated recently, and prints host
+diagnostics (process uptime, `kern.waketime`) to disambiguate brain-death from
+host sleep (AGENTS.md stopping-condition caveat: verify activity, not timestamps,
+before intervening).
+
 ## Failure Mode Index
 
 Consult [reference/failure-modes.md](reference/failure-modes.md) for the full

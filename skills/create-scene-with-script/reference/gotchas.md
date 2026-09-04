@@ -44,3 +44,6 @@ A live engine session serializes runtime node state (positions, velocities) into
 Generated asset/tooling scripts belong in the game project's `tools/` directory, never in `.opencode/skills/**` or `skills/**` — those paths are harness code (write-denied anyway). A task needing a throwaway generator (asset importer, SFX synthesizer, format converter) writes it to `tools/` inside the consumer project.
 
 *Observed:* an SFX task wrote 7 helper scripts into a skill directory and burned ~5 minutes writing cleanup scripts to remove them.
+
+## Script edits under a running engine serve stale bytecode
+A running Godot process caches compiled script bytecode. Editing a `.gd` file while the engine runs means the live process keeps reporting the OLD errors at OLD line numbers — including parse errors already fixed. Symptom: you edit a file, the reported error still points at the pre-edit line contents or names an identifier you already renamed (observed 09-03: agent fixed a duplicate-var, re-validated, saw the identical error, and hunted a nonexistent second bug for 5+ steps). Fix: `stop_project()` → relaunch → re-register autoload → re-validate. If the reported error doesn't match current file contents, do not debug the file — restart the engine first.
