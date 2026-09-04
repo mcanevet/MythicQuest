@@ -1,6 +1,6 @@
 ---
 name: benchmark-prep
-description: Prepare or reset a benchmark sandbox for a game-build session before running a benchmark prompt from benchmarks/prompts/. Use when starting a new harness benchmark run (e.g. with a new model), when the previous run's sandbox is dirty or partially built, when switching sandboxes (test/, test2/), or when verifying a sandbox is launch-ready (git init, library submodule, MCP runtime, symlinks). Harness-level — this is not part of consumer game-build projects.
+description: Prepare or reset a benchmark sandbox for a game-build session before running a benchmark prompt from benchmarks/prompts/. Use when starting a new harness benchmark run (e.g. with a new model), when the previous run's sandbox is dirty or partially built, when switching sandboxes (test/, test2/), or when verifying a sandbox is launch-ready (git repo, harness submodule, MCP runtime). Harness-level — not part of consumer game-build projects.
 ---
 
 ## What I do
@@ -14,67 +14,63 @@ never mounted in game projects.
 
 - About to start a benchmark run (`benchmarks/prompts/*.md`) with any model
 - Previous run died mid-way (quota, stall, kill) and the sandbox is dirty
-- Want to switch sandbox directories (default `test2/`, or pass any path)
-- Suspect a sandbox is broken (dangling symlinks, missing MCP runtime)
+- Want to switch sandbox directories (default `test2/`, or pass any name)
+- Suspect a sandbox is broken (missing MCP runtime, drifted submodule)
 
 ## Layout this script creates
 
+The AGENTS.md **"Option 1: git submodule (production)"** consumer layout —
+`.opencode` itself IS the submodule, so there are no symlinks at all:
+
 ```
-<sandbox>/                    # fresh git repo, initial commit — opencode cwd anchor
-└── .opencode/
-    ├── lib/                  # git submodule -> bare mirror of THIS harness repo
-    │                         #   pinned to current HEAD (commit recorded in consumer git)
-    ├── agents    -> lib/agents
-    ├── skills    -> lib/skills
-    ├── opencode.jsonc -> lib/opencode.jsonc
-    ├── package.json          # godot-mcp-runtime, version-pinned
-    └── node_modules/         # preserved across resets unless --full-npm
+<sandbox>/                  # its own fresh git repo (opencode cwd anchor)
+└── .opencode/              # git SUBMODULE -> this harness repo, pinned at HEAD
+    ├── agents/             # checked out from the harness repo
+    ├── skills/             # checked out (loader resolves .opencode/skills directly)
+    ├── opencode.jsonc       # checked out
+    └── node_modules/       # godot-mcp-runtime 3.2.3 (checkout-local git excludes —
+                            #   invisible to both repos' status)
 ```
 
-Why a submodule (vs the old direct symlinks): the consumer repo records
-**which harness commit it ran against** — benchmark reproducibility — and the
-sandbox is fully self-contained; a `git clean` in either repo cannot break the
-other. The submodule points at a bare **mirror** of the harness repo
-(`../MythicQuest-mirror.git`, auto-created and refreshed by the script)
-because git refuses a submodule URL equal to the superproject itself.
+Why pinning matters: the consumer repo's history records **which harness
+commit a benchmark ran against** — reproducible A/B comparison across models
+and harness versions. Why a mirror: git refuses a submodule URL equal to the
+superproject, so the script points it at a sibling bare mirror
+(`../MythicQuest-mirror.git`) that it creates/refreshes from harness HEAD
+before each prep run.
 
 ## Run it
 
 ```bash
-.opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh [sandbox-dir] [--full-npm]
+.opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh [sandbox-name] [--full-npm]
 ```
 
-- `sandbox-dir` defaults to `test2`; must be inside the harness repo (it is
-  gitignored — no harness commits happen).
-- `--full-npm` wipes and reinstalls node_modules (default: reuse/install once).
-- Idempotent: re-running rebuilds the whole sandbox from scratch — **any
-  existing content in the sandbox directory is deleted**, including a game
-  built by a prior run. If the prior run's artifacts matter, save them first
-  (benchmark reports belong in `benchmarks/results/` anyway).
-- Exit 0 = verified ready; the script prints the pinned harness SHA and the
-  launch command. Exit 1 = verification failed — read the printed reason
-  (dangling link, missing runtime, dirty tree) and fix before launching.
+- `sandbox-name` defaults to `test2`; must be a simple name inside the harness
+  repo (gitignored there — no harness commits happen).
+- `--full-npm` wipes and reinstalls node_modules.
+- Idempotent, and destructive by design: **any existing content in the
+  sandbox is deleted**, including a game built by a prior run. Preserve
+  benchmark reports in `benchmarks/results/` first.
+- Exit 0 = verified ready (prints the pinned SHA + launch command);
+  exit 1 = verification failed — read the printed reason and fix before launch.
 
 ## After prep — launching the run
 
 1. `cd <sandbox>`
-2. Run opencode under a power assertion: `caffeinate -dimsu opencode`
-   (host sleep is indistinguishable from stalls in the session DB — see
-   benchmarks/README.md).
-3. Paste the benchmark prompt **verbatim** from `benchmarks/prompts/`.
-4. Monitor the live session with the `debug-harness` skill
-   (`scripts/watch_root.sh`), then record results in
-   `benchmarks/results/<date>-<label>.md`.
+2. `caffeinate -dimsu opencode` (power assertion — host sleep is
+   indistinguishable from stalls in the session DB; see benchmarks/README.md)
+3. Paste the benchmark prompt **verbatim** from `benchmarks/prompts/`
+4. Monitor with the `debug-harness` skill (`scripts/watch_root.sh`), then
+   record results in `benchmarks/results/<date>-<label>.md`
 
 ## Gotchas
 
-- **Mirror is the submodule's remote, not the harness working tree.** The
-  script fetches current HEAD into the mirror before adding the submodule —
-  uncommitted harness changes are NOT included in the benchmarked library.
-  Commit harness changes first (that is the point: pin a SHA you can cite).
-- **`git submodule add` needs `protocol.file.allow=always`** — the script
-  sets it per-invocation (`-c`) so global config stays untouched.
-- **Do not point the sandbox at a path outside the harness repo** — the
-  script `rm -rf`s the target and references the mirror relative to the
-  harness root; an outside path deletes real files without the gitignore
-  safety.
+- **The submodule pins the last COMMITTED harness HEAD.** Uncommitted harness
+  changes are excluded from the benchmarked library — commit first (that is
+  the point: pin a SHA you can cite in the benchmark report).
+- **`protocol.file.allow=always` is set per-invocation** (`git -c`) for the
+  `submodule add` — global git config stays untouched.
+- **npm artifacts use checkout-local excludes** (`.git/info/exclude` of the
+  submodule), not committed `.gitignore`s — so neither the harness repo nor
+  the consumer repo ever sees node_modules as dirty, and the submodule pointer
+  can't be flipped by an install.

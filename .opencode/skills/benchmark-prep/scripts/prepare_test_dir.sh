@@ -1,47 +1,38 @@
 #!/usr/bin/env bash
-# prepare_test_dir.sh — reset a consumer sandbox to a pristine benchmark
-# starting state, per benchmarks/README.md §"Running a benchmark".
+# prepare_test_dir.sh — reset a benchmark sandbox to a pristine,
+# benchmark-ready state, per benchmarks/README.md §"Running a benchmark".
 #
-# Layout (AGENTS.md production option 1 adapted for local benchmarking):
+# Layout — EXACTLY the AGENTS.md "Option 1: Git submodule (production)"
+# consumer layout:
 #
-#   test2/                          <- consumer project (fresh git repo)
-#   └── .opencode/
-#       ├── lib/                    <- git SUBMODULE -> this harness repo (local path)
-#       │   ├── agents/ skills/ opencode.jsonc ...
-#       ├── agents    -> lib/agents
-#       ├── skills    -> lib/skills
-#       ├── opencode.jsonc -> lib/opencode.jsonc
-#       ├── package.json + node_modules   (godot-mcp-runtime, engine-pinned)
-#       └── .gitignore               (ignores node_modules + lockfile)
+#   <sandbox>/                    <- its own git repo (git init)
+#   └── .opencode/                <- git SUBMODULE -> this harness repo
+#       ├── agents/ skills/ opencode.jsonc    (checked out, not symlinked)
+#       └── node_modules/ + package.json       (godot-mcp-runtime, pinned)
 #
-# Why submodule over direct symlinks: the consumer repo records WHICH harness
-# commit it ran against (benchmark reproducibility) and test2/ is fully
-# self-contained — no symlinks escaping into the harness working tree, so a
-# stray `git clean` in either repo can't break the other. The local-path
-# submodule needs a bare/mirror clone of the harness repo to point at (git
-# refuses a submodule URL that is the superproject itself); we keep a mirror
-# at ../.mythicquest-mirror.git and refresh it on each prep run.
+# The submodule pins the harness at current HEAD: the consumer repo's
+# history records WHICH harness commit a benchmark ran against.
+# Because .opencode IS the submodule, no symlinks are needed — the skill
+# loader resolves .opencode/skills from the checked-out tree directly.
+#
+# Self-reference workaround: git refuses a submodule URL equal to the
+# superproject (or a repo containing untracked junk breaks local clones).
+# We point the submodule at a sibling BARE MIRROR (../MythicQuest-mirror.git)
+# that the script creates and refreshes from the harness HEAD first.
 #
 # Guarantees (idempotent — safe to run repeatedly):
-#   1. No run artifacts: GAME_STATE.md, plans/, scenes/, scripts/, reports/,
-#      tests/, COMPLETION_REPORT.md, mcp_bridge.gd, project.godot, .mcp/,
-#      nested .git — all removed.
-#   2. npm state (node_modules, lockfile) is PRESERVED across resets —
-#      restoring costs a multi-minute install; it is engine-pinned, not run
-#      state. --full-npm forces a wipe.
-#   3. Submodule + symlink trio recreated, verified to resolve, and pinned
-#      to the CURRENT HEAD of the harness repo (mirror updated first).
-#   4. FRESH git repo in the sandbox with an initial commit.
-#      Rationale: opencode derives the session cwd from the repo root; without
-#      .git the build session inherits the harness repo as its workspace and
-#      MCP paths break (observed 09-03/09-04).
-#   5. Icon placeholder restored.
-#   6. Leftover engine processes killed via stop_engine.sh (never pkill —
+#   1. Sandbox wiped completely (disposable by contract) then rebuilt.
+#   2. .opencode submodule pinned to the CURRENT COMMITTED harness HEAD.
+#   3. npm state: node_modules lives INSIDE the submodule worktree; it is
+#      not tracked by either repo (submodule .gitignore), so it survives
+#      re-checkouts; --full-npm forces reinstall.
+#   4. Fresh consumer git repo with readable history pinning the harness SHA.
+#   5. Leftover engine processes killed via stop_engine.sh (never pkill —
 #      lint check 8).
-#   7. Commits nothing to the harness repo itself.
+#   6. Commits nothing to the harness repo itself.
 #
 # Usage: prepare_test_dir.sh [sandbox-dir] [--full-npm]
-#   sandbox-dir defaults to test2 (relative to CWD or the harness root).
+#   sandbox-dir defaults to test2 (must live INSIDE the harness repo).
 # Exit codes: 0 = ready, 1 = verification failed
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
@@ -56,22 +47,24 @@ done
 TEST_DIR="${TEST_DIR:-test2}"
 cd "$REPO_ROOT"
 MIRROR="$REPO_ROOT/../MythicQuest-mirror.git"
+OC="$REPO_ROOT/$TEST_DIR/.opencode"
 
 fail() { printf 'prepare_test_dir.sh: %s\n' "$1" >&2; exit 1; }
 
-# 6. Kill leftover engine processes through the sanctioned stopper
-STOP=skills/create-scene-with-script/scripts/stop_engine.sh
-if [ -x "$STOP" ]; then "$STOP" 2>/dev/null || true; fi
+case "$TEST_DIR" in
+  .|..|""|*/*..*) fail "sandbox dir must be a simple name inside the harness repo" ;;
+esac
 
-# 3a. Maintain a local bare mirror of the harness repo (submodule target).
-#     Direct self-reference (URL = superproject) is refused by git; a sibling
-#     mirror decouples them while still testing EXACTLY the current HEAD.
+# 5. Kill leftover engine processes through the sanctioned stopper
+STOP="$REPO_ROOT/skills/create-scene-with-script/scripts/stop_engine.sh"
+[ -x "$STOP" ] && "$STOP" >/dev/null 2>&1 || true
+
+# Mirror maintenance — submodule remote is a bare clone of the harness repo
 if [ -d "$MIRROR" ]; then
   git --git-dir="$MIRROR" fetch -q "$REPO_ROOT" "refs/heads/*:refs/heads/*" ||
     fail "mirror fetch failed — check $MIRROR"
 else
-  # --no-local: the harness working tree contains ignored dirs (test/, test2/)
-  # that break a local-clone object walk — remote-style copy avoids it
+  # --no-local: the harness worktree has ignored dirs that break local clones
   git clone --bare --no-local -q "$REPO_ROOT" "$MIRROR" ||
     fail "could not create bare mirror at $MIRROR"
 fi
@@ -79,62 +72,44 @@ HEAD_SHA=$(git rev-parse HEAD)
 git --git-dir="$MIRROR" fetch -q "$REPO_ROOT" "$HEAD_SHA:refs/heads/benchmark-pin" ||
   fail "could not pin HEAD ($HEAD_SHA) into mirror"
 
-# 1. Wipe the sandbox entirely (it is disposable by contract)
+# 1. Wipe the sandbox (disposable by contract — includes any prior game build)
 rm -rf "$TEST_DIR"
-mkdir -p "$TEST_DIR/.opencode"
-OC="$TEST_DIR/.opencode"
+mkdir -p "$TEST_DIR"
 
-# 4. Consumer repo FIRST, so the submodule is recorded in a real commit history
+# 2+4. Consumer repo, then the .opencode submodule at harness HEAD
 git -C "$TEST_DIR" init -q
-git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
-  commit -q --allow-empty -m "chore: benchmark sandbox init"
-
-# 3b. Submodule = harness repo at current HEAD
 git -C "$TEST_DIR" -c protocol.file.allow=always \
-  submodule add -q --name lib "$MIRROR" .opencode/lib
-git -C "$TEST_DIR" -C . checkout -q "$HEAD_SHA" 2>/dev/null || \
-  git -C "$TEST_DIR/.opencode/lib" checkout -q "$HEAD_SHA"
-git -C "$TEST_DIR" add .opencode/lib
+  submodule add -q --name opencode "$MIRROR" .opencode
+git -C "$OC" checkout -q "$HEAD_SHA"
+git -C "$TEST_DIR" add .opencode
 git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
-  commit -qm "chore: pin harness @ ${HEAD_SHA:0:8}"
+  commit -qm "chore: pin harness @ ${HEAD_SHA:0:8} (.opencode submodule)"
 
-# 3c. Symlink trio into the submodule (AGENTS.md consumer layout)
-ln -sfn lib/agents "$OC/agents"
-ln -sfn lib/skills "$OC/skills"
-ln -sfn lib/opencode.jsonc "$OC/opencode.jsonc"
-printf 'node_modules\npackage-lock.json\n' > "$OC/.gitignore"
-printf '{\n  "private": true,\n  "dependencies": {\n    "godot-mcp-runtime": "3.2.3"\n  }\n}\n' > "$OC/package.json"
-
-# 2. npm: reuse node_modules from the legacy test/ sandbox if available,
-#     else install fresh (saves the multi-minute install on every prep)
-LEGACY="$REPO_ROOT/test/.opencode"
-if [ "$FULL_NPM" -eq 0 ] && [ -d "$LEGACY/node_modules" ]; then
-  cp -R "$LEGACY/node_modules" "$OC/node_modules"
+EXCL_DONE=0
+GD=$(git -C "$OC" rev-parse --absolute-git-dir)
+if ! grep -qx 'node_modules' "$GD/info/exclude" 2>/dev/null; then
+  mkdir -p "$GD/info"
+  printf 'node_modules/\npackage-lock.json\npackage.json\n' > "$GD/info/exclude"
+  EXCL_DONE=1
 fi
-if [ ! -d "$OC/node_modules/godot-mcp-runtime" ]; then
+if [ "$EXCL_DONE" -eq 1 ] || [ ! -d "$OC/node_modules/godot-mcp-runtime" ]; then
+  if [ ! -f "$OC/package.json" ]; then
+    printf '{\n  "private": true,\n  "dependencies": {\n    "godot-mcp-runtime": "3.2.3"\n  }\n}\n' > "$OC/package.json"
+  fi
   (cd "$OC" && npm install --no-audit --no-fund) ||
     printf 'prepare_test_dir.sh: npm install failed — run: (cd %s && npm install)\n' "$OC" >&2
 fi
 
-# 5. Icon fixture
-printf '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="#1a1a2e"/></svg>\n' > "$TEST_DIR/icon.svg"
-
-# Commit the fixture layer
-git -C "$TEST_DIR" add -A
-git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
-  commit -qm "chore: opencode mount (submodule lib @ ${HEAD_SHA:0:8}) + npm fixture"
-
 # Verification — fail loudly rather than let a session start broken
-for l in agents skills opencode.jsonc; do
-  [ -e "$OC/$l" ] || fail "$OC/$l does not resolve"
-done
+[ -d "$OC/agents" ] && [ -d "$OC/skills" ] && [ -f "$OC/opencode.jsonc" ] ||
+  fail "submodule checkout incomplete ($OC/agents|skills|opencode.jsonc missing)"
+[ "$(git -C "$OC" rev-parse HEAD)" = "$HEAD_SHA" ] ||
+  fail "submodule HEAD drifted from harness HEAD"
 [ -d "$OC/node_modules/godot-mcp-runtime" ] ||
   fail "godot-mcp-runtime missing — run: (cd $OC && npm install)"
-[ "$(git -C "$TEST_DIR/.opencode/lib" rev-parse HEAD)" = "$HEAD_SHA" ] ||
-  fail "submodule HEAD drifted from harness HEAD"
 git -C "$TEST_DIR" status --porcelain | grep -q . &&
-  fail "unexpected dirty files in $TEST_DIR"
+  fail "unexpected dirty files in $TEST_DIR (node_modules should be gitignored)"
 
-printf 'READY: %s pristine | harness @ %s | git initialized | MCP runtime present\n' \
+printf 'READY: %s | harness @ %s | git initialized | MCP runtime present\n' \
   "$TEST_DIR" "${HEAD_SHA:0:8}"
 printf 'next: cd %s && caffeinate -dimsu opencode (paste benchmark prompt verbatim)\n' "$TEST_DIR"
