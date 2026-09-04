@@ -1,0 +1,14 @@
+[
+  {
+    "invocation": ".opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh test2",
+    "expect": "exit 0; test2 is git repo with .opencode/lib submodule at harness HEAD; agents/skills/opencode.jsonc symlinks resolve; node_modules/godot-mcp-runtime present; 'READY:' line prints pinned SHA and launch cmd"
+  },
+  {
+    "invocation": ".opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh test2  (second run, after sandbox contains GAME_STATE.md, scenes/, nested .git from a dead run)",
+    "expect": "exit 0; all run artifacts gone; same verified-ready state as fresh run (idempotence)"
+  },
+  {
+    "invocation": ".opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh test2 (with uncommitted harness changes present)",
+    "expect": "exit 0 but submodule pinned to last COMMITTED HEAD — uncommitted changes excluded (documented gotcha, not a failure)"
+  }
+]

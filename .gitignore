@@ -17,3 +17,6 @@ Thumbs.db
 # Test directory - only track .opencode symlinks
 test/*
 !test/.opencode
+
+# Benchmark sandboxes (disposable, prepared by benchmark-prep skill)
+test2/
