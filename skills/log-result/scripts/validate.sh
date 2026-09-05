@@ -19,9 +19,8 @@ echo "✓ OK: GAME_STATE.md exists"
 # Check 2: No task should still be [in progress] after log-result ran.
 # Scope: tasks OTHER than the one being logged (batched delegations
 # legitimately groom the next task to [in progress] before validating the
-# current one — observed 09-04: agent had to temporarily revert Task 2 to
-# unchecked to validate Task 1, then restore it; pointless state churn that
-# risks losing the plan-file link on restore). With TASK_ID given, only an
+# current one — otherwise validating a batched task requires reverting the
+# other to unchecked first, risking loss of the plan-file link). With TASK_ID given, only an
 # in-progress line matching THAT task is a failure. Without TASK_ID, any
 # in-progress line fails (unchanged global check).
 if [ -n "$TASK_ID" ]; then

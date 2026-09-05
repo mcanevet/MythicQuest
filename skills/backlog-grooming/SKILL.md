@@ -31,7 +31,7 @@ Derive the plan filename deterministically — do not hand-roll the slug. Feed t
 # -> plans/03-create-player-entity-with-movement-and-collision.md
 ```
 
-> **One invocation per call, no compounds.** Batching two `slug.sh` calls with `;` or `&&` in one bash invocation gets denied by the granular bash allowlist (observed 09-04: compound commands don't match `*scripts/*.sh*` even though each part does; the agent burned 2 denials before splitting them). Run the script separately per task.
+> **One invocation per call, no compounds.** Batching two `slug.sh` calls with `;` or `&&` in one bash invocation gets denied by the granular bash allowlist (compound commands don't match `*scripts/*.sh*` even though each part does). Run the script separately per task.
 
 Read the [full plan template](reference/plan-template.md) once, then write the plan to `plans/<num>-<slug>.md` using it. Skeleton:
 
@@ -95,8 +95,8 @@ extends CharacterBody2D
 @export var speed = 400
 func _physics_process(delta):
     var input_dir = Vector2(
-        Input.get_axis("move_left", "move_right"),
-        Input.get_axis("move_up", "move_down")
+        Input.get_axis("<left_action>", "<right_action>"),
+        Input.get_axis("<up_action>", "<down_action>")
     )
     velocity = input_dir * speed
     move_and_slide()

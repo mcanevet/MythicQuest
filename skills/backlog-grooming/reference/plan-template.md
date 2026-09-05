@@ -19,11 +19,12 @@ Create a player-controlled entity that moves in response to input and collides w
 extends CharacterBody2D
 
 @export var speed = 400
+# (<*_action> placeholders: replace with the actions defined in this game's input map)
 
 func _physics_process(delta):
     var input_dir = Vector2(
-        Input.get_axis("move_left", "move_right"),
-        Input.get_axis("move_up", "move_down")
+        Input.get_axis("<left_action>", "<right_action>"),
+        Input.get_axis("<up_action>", "<down_action>")
     )
     velocity = input_dir * speed
     move_and_slide()

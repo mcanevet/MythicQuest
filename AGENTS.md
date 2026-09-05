@@ -2,9 +2,10 @@
 
 ## Commands
 
-- Lint skills (run before committing skill changes): `./scripts/lint_skills.sh`
+- Lint skills (run before committing skill/agent changes): invoke the `lint` skill (`.opencode/skills/lint/`) — `./.opencode/skills/lint/scripts/lint_skills.sh`
 - Harness debugging/monitoring: invoke the `debug-harness` skill (`.opencode/skills/debug-harness/`)
-- Skill authoring rules: invoke the `skill-authoring` skill (`.opencode/skills/skill-authoring/`)
+- Agent authoring: invoke the `agent-authoring` skill (`.opencode/skills/agent-authoring/`)
+- Skill authoring: invoke the `skill-authoring` skill (`.opencode/skills/skill-authoring/`)
 
 ## Core Principle: Engine and Genre Agnosticism
 
@@ -148,7 +149,7 @@ ln -s /path/to/MythicQuest/opencode.jsonc .opencode/opencode.jsonc
 
 ## Skill Authoring Best Practices
 
-When creating or revising skills, follow the **`skill-authoring`** skill (`.opencode/skills/skill-authoring/SKILL.md`) — it owns the full authoring rules: frontmatter hygiene, trigger descriptions, progressive disclosure, scripts/ACI design, and eval-first iteration. Summary: keep `SKILL.md` under 500 lines; push detail to `reference/`; put deterministic logic in `scripts/`; encode observed failures as gotchas; run `./scripts/lint_skills.sh` before committing.
+When creating or revising skills, follow the **`skill-authoring`** skill (`.opencode/skills/skill-authoring/SKILL.md`) — it owns the full authoring rules (frontmatter, triggers, progressive disclosure, scripts/ACI design, eval-first iteration). The enforced rules and their checks live in the `lint` skill's registry (`.opencode/skills/lint/scripts/rules.yaml`); run both of its gates before committing.
 
 ---
 
@@ -172,7 +173,7 @@ permission:
 
 ### File Access Rules
 
-- `edit: "**/*.tscn": allow` for poppy — engine MCP scene tools cannot persist Resource-typed properties (their value coercer maps only Vector/Color dicts; typed assignments fail silently while reporting success, verified in runtime source 09-02), so sub_resource injection requires direct scene-file edits. Safe only when no run/playtest is active (procedural rule in create-scene-with-script). Other agents keep it denied.
+- `edit: "**/*.tscn": allow` for poppy — engine MCP scene tools cannot persist Resource-typed properties (their value coercer maps only Vector/Color dicts; typed assignments fail silently while reporting success — godot-mcp-runtime coercer gap, docs/upstream-backlog.md), so sub_resource injection requires direct scene-file edits. Safe only when no run/playtest is active (procedural rule in create-scene-with-script). Other agents keep it denied.
 - `edit: "**/*.gd": allow` — Game logic scripts are engine-specific but portable within engine
 - `edit: "skills/*/scripts/*.gd": deny` — Skill implementations protected from runtime edits (note: `setup-project` legitimately *copies* `test_player.gd` into consumer projects, so scoping the deny to skill dirs — not `**/test_*.gd` — avoids blocking that bootstrap step)
 - `bash: "*": deny` — No direct shell access; skills handle process management
@@ -334,7 +335,7 @@ When a game-build session stalls, fails, or produces unexpected results, invoke 
 - Full session-tree trace extraction for offline analysis
 - Failure-modes table (MCP suicide, silent subagent deaths, bridge contention, partial log-result, and more — `reference/failure-modes.md`)
 
-The skill is harness-only — it is not mounted in consumer (game-build) projects.
+The skill lives at `.opencode/skills/debug-harness/` in this repo. Only top-level `skills/` and `agents/` are mounted into consumer projects; `.opencode/skills/` content (harness tooling) stays behind — consumer `.opencode/skills/` resolves to the library's `skills/` tree, so these skills are unreachable there.
 
 ---
 
@@ -362,27 +363,7 @@ control"*). Guidance:
 
 ### Sanctioned Paths Only (No Alternative Paths in Skills)
 
-Skills define the **one sanctioned path** for each phase of their workflow. Improvised
-workarounds — even ones that appear to unblock a task — are forbidden, because they
-bypass the validation and safety rails that make the harness observable and recoverable.
-
-Rules:
-
-- **Skills must not offer or imply fallback/alternative paths** outside the sanctioned
-  procedure. If step N fails, the skill states the sanctioned recovery (bounded retries,
-  stop-and-cleanup, or escalate) — ending in a structured `⛔ BLOCKED:` failure. Nothing else.
-- **Agents must not invent workarounds** when a skill's sanctioned path is unavailable
-  (e.g., MCP tool unavailable, engine launch fails): no self-launching processes, no
-  shell-based stand-ins for engine tools, no attaching/bypassing where the skill says
-  launch. The correct outcome is a BLOCKED report, not a creative detour.
-- **An unblocking hack that silently skips validation is worse than a failure.** A task
-  completed outside the sanctioned path has unknown quality — treat it as not done.
-- **If the sanctioned path is genuinely wrong or insufficient**, the fix goes into the
-  skill (harness-build session), not into runtime improvisation. Failure evidence from
-  BLOCKED reports is the input for that change.
-- **Wording check for skill authors:** phrases like "if X fails, you can alternatively…",
-  "or fall back to…", "as a last resort, manually…" are red flags — replace with the
-  sanctioned recovery terminus. The only legitimate escape hatch is the BLOCKED report.
+Rule text lives in the **`lint` skill's registry** (`.opencode/skills/lint/scripts/rules.yaml`; entries `sanctioned-paths-only`, `no-improvised-alternatives`) — including the wording red flags, exemptions, and enforcement. Summary: skills define the one sanctioned path per phase; failures end in a structured `⛔ BLOCKED:` report, never a fallback. An unblocking hack that silently skips validation is worse than a failure — treat work done outside the sanctioned path as not done.
 
 Known incidents that motivated this rule: the engine-stop pkill-suicide chain, the
 shadow test-infrastructure (shell scripts reimplementing engine tools), and the
@@ -393,43 +374,15 @@ failure into silent infra drift.
 
 ## Enforcement
 
-### Self-Check Questions for Agents
+All rules live in the **`lint` skill's registry** (`.opencode/skills/lint/scripts/rules.yaml`) — the single source of truth (id, rule, audience, scope, enforcement, notes, check, check-tier). This file contains no rule text.
 
-When writing agent instructions, ask:
-1. "Would this work if we switched to Unity?"
-2. "Am I using engine API names or conceptual descriptions?"
-3. "Should this pattern go in a skill instead?"
-4. "Am I offering an improvised alternative where a skill defines one sanctioned path?"
-5. "Does this touch `test/`? That's out of scope — fix the skill/agent instead."
+- **Reading the rules:** `cat .opencode/skills/lint/scripts/rules.yaml`
+- **Adding/changing a rule:** edit the registry only — never hand-write rules here (see the `lint` skill for the full workflow)
+- **Deterministic checks:** `.opencode/skills/lint/scripts/lint_skills.sh` (implements `enforcement: lint`/`both` checks)
+- **Semantic checks:** `.opencode/skills/lint/scripts/review_skills_llm.sh` (judge rubric generated from the registry; reviews skills/, agents/, AGENTS.md)
+- **Registry health:** `--audit` (verifies registry and lint implementations agree)
 
-### Review Checklist
-
-Before committing agent changes:
-- [ ] No engine-specific file formats mentioned
-- [ ] No MCP tool names in instruction text (only in frontmatter)
-- [ ] No process management commands
-- [ ] References skills for implementation details
-- [ ] Decision logic remains universal
-
-### Skill Self-Check Questions
-
-When writing or revising skills, follow the **`skill-authoring`** skill (`.opencode/skills/skill-authoring/SKILL.md`) — it owns the full authoring rules (frontmatter, trigger descriptions, progressive disclosure, scripts/ACI design, eval-first iteration). Summary checks:
-1. **"Would this work for a platformer as well as whatever genre I just tested?"** — Avoid genre assumptions in bot configs, node paths, or action names
-2. **"Are all game-specific values exposed as config?"** — Input action names, node paths, bounds, thresholds must be parameters, not hardcoded
-3. **"Did I assume naming conventions?"** — Don't assume `move_up` exists; discover actions dynamically or require explicit config
-4. **"Is this pattern portable to other engines?"** — Core logic should be engine-agnostic; only API calls differ
-5. **"Did I encode the last real failure this skill hit?"** — turn observed playtest/validation failures into a gotcha line or validator check
-6. **"Is my 'observed' citation resolvable — and earning its place?"** — when a gotcha cites evidence ("observed <date>: …"), two tests must pass. *(a) Resolvable:* traceable from this repo — a dated file in `benchmarks/results/`, a commit hash, or an entry in `docs/upstream-backlog.md`; a bare date with no locatable evidence is provenance theater (keep the lesson, drop the date, or write the evidence up first; never cite session DB IDs or traces that only exist on the author's machine). *(b) Earns its place:* the citation does real work — it proves a non-obvious claim (e.g. "reports success while failing"), calibrates severity/recency (one-off vs. repeated across runs), or anchors an upstream workaround's retirement clock. Drop it when the lesson is self-evident/timeless, or when a deterministic script/validator now makes the failure impossible — the check is the evidence; the war story is noise. (Cleanup of existing violations is pending — apply this rule to any gotcha you touch from now on.)
-
-### Automated Enforcement
-
-Run before committing skill changes (checks genre keywords, cultural commentary, agent names, line caps, frontmatter hygiene, oversized inline code):
-
-```bash
-./scripts/lint_skills.sh
-```
-
-**Failure mode:** Keyword found → review required → either genericize or document intentional exception (rare).
+Run both before committing skill or agent changes. **Lint failure mode:** flagged line → genericize or document an intentional exception (rare).
 
 ---
 

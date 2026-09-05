@@ -1,0 +1,280 @@
+# Rule registry for the agent-swarm library — THE single source of truth for
+# all lint/review rules. Consumed by:
+#   - scripts/lint_skills.sh        (enforcement: lint — deterministic checks)
+#   - scripts/review_skills_llm.sh  (enforcement: llm-review — semantic judge)
+#   - scripts/render_rules.py        (renders this file INTO AGENTS.md sections;
+#       AGENTS.md's self-check lists are generated from here — never edit them
+#       by hand; run `python3 scripts/render_rules.py --check` after changes)
+#
+# Adding a rule: append an entry here, then run
+#   python3 scripts/render_rules.py            (regenerates AGENTS.md sections)
+#   ./scripts/lint_skills.sh --audit           (verify registry health)
+# A rule with enforcement: none is tracked as author-judgment-only and shown
+# in the audit.
+#
+# id:          stable identifier
+# rule:        canonical wording (what reviewers/judges evaluate)
+# audience:    agents | skills (which self-check list the rule appears in)
+# scope:       files the rule applies to
+# enforcement: lint | llm-review | both | none (author judgment only)
+# check:       for lint-enforced entries: name of the check in lint_skills.sh
+#              (functions `check_<name>`; --audit cross-references them)
+# check-tier:  for lint-enforced entries: how much of the rule the lint check
+#              decides — 'exact' (grep/parser fully determines the rule) or
+#              'tripwire' (keyword scan catches obvious hits only; the LLM
+#              reviewer judges the full rule semantics). Tripwire checks
+#              belong on enforcement: both rules so the semantic half is
+#              covered.
+# notes:       interpretive calibrations injected into the LLM judge prompt
+#              (exemptions, allowances, examples of legal/illegal)
+
+- id: engine-agnostic-agents
+  rule: >
+    Agent decision logic must be engine-agnostic — no engine API names, file
+    formats, MCP tool names, or process management in instruction text.
+  audience: agents
+  scope: agents/**
+  enforcement: llm-review
+  notes: >
+    References to skills for implementation details are legal; that IS the
+    portability mechanism. Frontmatter permissions MAY name engine tools —
+    they are configuration, not instruction.
+
+- id: skills-not-agents
+  rule: >
+    Implementation patterns belong in skills, not in agent instruction text.
+    If a rule would survive an engine switch, it is decision logic (agent);
+    if it names APIs/files/tools, it is implementation (skill).
+  audience: agents
+  scope: agents/**
+  enforcement: llm-review
+
+- id: no-improvised-alternatives
+  rule: >
+    Never offer an improvised alternative where a skill defines one
+    sanctioned path; the correct outcome is a BLOCKED report, not a detour.
+  audience: both
+  scope: agents/**, skills/**
+  enforcement: llm-review
+  notes: >
+    No self-launching processes, no shell-based stand-ins for engine tools,
+    no attaching/bypassing where the skill says launch. An unblocking hack
+    that silently skips validation is worse than a failure — work done
+    outside the sanctioned path is not done. If the sanctioned path is
+    genuinely wrong, fix the skill (harness-build), not runtime
+    improvisation. Wording red flags: "if X fails, you can alternatively…",
+    "or fall back to…", "as a last resort, manually…".
+
+- id: no-test-writes
+  rule: >
+    Harness-build sessions never modify test/ (or test2/) — consumer
+    sandboxes are read-only; fixes belong in agents/ or skills/.
+  audience: agents
+  scope: agents/**
+  enforcement: llm-review
+
+- id: genre-agnostic-agents
+  rule: >
+    Agent decision logic and role definitions must be genre-agnostic —
+    decision frameworks, quality standards, and validation expectations
+    must work for puzzle, action, strategy, and simulation alike.
+  audience: agents
+  scope: agents/**
+  enforcement: llm-review
+  notes: >
+    Same vocabulary calibration as the skills variant: judging a "jump arc"
+    is a violation; setting a frame-time budget is not. Citing a genre only
+    as a worked example ("e.g. a platformer") is legal; assuming the genre in
+    decision logic is not.
+
+- id: genre-agnostic-skills
+  rule: >
+    Would this work for a platformer as well as whatever genre I just
+    tested? No genre-specific game mechanics, named games, or cultural
+    commentary in skills.
+  audience: skills
+  scope: skills/**
+  enforcement: both
+  check: genre_keywords
+  check-tier: tripwire
+  notes: >
+    Judge the assumption, not the vocabulary: "respawn timer" is a violation;
+    "tick rate budget" is not. Engine API names ARE allowed in skills
+    (skills are engine-specific by design). Incident anecdotes naming genre
+    objects ("a paddle task burned 8 min") are legal narrative evidence.
+
+- id: persona-leakage
+  rule: >
+    Skills must not carry role/persona leakage beyond names: persona voice,
+    evaluation rubrics belonging to a specific role, or collaboration
+    patterns tied to one agent.
+  audience: skills
+  scope: skills/**
+  enforcement: llm-review
+  notes: >
+    Distinct from agent-agnostic-skills (which targets names/role judgment):
+    this targets voice, rubrics, and inter-agent choreography. Generic
+    pronouns are fine.
+
+- id: config-not-hardcoded
+  rule: >
+    Are all game-specific values exposed as config? Input action names, node
+    paths, bounds, thresholds must be parameters, not hardcoded — in scripts/
+    AND in embedded code blocks of skill docs. Don't assume naming
+    conventions; discover actions dynamically or require explicit config.
+  audience: skills
+  scope: skills/**
+  enforcement: llm-review
+
+- id: portable-to-other-engines
+  rule: >
+    Core logic should be engine-agnostic; only API calls differ between
+    engine forks of a skill.
+  audience: skills
+  scope: skills/**
+  enforcement: llm-review
+
+- id: encode-real-failures
+  rule: >
+    Did I encode the last real failure this skill hit? Turn observed
+    playtest/validation failures into a gotcha line or validator check.
+  audience: skills
+  scope: skills/**
+  enforcement: llm-review
+
+- id: citation-resolvable
+  rule: >
+    "Observed <date>" citations must be traceable from this repo: a dated
+    file in benchmarks/results/, a commit hash, or a "<model> run" qualifier.
+    A bare date with no locatable evidence is provenance theater — keep the
+    lesson, drop the date, or write the evidence up first. Never cite session
+    DB IDs or traces that only exist on the author's machine.
+  audience: skills
+  scope: skills/**, agents/**
+  enforcement: both
+  check: observed_citation_resolvable
+  check-tier: exact
+  notes: >
+    Resolvable references include: benchmarks/results/ paths, commit hashes,
+    git-log anchors, "<model> run/benchmark" qualifiers, and
+    docs/upstream-backlog.md entries.
+
+- id: citation-earns-place
+  rule: >
+    A citation earns its place only if it proves a non-obvious claim (e.g.
+    "reports success while failing"), calibrates severity/recency (one-off
+    vs. repeated across runs), or anchors an upstream workaround's
+    retirement clock. Drop it when the lesson is self-evident/timeless, or
+    when a deterministic script/validator now makes the failure impossible —
+    the check is the evidence; the war story is noise.
+  audience: skills
+  scope: skills/**, agents/**
+  enforcement: llm-review
+
+- id: sanctioned-paths-only
+  rule: >
+    Skills define the ONE sanctioned path per workflow phase. No fallback,
+    alternative, or "last resort" wording; the only escape hatch is a
+    structured ⛔ BLOCKED report.
+  audience: both
+  scope: skills/**
+  enforcement: both
+  check: alt_path_wording
+  check-tier: tripwire
+  notes: >
+    Scoped exceptions stated WITH their reason are legal. Prohibition lines
+    ("never fall back", "no fallback") are legal. Domain splits with stated
+    reasons (e.g. batch vs individual tools by node count) are legal. The
+    BLOCKED escape hatch is legal. A scoped degradation with stated reason
+    (e.g. "return report inline when no write path exists") is legal.
+
+- id: agent-agnostic-skills
+  rule: >
+    Skills must not contain agent names or role-specific judgment ("Poppy
+    should…", "the Lead Engineer ensures…") — any agent can execute any
+    skill; role judgment is applied by the agent, not encoded in the skill.
+  audience: skills
+  scope: skills/**
+  enforcement: both
+  check: agent_names_in_skills
+  check-tier: tripwire
+  notes: >
+    Judge paraphrases, not just literal names. Generic pronouns are fine.
+
+- id: upstream-lifecycle-status
+  rule: >
+    Workarounds for upstream dependency gaps must cite their status
+    (filed/patched/released) and a retirement condition — a gotcha with no
+    lifecycle trail is a violation. Do not judge whether the fix actually
+    shipped; only whether the file records enough to check.
+  audience: skills
+  scope: skills/**, agents/**
+  enforcement: llm-review
+
+- id: trigger-quality
+  rule: >
+    SKILL.md description states what the skill does AND when to use it,
+    specifically enough that an agent choosing between skills picks
+    correctly. Vague descriptions ("helps with scenes") are violations.
+  audience: skills
+  scope: skills/*/SKILL.md
+  enforcement: both
+  check: doc_hygiene
+  check-tier: exact
+
+- id: progressive-disclosure
+  rule: >
+    SKILL.md under 500 lines; detail lives in reference/; no substantial
+    content duplicated between SKILL.md and its reference docs (short
+    ≤3-line summaries are fine).
+  audience: skills
+  scope: skills/*/SKILL.md
+  enforcement: both
+  check: doc_hygiene
+  check-tier: exact
+
+- id: deterministic-logic-in-scripts
+  rule: >
+    Mechanical transforms, validators, and parsers are standalone scripts in
+    scripts/, never inline prose or oversized code blocks. Templates belong
+    in reference/.
+  audience: skills
+  scope: skills/**
+  enforcement: both
+  check: doc_hygiene
+  check-tier: exact
+  notes: >
+    Judge the LOGIC-vs-ILLUSTRATION distinction, not line count. Scenario
+    config snippets and schema examples are illustrative.
+
+- id: no-pkill
+  rule: >
+    No pkill usage or instruction anywhere; the sanctioned engine stop is
+    stop_engine.sh. Unquoted `pkill -f godot --path` binds pattern "godot"
+    and kills the MCP server.
+  audience: both
+  scope: agents/**, skills/**
+  enforcement: lint
+  check: pkill_ban
+  check-tier: exact
+
+- id: gdscript-parses
+  rule: >
+    Every skills/*/scripts/*.gd parses headless — latent parse errors are
+    invisible to review and detonate in consumer projects at setup time.
+  audience: skills
+  scope: skills/*/scripts/*.gd
+  enforcement: lint
+  check: gdscript_parse
+  check-tier: exact
+
+- id: misleading-actor-wording
+  rule: >
+    Second-person edit imperatives in SKILL.md must attribute file mutation
+    to the acting party; a reader must not conclude the SKILL edits files
+    when it was the caller.
+  audience: skills
+  scope: skills/*/SKILL.md
+  enforcement: both
+  check: actor_wording
+  check-tier: tripwire

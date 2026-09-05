@@ -105,7 +105,7 @@ If unsure what the root node name is, call `godot-mcp-runtime:get_scene_tree()` 
 
 **Node hierarchies: MCP tools.** `godot-mcp-runtime:create_scene` / `add_node` / `batch_scene_operations` build nodes, set primitive properties, and attach scripts.
 
-**Resource-typed values: direct `.tscn` edit** (see Step 5a): `[sub_resource]` blocks, Resource-typed properties (`shape`, `polygon`, fonts, materials), and `PackedVector2Array`/`PackedColorArray` values. This is a domain split, not a preference — MCP tools silently drop these (they report success and write nothing, observed 09-02; root cause: the runtime's value coercer has no Resource-construction path). Edit the `.tscn` directly (direct scene-file edit is permission-granted to the implementing agent) — **but never while a run/playtest is active** (live engine sessions serialize runtime state into scene files; stop the project first).
+**Resource-typed values: direct `.tscn` edit** (see Step 5a): `[sub_resource]` blocks, Resource-typed properties (`shape`, `polygon`, fonts, materials), and `PackedVector2Array`/`PackedColorArray` values. This is a domain split, not a preference — MCP tools silently drop these (they report success and write nothing; root cause: the runtime's value coercer has no Resource-construction path). Edit the `.tscn` directly (direct scene-file edit is permission-granted to the implementing agent) — **but never while a run/playtest is active** (live engine sessions serialize runtime state into scene files; stop the project first).
 
 See [reference/mcp-patterns.md](reference/mcp-patterns.md) for:
 - Tool selection strategy (batch vs individual)
@@ -147,9 +147,9 @@ See [reference/mcp-patterns.md](reference/mcp-patterns.md) for error recovery pa
 
 MCP tools silently drop Resource-typed values (they report success and write nothing; mechanism and upstream lifecycle status: [reference/physics-nodes.md](reference/physics-nodes.md), error-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md)). Trust nothing Resource-typed through `set_node_properties`/`add_node`.
 
-> **Upstream status (upstream-worthy):** identified 09-02 in godot-mcp-runtime; issue drafted for the coercer gap + unconditional success reporting. This direct-edit workaround retires when a godot-mcp-runtime release supports Resource-typed property coercion — re-check against the runtime changelog before relying on it.
+> **Upstream status (upstream-worthy):** identified in godot-mcp-runtime (coercer gap, docs/upstream-backlog.md); issue drafted for the coercer gap + unconditional success reporting. This direct-edit workaround retires when a godot-mcp-runtime release supports Resource-typed property coercion — re-check against the runtime changelog before relying on it.
 
-**Sanctioned path:** Direct-edit the `.tscn` to embed `[sub_resource]` blocks (direct scene edit is allowed for this exact purpose; no run/playtest active). Full templates and patterns: [reference/physics-nodes.md](reference/physics-nodes.md) (_Collision Shape Setup_), failure-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md). Then confirm the persisted file on disk actually contains the `shape = SubResource(...)` binding — this class of write has failed silently before (Bug 2, observed 09-02), and the runtime read-back can lag the bridge's in-memory state.
+**Sanctioned path:** Direct-edit the `.tscn` to embed `[sub_resource]` blocks (direct scene edit is allowed for this exact purpose; no run/playtest active). Full templates and patterns: [reference/physics-nodes.md](reference/physics-nodes.md) (_Collision Shape Setup_), failure-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md). Then confirm the persisted file on disk actually contains the `shape = SubResource(...)` binding — this class of write can fail silently, and the runtime read-back can lag the bridge's in-memory state.
 
 **Runtime-only assignment (special case):** Use `godot-mcp-runtime:run_script` to assign shape via GDScript. Only when dynamic modification is required after creation.
 
@@ -208,7 +208,7 @@ See `./.opencode/skills/setup-project/reference/testing-patterns.md` (_Verificat
 > **One scene↔script pair per invocation.** The validator binds the script to the scene it
 > checks; it does not accept or batch multiple pairs in one call, and it does not follow
 > PackedScene instancing (a script referenced only via an instanced child scene must be
-> validated against that child scene, not the parent — observed 09-04 twice in one run:
+> validated against that child scene, not the parent (seen twice in one benchmark run):
 > agents re-derived the one-pair rule from validator failures in two different sessions).
 - Do NOT mark task complete until validation succeeds
 

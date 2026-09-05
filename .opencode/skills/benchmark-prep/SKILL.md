@@ -1,6 +1,6 @@
 ---
 name: benchmark-prep
-description: Prepare or reset a benchmark sandbox for a game-build session before running a benchmark prompt from benchmarks/prompts/. Use when starting a new harness benchmark run (e.g. with a new model), when the previous run's sandbox is dirty or partially built, when switching sandboxes (test/, test2/), or when verifying a sandbox is launch-ready (git repo, harness submodule, MCP runtime). Harness-level — not part of consumer game-build projects.
+description: Prepare or reset a benchmark sandbox for a game-build session before running a benchmark prompt from benchmarks/prompts/. Use when starting a new harness benchmark run (e.g. with a new model), when the previous run's sandbox is dirty or partially built, when switching sandboxes (test/, test2/), or when verifying a sandbox is launch-ready (git repo, harness submodule, MCP runtime). Lives at `.opencode/skills/` in the harness repo — top-level `skills/` is what mounts into consumer game projects; this skill stays behind.
 ---
 
 ## What I do

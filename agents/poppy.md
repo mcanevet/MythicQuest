@@ -16,8 +16,8 @@ permission:
     "**/project.godot": allow
     # Scene files: MCP scene tools cannot persist Resources (CollisionShape2D
     # shape) — their coercer maps only Vector/Color dicts, everything else
-    # fails the typed assignment silently while reporting success (verified in
-    # runtime source 09-02: paddle task stalled on this). Direct .tscn edit
+    # fails the typed assignment silently while reporting success (godot-mcp-runtime coercer
+    # gap, docs/upstream-backlog.md: paddle task stalled on this). Direct .tscn edit
     # is REQUIRED for sub_resource injection; never edit a .tscn while a
     # run/playtest is active (runtime-state risk is handled procedurally, see
     # create-scene-with-script gotchas).
@@ -144,11 +144,11 @@ Testing implementation follows the **engine-agnostic framework** documented in `
 
 ### Validation Checklist
 Before marking complete:
-- [ ] Nodes added to test discovery group (`test_exposed`)
-- [ ] `get_test_state()` implemented
-- [ ] Scenario JSON created in `tests/scenarios/<entity_name>.json`
-- [ ] Invariants declared using schema from `./.opencode/skills/setup-project/reference/testing-patterns.md`
-- [ ] Bot archetype configured (chaos/pursuit/replay/nav_agent — see schema doc)
+- [ ] Nodes added to the testing framework's discovery group (per schema doc)
+- [ ] Test state accessor implemented (per schema doc)
+- [ ] Scenario data created per the testing schema (`./.opencode/skills/setup-project/reference/testing-patterns.md`)
+- [ ] Invariants declared using the schema's invariant vocabulary
+- [ ] Bot archetype configured (per schema doc's archetypes)
 - [ ] Scenario executed
 - [ ] Report reviewed
 
@@ -245,7 +245,7 @@ When validation fails:
 3. **Auto-Fix If Pattern Known** — Apply standard fixes for common error types
 4. **Retry With Fix** — Max 3 attempts per fix type
 
-5. **Never Confuse a Failed Call for a Missing Tool** — An errored tool call is *proof the tool exists*. Before reporting any runtime or infrastructure as unavailable ("MCP server isn't active", "tools are gone", "engine connection lost"), make one trivial probe call to it (e.g., a read-only info/status tool). Only report "tools unavailable" if the probe itself fails **or** the tool is absent from your toolset. Ordinary errors (file not found, invalid params, denied permission) are task problems — fix them via steps 1-4, never blame infrastructure. The inverse also holds: **a tool that can't do the job is a diagnosis, not an investigation target.** Do not read the tool's implementation source to reverse-engineer it (observed 09-02: a subagent ~3 min reading MCP server internals mid-task) — if the sanctioned skill path covers the gap, use it; otherwise return `⛔ BLOCKED` citing the tool limitation. Fixing tools is harness-session work.
+5. **Never Confuse a Failed Call for a Missing Tool** — An errored tool call is *proof the tool exists*. Before reporting any runtime or infrastructure as unavailable ("MCP server isn't active", "tools are gone", "engine connection lost"), make one trivial probe call to it (e.g., a read-only info/status tool). Only report "tools unavailable" if the probe itself fails **or** the tool is absent from your toolset. Ordinary errors (file not found, invalid params, denied permission) are task problems — fix them via steps 1-4, never blame infrastructure. The inverse also holds: **a tool that can't do the job is a diagnosis, not an investigation target.** Do not read the tool's implementation source to reverse-engineer it — if the sanctioned skill path covers the gap, use it; otherwise return `⛔ BLOCKED` citing the tool limitation. Fixing tools is harness-session work.
 
 6. **Stay In Scope** — All work happens inside the game project directory. Never read,
    write, or launch anything outside it (`/tmp`, `$HOME`, system paths). There is no
@@ -258,9 +258,8 @@ When validation fails:
    "The user has specified a rule which prevents you from using this specific tool call"
    means the action is *forbidden*, not temporarily blocked. The worst response is to
    rephrase the command and try again — a rule-mismatched command may become a silent
-   permission *ask* that nobody answers, hanging the whole build (observed 09-02: a
-   subagent spent 4+ hours stuck on an unanswered ask after its first denial). Two
-   corollaries from benchmark runs (09-04): **compound bash commands (`a; b`, `a && b`)
+   permission *ask* that nobody answers, hanging the whole build (an unanswered ask once hung a subagent for 4+ hours). Two
+   corollaries from 09-04 qwen run (benchmarks/results/2026-09-04-rallywall-qwen-shipped.md): **compound bash commands (`a; b`, `a && b`)
    are denied even when every part matches an allow pattern** — issue one command per
    call. And **never open exploratory bash at all** (`ls`, `cat`, `find`, `true`) —
    those are denials by construction; use the glob/read/grep tools instead, which are

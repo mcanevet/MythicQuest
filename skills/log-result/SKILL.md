@@ -43,7 +43,7 @@ Run the archive script (moves `plans/<num>-<slug>.md` → `plans/<num>-<slug>.co
 
 Exit 0 = archived (also covers the "already archived" and "plan file doesn't exist" edge cases — the script reports which and you may proceed). Non-zero = genuine failure; fix the cause and retry once, then report `BLOCKED`.
 
-Never archive by reading the plan and re-writing it yourself — that path loses content on large plans and wastes tokens (observed 09-03: the pre-script workaround forced a copy through the model in every task). Never call `mv` directly.
+Never archive by reading the plan and re-writing it yourself — that path loses content on large plans and wastes tokens . Never call `mv` directly.
 
 ### Step 3: Update GAME_STATE.md
 

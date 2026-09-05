@@ -73,18 +73,19 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 - **The tool is absent from your toolset** (no `godot-mcp-runtime_*` tools available) → **STOP IMMEDIATELY.** Return `⛔ BLOCKED: engine tools missing from toolset. Only the human can fix this by restarting the entire opencode process; re-delegating or spawning a new subagent inherits the same dead toolset (subagents share the parent's MCP connections). Do not retry, do not re-delegate, do not build shell-based workarounds` (custom validators, headless drivers, screenshot scripts) — that masks a broken harness and silently degrades verification quality (observed: 11+ subagents ran for hours with no engine tools, building parallel test infra nobody sanctioned). The MCP server is a child of the primary opencode process; no agent action can restart it.
   - **Report the likely cause, not just the symptom** (two causes share this symptom):
     - *Server death* — opencode logged `MCP connection closed`, earlier sessions had the tools. Wording: `MCP server down`.
-    - *Toolset-snapshot race* (observed 09-01) — this session started within ~seconds of opencode boot; the async MCP handshake (npx cold-start → connect → listTools) hadn't finished when the toolset was snapshotted. Server process is alive; LATER sessions have the tools. Wording: `likely toolset-snapshot race at opencode boot`. Same fix (restart), but this tells the human the server itself is fine and they should not debug the MCP server config.
+    - *Toolset-snapshot race* — this session started within ~seconds of opencode boot; the async MCP handshake (npx cold-start → connect → listTools) hadn't finished when the toolset was snapshotted. Server process is alive; LATER sessions have the tools. Wording: `likely toolset-snapshot race at opencode boot`. Same fix (restart), but this tells the human the server itself is fine and they should not debug the MCP server config.
 
 ## Error Recovery Pattern
 
 > ℹ️ **Runtime phase and parallel subagents.** Within one opencode session all
 > subagents share a single MCP server, which serializes `run_project` calls
-> internally — concurrent runtime phases are safe (verified 09-01: two
+> internally — concurrent runtime phases are safe (verified during the 09-01
+> relative-`projectPath` workup, docs/upstream-backlog.md: two
 > parallel `run_project` calls through one server both succeed). Other engine
 > commands (`run_script`, `take_screenshot`, `simulate_input`, …) are **NOT
 > queued** — if another command is in flight, the server rejects with
 > "another command ('X') is in flight"; just re-issue after the current
-> command completes (observed 09-01: `take_screenshot` rejected during a
+> command completes (e.g. `take_screenshot` rejected during a
 > long `run_script`). The one real hazard is *two opencode sessions* running
 > engine tools against the same project simultaneously (each session gets
 > its own MCP server and both re-inject the bridge autoload): the server
@@ -100,13 +101,12 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 > server-side and holds the single command slot**. Every retry is rejected
 > with "another command ('run_script') is in flight", and `stop_project` +
 > `run_project` cycles may NOT clear it if the long script's in-engine wait
-> survives the restart path (observed 09-04: tuning probes wedged the slot
-> across THREE bridge restarts, ~4 min of futile cycling, before a deliberate
-> `sleep 60` — waiting out the server-side script lifetime — freed it).
+> survives the restart path (tuning probes have wedged the slot across three
+> bridge restarts; only waiting out the server-side script lifetime freed it).
 > Sanctioned recovery: after the first `-32001` on `run_script`, do NOT
 > hammer retries; issue `bash sleep <client-timeout>` once (60s), then retry.
 > If the retry still hits "in flight", that is the `⛔ BLOCKED:` terminus.
-> Prevention (observed 09-04, validated in Run 5): **segmented scripts** —
+> Prevention (validated in the 09-04 qwen benchmark run): **segmented scripts** —
 > cap each `run_script` body at ~8s of awaited engine time, harvest the
 > readings you need, and return; re-invoke for the next segment. For input
 > across segments, `Input.action_press` state **persists between `run_script`
@@ -125,15 +125,15 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 > `run_script` call, lint the probe script (`validate.sh` or headless
 > `--check-only`). If the same script fails with error 43 twice: STOP
 > iterating on edits — write the script to a file, lint it, confirm zero
-> syntax errors, THEN re-run. Observed 09-01: two sessions burned 5+
+> syntax errors, THEN re-run. Two sessions have burned 5+
 > repeated run_script round-trips on successive syntax guesses.
 
 **If `godot-mcp-runtime:run_project` fails (bridge timeout, "did not respond", "process exited"):**
 1. Call `godot-mcp-runtime:get_debug_output()` immediately — read actual error
 2. Kill lingering engine process: `bash("./.opencode/skills/create-scene-with-script/scripts/stop_engine.sh")` — the blessed stop script (kills only `godot --path …`, waits for port release). **NEVER run pkill yourself** (see warning below)
 3. Fix specific issue in source files
-4. Retry once. If same error → **STOP** and report to build agent: `⛔ BLOCKED: runtime phase failed after sanctioned recovery (debug → stop_engine → fix → retry). Do not self-launch Godot or use attach_project.`
-   - **DO NOT invent workarounds**: manual launch scripts, `attach_project`, custom validation hooks, shell-based test runners, or "background mode" hacks. These look equivalent but bypass the sanctioned verification path (no captured debug output, unsanctioned infra, observed: Task 11 subagent built tmp launch/kill scripts and attached-mode tested after 4 bridge timeouts instead of reporting BLOCKED).
+4. Retry once. If same error → **STOP** and report to caller: `⛔ BLOCKED: runtime phase failed after sanctioned recovery (debug → stop_engine → fix → retry). Do not self-launch Godot or use attach_project.`
+   - **DO NOT invent workarounds**: manual launch scripts, `attach_project`, custom validation hooks, shell-based test runners, or "background mode" hacks. These look equivalent but bypass the sanctioned verification path (no captured debug output, unsanctioned infra; mimo run 5, Task 11 subagent built tmp launch/kill scripts and attached-mode tested after 4 bridge timeouts instead of reporting BLOCKED).
 
 > ⚠️ **Critical — never invoke pkill directly:** `npx godot-mcp-runtime` (the
 > MCP server) contains "godot" in its command line, so any pattern broader than
@@ -152,7 +152,7 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 - `Property 'X' does not exist` → wrong node type for the property
 - `Resource file not found` → ext_resource path incorrect
 - `Script not found` → path mismatch between scene and actual file
-- Resource-typed property (e.g. `shape`) reads back as `null` after a successful-looking `set_node_properties`/`add_node` → **not fixable via MCP**: the runtime's value coercer (`_coerce_property_value` in godot_operations.gd) only maps `{x,y,z}` → Vector and `{r,g,b}` → Color; any other dict is `set()` raw, the typed assignment fails, and the tool reports `success: true` regardless. Sanctioned path: direct `.tscn` edit embedding `[sub_resource]` blocks (see SKILL.md Step 5a). **Do not debug the MCP server source, do not probe alternate dict formats** — >2 failed attempts on the same Resource property = switch to the direct-edit path immediately (observed 09-02: paddle task burned ~8 min probing four serialization formats before stalling). *(Upstream status: dependency limitation in godot-mcp-runtime `_coerce_property_value` — workaround is the permanent sanctioned path until upstream extends the coercer's dict→Variant mapping; retirement check: if a release maps typed Resource dicts, this bullet's direct-edit mandate can be narrowed.)*
+- Resource-typed property (e.g. `shape`) reads back as `null` after a successful-looking `set_node_properties`/`add_node` → **not fixable via MCP**: the runtime's value coercer (`_coerce_property_value` in godot_operations.gd) only maps `{x,y,z}` → Vector and `{r,g,b}` → Color; any other dict is `set()` raw, the typed assignment fails, and the tool reports `success: true` regardless. Sanctioned path: direct `.tscn` edit embedding `[sub_resource]` blocks (see SKILL.md Step 5a). **Do not debug the MCP server source, do not probe alternate dict formats** — >2 failed attempts on the same Resource property = switch to the direct-edit path immediately (a paddle task burned ~8 min probing four serialization formats before stalling). *(Upstream status: dependency limitation in godot-mcp-runtime `_coerce_property_value` — workaround is the permanent sanctioned path until upstream extends the coercer's dict→Variant mapping; retirement check: if a release maps typed Resource dicts, this bullet's direct-edit mandate can be narrowed.)*
 
 **Validation strategy:**
 - Before `run_project`: Call `godot-mcp-runtime:validate()` on all .tscn/.gd files

@@ -11,8 +11,8 @@ permission:
   write:
     # Critique reports are pootie's sanctioned deliverable. Without this he
     # has no write path at all and improvises file writes through the engine
-    # runtime (observed 09-04 Run 5: ConfigFile.save / FileAccess indirection
-    # to evade an elicitation gate) — worse than granting the narrow write.
+    # runtime (an evaded elicitation gate via engine file primitives;
+    # see docs/upstream-backlog.md) — worse than granting the narrow write.
     "reports/**": allow
     "*": deny
   edit:
@@ -111,9 +111,9 @@ The playtest skill drives the game with framework bots (replay/chaos) via the in
 Triggered by the build agent as the final evaluation step.
 
 1. **Read README.md** — full game context
-2. **Load playtest skill** — `skill({ name: "playtest" })` — run in critique mode. The skill registers the test harness, launches the game `background=true`, and runs a bot-driven 120s playback.
+2. **Load playtest skill** — `skill({ name: "playtest" })` — run in critique mode. The skill handles test-harness registration, game launch, and the timed bot-driven playback; follow its configured run parameters.
 3. **During the run**:
-   - The engine simulates autonomously (framework bot: replay or chaos)
+   - The engine simulates autonomously (the skill's configured bot drives it)
    - Take screenshots at notable moments — the engine keeps running between MCP calls
    - Narrate each significant moment to imaginary chat, using the playtest skill's analysis template
 4. **After session ends** (duration expires, game over, or crash):
@@ -121,11 +121,14 @@ Triggered by the build agent as the final evaluation step.
    - Produce streamer critique (see Output Structure below)
    - Return critique to the build agent
 
-### Opinion mode (reading a recorded report)
+### Opinion mode (critique of a recorded report)
 
-If invoked without live MCP access (e.g., reading a saved playtest log),
-I interpret the event timeline as if I watched a VOD. Same output structure,
-same voice, but I'm reacting to recorded events rather than driving the play loop.
+When the caller explicitly directs me to a saved playtest report (a distinct
+invocation, not a recovery path), I interpret the event timeline as if I
+watched a VOD. Same output structure, same voice, but I'm reacting to
+recorded events rather than driving the play loop. If I am asked to run a
+live critique and the engine/MCP tools are unavailable, that is a
+`⛔ BLOCKED` — opinion mode is not a substitute for the live playtest.
 
 ## My Output Structure
 

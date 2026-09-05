@@ -50,7 +50,7 @@ Wraps Godot's built-in NavigationAgent2D/3D to path toward a goal node — deleg
 
 **Gotcha:** `nav_agent` needs a baked navigation mesh on the scene's NavigationRegion(s). Without one, `get_next_path_position()` returns the actor's current position and the bot issues **no input at all — silently**. If a nav_agent scenario passes with zero inputs, check `input_count` in the report and verify the scene has a baked navmesh.
 
-**Gotcha (bots that issue no input are INVALID, not green):** a pursuit/nav_agent scenario with zero inputs in its report is a failed exercise, not a passing one. If `agent_path`/`target_path` don't resolve, or no movement actions match by convention or `actions` override, the bot now reports a violation named `pursuit_bot_config`/`nav_agent_bot_config` instead of silently standing still. Treat either as a scenario misconfiguration: fix the paths or the action mapping and re-run. Observed 09-03: a pursuit run with zero inputs nearly produced a false "vision achieved" report.
+**Gotcha (bots that issue no input are INVALID, not green):** a pursuit/nav_agent scenario with zero inputs in its report is a failed exercise, not a passing one. If `agent_path`/`target_path` don't resolve, or no movement actions match by convention or `actions` override, the bot now reports a violation named `pursuit_bot_config`/`nav_agent_bot_config` instead of silently standing still. Treat either as a scenario misconfiguration: fix the paths or the action mapping and re-run. (a pursuit run with zero inputs has nearly produced a false "vision achieved" report before the violation existed)
 
 ---
 
@@ -65,9 +65,9 @@ All invariants are checked every physics tick (not render tick) for deterministi
 | `no_fatal_errors` | none | Process-level crash detection — verified externally by the playtest skill (`get_debug_output`), not an in-harness check. Fatal errors crash the engine before `_physics_process` can run |
 | `nodes_finite` | none | All Node2D/Node3D positions are finite (non-NaN, non-Inf) |
 | `no_nan_or_inf` | none | Alias of `nodes_finite` (kept for backward compatibility) |
-| `nodes_in_bounds` | `min_x`, `max_x`, `min_y`, `max_y`, `min_z` (opt), `max_z` (opt), `targets` (opt) | **Gameplay-node** positions within configured bounds: physics bodies (PhysicsBody2D/3D) and positioned visuals (Sprite2D/Sprite3D/TextureRect/ColorRect). Structural nodes at origin (scene roots, anchored backgrounds/UI) are exempt by design — flagging them floods reports with false positives (observed 09-04: `/root/root` + a Collision child using offset coords fired 899x/run and masked the real signal). `targets` overrides the default set with explicit node paths or `group:<name>` strings. Z-axis is optional and only checked for Node3D — 2D nodes ignore it. **For a 3D game, always set `min_z`/`max_z` explicitly** — omitting them leaves Z un-checked, so a Node3D drifting along Z would pass |
+| `nodes_in_bounds` | `min_x`, `max_x`, `min_y`, `max_y`, `min_z` (opt), `max_z` (opt), `targets` (opt) | **Gameplay-node** positions within configured bounds: physics bodies (PhysicsBody2D/3D) and positioned visuals (Sprite2D/Sprite3D/TextureRect/ColorRect). Structural nodes at origin (scene roots, anchored backgrounds/UI) are exempt by design — flagging them floods reports with false positives that mask the real signal. `targets` overrides the default set with explicit node paths or `group:<name>` strings. Z-axis is optional and only checked for Node3D — 2D nodes ignore it. **For a 3D game, always set `min_z`/`max_z` explicitly** — omitting them leaves Z un-checked, so a Node3D drifting along Z would pass |
 | `no_null_refs` | none | Scene tree root is valid |
-| `frame_time_p99_below` | `value` (ms threshold, default 33.3) | 99th-percentile frame time stays below threshold. The harness warms up first: engine startup spikes (shader compile, resource streaming) register as 25,000-40,000ms "frames" — not game performance (observed 09-04: p99 = 40324ms on a healthy 16ms run). Timing samples only count after 3 consecutive settled (<100ms) ticks |
+| `frame_time_p99_below` | `value` (ms threshold, default 33.3) | 99th-percentile frame time stays below threshold. The harness warms up first: engine startup spikes (shader compile, resource streaming) register as 25,000-40,000ms "frames" — not game performance (startup measured p99 up to ~40s on an otherwise healthy run). Timing samples only count after 3 consecutive settled (<100ms) ticks |
 | `fps_floor` | `value` (min fps, default 30) | Average FPS over last 60 ticks stays above floor. Reports only after sustained violations (>10 consecutive violations) to avoid noise |
 
 #### Custom (Declarative) Rules
@@ -118,7 +118,7 @@ Numeric custom invariants can also declare a `max_delta_per_sec` — the tracked
 }
 ```
 
-**Observed failure this catches (09-03):** a hit-handler re-fired every physics tick while contact persisted — a scripted perfect player accrued points ~60× faster than intended and reached the win threshold on the first catch. Point-in-time invariants (`equals`, `below`) cannot see this class of bug; only rate-of-change can. Add a `max_delta_per_sec` to every game-economy counter (score, currency, combo, ammo) sized to a plausible human ceiling.
+**Observed failure this catches (09-03 ling run, benchmarks/results/2026-09-04-rallywall-ling-flash-shipped.md):** a hit-handler re-fired every physics tick while contact persisted — a scripted perfect player accrued points ~60× faster than intended and reached the win threshold on the first catch. Point-in-time invariants (`equals`, `below`) cannot see this class of bug; only rate-of-change can. Add a `max_delta_per_sec` to every game-economy counter (score, currency, combo, ammo) sized to a plausible human ceiling.
 
 ---
 

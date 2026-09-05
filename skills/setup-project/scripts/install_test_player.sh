@@ -4,8 +4,8 @@
 #
 # A cp here guarantees fidelity that read-then-write cannot: the harness's
 # GDScript parse gate (lint check 10) validates THIS copy, so the game project
-# must receive identical bytes (observed 09-03: a hand-copied variant shipped a
-# sibling-scope `var pos` parse error that detonated in every later playtest).
+# must receive identical bytes — a hand-copied variant can carry subtle parse
+# errors into every later playtest.
 #
 # Usage: install_test_player.sh <game-project-root>
 #   Creates <root>/scripts/ if needed, refuses to overwrite an existing

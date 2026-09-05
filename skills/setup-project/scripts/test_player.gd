@@ -110,8 +110,8 @@ func _physics_process(delta):
 	var current_time = Time.get_ticks_msec() / 1000.0
 	# Warm-up: the first physics ticks after launch include engine startup
 	# (shader compilation, resource streaming) measured as 25,000-40,000ms
-	# "frames" — not game performance (observed 09-04: p99 = 40324ms on a
-	# healthy 16ms run, false fps_stable violations). Discard samples until
+	# "frames" — not game performance (startup measured p99 up to ~40s on a
+	# healthy run, causing false fps_stable violations). Discard samples until
 	# three consecutive sub-100ms ticks say the engine has settled.
 	if _warmup_remaining > 0:
 		if _last_time > 0:
@@ -421,8 +421,7 @@ func _check_bounds(rule_name: String, rule: Dictionary):
 		# Default: gameplay nodes only. Container/structural nodes (scene roots
 		# at origin, backgrounds, UI anchored to the viewport) legitimately sit
 		# at (0,0) — flagging them makes every run report false positives
-		# (observed 09-04: /root/root at origin and a paddle Collision child
-		# using offset coords fired 899x/run and masked real signal).
+		# (structural nodes flooding reports and masking real signal).
 		# Gameplay = physics bodies + positioned visuals — the nodes that can
 		# actually leave the play area.
 		_walk_bounds_gameplay(root, rule_name, min_x, max_x, min_y, max_y, min_z, max_z)

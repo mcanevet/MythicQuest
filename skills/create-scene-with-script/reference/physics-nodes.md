@@ -23,7 +23,7 @@ Interactive UI                     → Button / Control hierarchy
 
 ## Collision Shape Setup
 
-**Critical:** MCP tools cannot persist Resources like `RectangleShape2D` — their value coercer has no Resource path, so dict-shaped resources are `set()` raw, fail the typed assignment, and the tool still reports success (the shape stays `<Object#null>` in memory too; verified in runtime source 09-02). *(Upstream lifecycle trail: SKILL.md Step 5a records the issue status and retirement condition — check there before relying on this workaround.)* Use sub_resources via **direct `.tscn` edit** (allowed; never while a run/playtest is active):
+**Critical:** MCP tools cannot persist Resources like `RectangleShape2D` — their value coercer has no Resource path, so dict-shaped resources are `set()` raw, fail the typed assignment, and the tool still reports success (the shape stays `<Object#null>` in memory too; godot-mcp-runtime coercer gap, docs/upstream-backlog.md). *(Upstream lifecycle trail: SKILL.md Step 5a records the issue status and retirement condition — check there before relying on this workaround.)* Use sub_resources via **direct `.tscn` edit** (allowed; never while a run/playtest is active):
 
 ```ini
 [gd_scene format=3]
@@ -51,7 +51,7 @@ shape.size = Vector2(20, 100)
 col_shape.shape = shape
 ```
 
-After any `.tscn` edit, confirm the `shape = SubResource(...)` binding actually landed on disk (`read`/`grep` the file) — this write class has failed silently via MCP (Bug 2, observed 09-02).
+After any `.tscn` edit, confirm the `shape = SubResource(...)` binding actually landed on disk (`read`/`grep` the file) — this write class has failed silently via MCP before.
 
 **RigidBody2D critical config** (if used):
 - `contact_monitor = true` is REQUIRED for collision signals to fire (defaults to false!)

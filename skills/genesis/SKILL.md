@@ -69,7 +69,7 @@ Use the **write** tool to create/update `GAME_STATE.md`. Format:
 - ... (10-20 total)
 ```
 
-**Format is load-bearing (do not deviate):** every backlog line MUST start `- [ ] Task N: description`. Downstream tooling matches this literally — backlog-grooming parses it to claim tasks and log-result's validator greps `Task N:` to confirm completion. A bare `- [ ] description` list (observed 09-03, nemotron run) breaks the validator and sends implementing agents into a failed-validation spiral.
+**Format is load-bearing (do not deviate):** every backlog line MUST start `- [ ] Task N: description`. Downstream tooling matches this literally — backlog-grooming parses it to claim tasks and log-result's validator greps `Task N:` to confirm completion. A bare `- [ ] description` list breaks the validator and sends implementing agents into a failed-validation spiral.
 
 Create the file from scratch using the **write** tool, providing the complete content in one go.
 
