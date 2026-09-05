@@ -231,6 +231,8 @@ task({
 
 **Trigger:** If a `task()` call returns with status `error`, OR completes in under ~30 seconds (indicating a tool crash before meaningful work), OR the returned text is empty/under 100 characters with no tool results, immediately retry.
 
+**Silent subagent death — incomplete result:** a subagent can also die mid-work *without an error signal*: the task returns "completed" but the mandated deliverable is absent — no verdict line for a playtest mode, no report file at the path it should have written, no final summary text. This is the same class as a crash (observed 09-04: a critique session stopped mid-playthrough after 10 steps with `reason: stop`, no verdict; the orchestrator happened to notice and respawned). Treat a result lacking its mandated deliverable exactly like a failed return: **respawn once with a completion-run brief** ("prior session ended mid-stream; continue/redo the work, deliver the mandated result") before counting it as a failure for the retry ladder. If the respawn also returns without the deliverable, that is a `⛔ BLOCKED:` — report it rather than looping.
+
 **Before retrying — check if the task actually succeeded despite the error signal:**
 
 1. `glob()` each saved file path from Step 1.4. If **all expected files exist**, the task completed before a non-fatal timeout. Skip retry and go directly to Step 3 (post-log verification).

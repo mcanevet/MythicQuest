@@ -82,6 +82,10 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 > **Script edits under a running engine require a restart.** Playtest itself never edits game files — but you may have edited a `.gd` file (e.g. fixing a parse error the validation step surfaced) while the engine this skill launched is still running. Godot caches compiled script bytecode in a running process; the live process keeps reporting **stale errors at phantom line numbers** — including parse errors you already fixed (observed 09-03: an agent fixed a duplicate-variable parse error, re-validated, saw the identical error pointing at the now-correct line, and burned 5+ steps hunting a nonexistent second bug before guessing "cached bytecode"). If you edited a script and the reported error doesn't match the current file contents, **do not debug the file** — `stop_project()`, relaunch, and re-register the autoload before re-validating.
 
+> ⚠️ **Context economy for long verification sessions (probe budget + artifact ledger).** Multi-phase verification (QA gauntlets, multi-violation triage) burns tokens super-linearly: every step re-sends the accumulated diagnostic context (observed 09-04, qwen run: one 180-step gauntlet session consumed 5.95M input — 34% of the entire build). Two rules:
+> - **Artifact ledger:** when you finish classifying a violation group or diagnostic finding, append a 2-3 line summary ("artifact ledger") to the report file (or your plan file) — name, root cause, verdict (game bug vs harness artifact), disposition. Treat the ledger as your working memory going forward; do not re-derive classified findings, and cite the ledger instead of re-reading raw outputs.
+> - **Probe budget:** if more than **10 probe calls** are spent diagnosing a single violation group without resolution, STOP — reassess the hypothesis class (environment artifact vs game bug) before the next call. Common resolutions at that point: it IS an environment artifact (background throttle, post-reload first-tick noise, startup-inflated p99), or the invariant needs wider bounds/tolerances — both are one-line dispositions, not ten more probes.
+
 ---
 
 ## Mode: fast-verify

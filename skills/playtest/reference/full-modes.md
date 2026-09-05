@@ -177,11 +177,27 @@ start_test(scenario={
 })
 ```
 
-### Step 3: Play session (120 seconds)
+### Step 3: Play session (120 seconds) — two parts
+
+Critique has two distinct jobs, done in order. **Part A observes the game as a consumer; Part B gates failure claims before they reach the verdict.** A critique that skips Part B risks REWORK-ing a working game (observed 09-04, qwen run: three consecutive REWORK verdicts, all harness-path artifacts); a critique that skips Part A loses the consumer lens and reduces to functional testing.
+
+#### Part A: Observation run (sampled screenshots)
 
 `start_test` returns immediately and playback runs at 60Hz. **Capture 8-10 screenshots evenly spaced (~one every 12-15s)** — don't wait for "noteworthy moments" (you can't know what's noteworthy without seeing it first; with sparse sampling you'll miss the moment anyway). Use `responseMode: "preview"` to keep token cost down. Ground your narration in what you actually see from these captures; if a screenshot shows something interesting, mention it in first-person present tense. Extra captures without full analysis are acceptable and available for debugging.
 
-> ⚠️ **Before declaring controls "unresponsive" or the game "stuck":** consult the two gotchas in SKILL.md's Common Workflow (background-mode idle throttling; synthetic input invisible to `_unhandled_input`/edge-detected handlers). In Run 5, three consecutive critiques REWORK'd a game whose controls actually worked for humans — each was a harness-path artifact. If the bot can't restart a game-over screen, verify via a scripted probe (e.g. `Input.parse_input_event` in `run_script`, or programmatic scene reload) before flagging it as a game bug. Also verify the input map actually contains the advertised bindings — a dead binding (keycode 0) is a real bug the harness's action-press path can expose.
+Narrate what you see — pacing, feel, readability, "would I keep playing". Screenshots here may show symptoms (stuck screens, dead overlays) — record them as *observations*, not verdicts.
+
+#### Part B: Probe gate for failure claims (mandatory)
+
+Before ANY of the following appears in your verdict — "controls unresponsive", "stuck", "bricked", "restart broken", "boot loses instantly", "unplayable" — you MUST verify with a scripted probe:
+
+1. Consult the two gotchas in SKILL.md's Common Workflow (background-mode idle throttling; synthetic input invisible to `_unhandled_input`/edge-detected handlers).
+2. Drive the suspect interaction yourself via a `run_script` probe: `Input.parse_input_event` for key/menu handling, programmatic state queries (`get_node` + property reads) for game-state transitions, or programmatic scene reload for restart flows. Sample state *after* the input, inside the same awaited script body.
+3. Check the input map actually contains the advertised bindings — a dead binding (keycode 0) is a real bug the action-press path can expose.
+
+If the probe confirms the behavior (game state genuinely doesn't respond), it is a game bug — REWORK with the evidence. If the probe shows the game responding (state changes, scene reloads), the Part-A symptom was a harness artifact — drop the failure claim from the verdict and note the artifact in the report's hand-off section instead.
+
+Failure claims that appear in a verdict without a Part B probe are invalid on review.
 
 At each significant moment, note how a player experiences it (first-person, present tense), grounded in what actually happened:
 
@@ -204,6 +220,9 @@ At each significant moment, note how a player experiences it (first-person, pres
 **Verdict:** [one-sentence takeaway a player would give a friend]
 "This one's got juice — I want to keep playing it."
 
+**Probe results:** [for every observed failure symptom: what the Part B probe showed, or "no failure symptoms observed"]
+- "GAME OVER restart verified via parse_input_event probe — scene reloaded cleanly; Part A stall was a background-throttle artifact"
+
 **Hand-off:** [bugs/crashes flagged from violation report, or "looked clean"]
 ```
 
@@ -212,6 +231,7 @@ If game crashes: stop immediately, hand off with abort reason and violation deta
 ### Success Criteria
 - 120-second play session completes (or game over/crash)
 - 8-10 screenshots taken across the session, narration grounded in what they show
-- All five critique sections produced
+- All six critique sections produced (incl. Probe results)
+- Every failure claim in the verdict backed by a Part B probe
 - Verdict reported in task result
 
