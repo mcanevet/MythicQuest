@@ -48,14 +48,11 @@ MythicQuest/                    # Reusable agent library
 │   ├── log-result/
 │   └── playtest/
 ├── opencode.jsonc              # MCP/LSP configuration
-└── test/                        # Internal fixture used to dogfood this harness — see the symlinks below for the full recipe
-    └── .opencode/
-        ├── agents -> ../../agents
-        ├── skills -> ../../skills
-        └── opencode.jsonc -> ../../opencode.jsonc
+└── test/                        # Benchmark sandbox (disposable; prepared by the benchmark-prep skill)
+    └── .opencode/              # git submodule -> this repo, pinned at a committed SHA
 ```
 
-**To consume this library in a real game project, an `.opencode/` runtime view must exist at the consumer project's root** — either a git submodule pointing at this repo, or a directory of symlinks (`agents`, `skills`, `opencode.jsonc`) back to this repo's copies. The `test/` fixture above is the reference implementation of this recipe (and the development sandbox for dogfooding this harness). Full setup recipes — including the path conventions that make skill cross-references resolve — are documented in [AGENTS.md § Library Consumption Pattern](AGENTS.md#library-consumption-pattern).
+**To consume this library in a real game project, an `.opencode/` runtime view must exist at the consumer project's root** — either a git submodule pointing at this repo (production; the layout `test/` above uses), or a directory of symlinks (`agents`, `skills`, `opencode.jsonc`) back to a checkout of this repo (development only). Full setup recipes — including the path conventions that make skill cross-references resolve — are documented in [AGENTS.md § Library Consumption Pattern](AGENTS.md#library-consumption-pattern).
 
 | Agent | Role |
 |-------|------|
@@ -182,11 +179,8 @@ Every generated project maintains `GAME_STATE.md` for task tracking and plan fil
 ```bash
 opencode run "Build the game"   # Full autonomous game generation
 
-# Development: exercise the harness inside the test/ sandbox.
-# test/.opencode holds symlinks back to ./agents, ./skills, ./opencode.jsonc.
-# --dir keeps the workspace root at repo level, avoiding external_directory
-# prompts caused by those symlinks while skills still resolve via test/.
-opencode run --dir test "Build a game"
+# Benchmark: prepare the sandbox first (see the benchmark-prep skill), then:
+cd test && caffeinate -dimsu opencode "Build a game"
 ```
 
 ---

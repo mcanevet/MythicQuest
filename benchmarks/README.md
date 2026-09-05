@@ -18,14 +18,13 @@ doesn't reach.
 
 ## Running a benchmark
 
-1. Reset the consumer sandbox:
+1. Reset the consumer sandbox (deterministic — do not hand-type a cleanup):
    ```bash
-   rm -rf test && mkdir -p test/.opencode
-   ln -sfn ../../agents test/.opencode/agents
-   ln -sfn ../../skills test/.opencode/skills
-   ln -sfn ../../opencode.jsonc test/.opencode/opencode.jsonc
-   printf 'node_modules\npackage-lock.json\n' > test/.opencode/.gitignore
+   .opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh [sandbox-name]
    ```
+   Default sandbox: `test/`. Creates the git-submodule consumer layout
+   (`.opencode` IS the submodule, pinned at committed harness HEAD) and
+   verifies it launch-ready. See the `benchmark-prep` skill for details.
 2. Start opencode from `test/` (so it sees `.opencode/agents` +
    `.opencode/skills`), note the wall-clock start time.
    **Run under `caffeinate -dimsu` (or equivalent power-assertion).**

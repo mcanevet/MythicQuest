@@ -1,5 +1,22 @@
-node_modules
-package.json
-package-lock.json
-bun.lock
-.gitignore
+# Godot 4+ specific ignores
+.godot/
+export.cfg
+.export/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Optional: Hide asset source files
+!*.svg
+*.png
+*.jpg
+*.webm
+.mcp/
+
+# Test directory - only track .opencode symlinks
+test/*
+!test/.opencode
+
+# Benchmark sandboxes (disposable, prepared by benchmark-prep skill)
+test2/

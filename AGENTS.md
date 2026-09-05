@@ -124,19 +124,17 @@ GameProject/                    # Consumer project
 
 **Consequence:** All cross-references inside `SKILL.md` files, skill `reference/` docs, and agent files use `./.opencode/skills/...` paths — these are **runtime-resolvable paths** (correct from the consumer project's perspective), not repo-relative paths. Do not "fix" them to `./skills/` — that breaks every consumer.
 
-**Setup for new consumer projects** (see `test/.opencode/` in this repo for the reference implementation — a directory of symlinks; that fixture is the **development sandbox** for dogfooding this harness):
+**Setup for new consumer projects** (the benchmark sandbox `test/`, prepared by the `benchmark-prep` skill, uses the production layout):
 
 ```bash
 # Option 1: Git submodule (production — recommended)
 # Pins the library to a specific commit; consumers update deliberately.
-git submodule add <library-url> .opencode/lib
-ln -s lib/agents .opencode/agents
-ln -s lib/skills .opencode/skills
-ln -s lib/opencode.jsonc .opencode/opencode.jsonc
+# The whole repo becomes the submodule at .opencode/ — the loader resolves
+# .opencode/agents and .opencode/skills from the checked-out tree directly.
+git submodule add <library-url> .opencode
 
 # Option 2: Direct symlinks (development/testing only)
 # Live-links to a checkout of this repo — changes apply instantly, no pinning.
-# Used by test/ in this repo; not recommended for real game projects.
 mkdir -p .opencode
 ln -s /path/to/MythicQuest/agents .opencode/agents
 ln -s /path/to/MythicQuest/skills .opencode/skills

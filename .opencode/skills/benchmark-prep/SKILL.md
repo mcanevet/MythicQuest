@@ -1,6 +1,6 @@
 ---
 name: benchmark-prep
-description: Prepare or reset a benchmark sandbox for a game-build session before running a benchmark prompt from benchmarks/prompts/. Use when starting a new harness benchmark run (e.g. with a new model), when the previous run's sandbox is dirty or partially built, when switching sandboxes (test/, test2/), or when verifying a sandbox is launch-ready (git repo, harness submodule, MCP runtime). Lives at `.opencode/skills/` in the harness repo — top-level `skills/` is what mounts into consumer game projects; this skill stays behind.
+description: Prepare or reset a benchmark sandbox for a game-build session before running a benchmark prompt from benchmarks/prompts/. Use when starting a new harness benchmark run (e.g. with a new model), when the previous run's sandbox is dirty or partially built, when switching sandbox directories, or when verifying a sandbox is launch-ready (git repo, harness submodule, MCP runtime). Lives at `.opencode/skills/` in the harness repo — top-level `skills/` is what mounts into consumer game projects; this skill stays behind.
 ---
 
 ## What I do
@@ -14,7 +14,7 @@ never mounted in game projects.
 
 - About to start a benchmark run (`benchmarks/prompts/*.md`) with any model
 - Previous run died mid-way (quota, stall, kill) and the sandbox is dirty
-- Want to switch sandbox directories (default `test2/`, or pass any name)
+- Want to switch sandbox directories (default `test/`, or pass any name)
 - Suspect a sandbox is broken (missing MCP runtime, drifted submodule)
 
 ## Layout this script creates
@@ -45,7 +45,7 @@ before each prep run.
 .opencode/skills/benchmark-prep/scripts/prepare_test_dir.sh [sandbox-name] [--full-npm]
 ```
 
-- `sandbox-name` defaults to `test2`; must be a simple name inside the harness
+- `sandbox-name` defaults to `test`; must be a simple name inside the harness
   repo (gitignored there — no harness commits happen).
 - `--full-npm` wipes and reinstalls node_modules.
 - Idempotent, and destructive by design: **any existing content in the

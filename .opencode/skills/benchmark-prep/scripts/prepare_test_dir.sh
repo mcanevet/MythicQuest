@@ -32,7 +32,7 @@
 #   6. Commits nothing to the harness repo itself.
 #
 # Usage: prepare_test_dir.sh [sandbox-dir] [--full-npm]
-#   sandbox-dir defaults to test2 (must live INSIDE the harness repo).
+#   sandbox-dir defaults to test (must live INSIDE the harness repo).
 # Exit codes: 0 = ready, 1 = verification failed
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
@@ -44,7 +44,7 @@ for arg in "$@"; do
     *) TEST_DIR="$arg" ;;
   esac
 done
-TEST_DIR="${TEST_DIR:-test2}"
+TEST_DIR="${TEST_DIR:-test}"
 cd "$REPO_ROOT"
 MIRROR="$REPO_ROOT/../MythicQuest-mirror.git"
 OC="$REPO_ROOT/$TEST_DIR/.opencode"
