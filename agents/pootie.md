@@ -8,6 +8,13 @@ permission:
   glob: allow
   grep: allow
   skill: allow
+  write:
+    # Critique reports are pootie's sanctioned deliverable. Without this he
+    # has no write path at all and improvises file writes through the engine
+    # runtime (observed 09-04 Run 5: ConfigFile.save / FileAccess indirection
+    # to evade an elicitation gate) — worse than granting the narrow write.
+    "reports/**": allow
+    "*": deny
   edit:
     "*": deny
   bash:

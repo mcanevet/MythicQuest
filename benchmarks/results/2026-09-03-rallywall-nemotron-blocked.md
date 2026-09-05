@@ -2,7 +2,7 @@
 
 **Harness revision**: `8a50f0f` at run start; three fixes landed **mid-run** from live diagnostics (`0439325`, `7b702f2`, `07188ec` — see Outcomes).
 **Prompt**: `benchmarks/prompts/rallywall.md` (verbatim).
-**Model**: nemotron-3.5-lightning (free tier) — the experiment variable. Prior runs used lumo-max.
+**Model**: nemotron-3.5-lightning (free tier) — the experiment variable. Prior runs used frontier-max-class.
 **Host hygiene**: `caffeinate -dimsu` active for the entire run; zero host-sleep gaps (confirmed via subagent span continuity — the 09-02 overnight stalls did not recur).
 
 ## Executive Summary
@@ -37,11 +37,11 @@ Note 13-min root stall 21:24→21:37 between poppy 3's timeout and the retry (mo
 | poppy | 6 | 887k | 3.37M | 18.9k |
 | **Total** | **8** | **1.23M** | **3.70M** | **23.6k** |
 
-For 1/16 tasks. Compare Run 2 (lumo-max): **9.43M input / 113k output for 14/14 tasks**. Extrapolating linearly (~19x multiplier on both): ≈ 23M input / 450k output — an underestimate, since task difficulty grows and retry churn compounds. The 5-session Task-2 arc alone mirrored Run 2's *worst* task.
+For 1/16 tasks. Compare Run 2 (frontier-max-class): **9.43M input / 113k output for 14/14 tasks**. Extrapolating linearly (~19x multiplier on both): ≈ 23M input / 450k output — an underestimate, since task difficulty grows and retry churn compounds. The 5-session Task-2 arc alone mirrored Run 2's *worst* task.
 
 ### Reliability
 
-| Metric | Run 2 (lumo-max) | Run 3 (nemotron) |
+| Metric | Run 2 (frontier-max-class) | Run 3 (nemotron) |
 |---|---|---|
 | Tasks completed | 14/14 + QA | 1/16, Task 2 unfinished |
 | Subagent timeouts | 0 fatal | 3 (poppy 3, 4, and silent death of 6) |
@@ -69,13 +69,13 @@ For 1/16 tasks. Compare Run 2 (lumo-max): **9.43M input / 113k output for 14/14 
 ## Analysis
 
 - **Per-session boot cost is down** (~123k input median vs ~550k in Run 2) — the 8a50f0f token-economy work (slim skills, report pointers, short briefs) is measurably effective. But cache-read dominates 3:1 and step-count roughly doubled: cheaper tokens, more of them, and wall-clock per task exploded.
-- **The model's failure profile:** correct protocol adherence, competent tool use, genuinely good raw-error diagnosis — but cannot sustain multi-step chains (131 parts for a task lumo-max finished in ~40), violates format specs under ambiguity, and recovers from self-inflicted compounding fixes badly.
+- **The model's failure profile:** correct protocol adherence, competent tool use, genuinely good raw-error diagnosis — but cannot sustain multi-step chains (131 parts for a task frontier-max-class finished in ~40), violates format specs under ambiguity, and recovers from self-inflicted compounding fixes badly.
 - **Where the harness held up:** permission boundaries contained probing without damage; root never recursed into doing work itself; the sanctioned-path doctrine survived — no shadow infrastructure was created even under timeout pressure.
 - **Where the harness needs no change:** timeout-splitting and resume mechanisms tuned for this model would be optimizing below the floor. The floor is now documented; the harness targets mid-tier and up.
 
 ## Recommendation
 
-Treat Run 3 as the calibrated lower bound. Next benchmark: lumo-max on the post-fix harness (regression check for `0439325`/`7b702f2`/`07188ec`), and ideally a mid-tier model to map the middle of the curve. `test/` to be reset to committed files before either run.
+Treat Run 3 as the calibrated lower bound. Next benchmark: frontier-max-class on the post-fix harness (regression check for `0439325`/`7b702f2`/`07188ec`), and ideally a mid-tier model to map the middle of the curve. `test/` to be reset to committed files before either run.
 
 ---
 

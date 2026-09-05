@@ -106,9 +106,19 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 > Sanctioned recovery: after the first `-32001` on `run_script`, do NOT
 > hammer retries; issue `bash sleep <client-timeout>` once (60s), then retry.
 > If the retry still hits "in flight", that is the `⛔ BLOCKED:` terminus.
-> Prevention: keep probe scripts under the client timeout — poll state in
-> short runs (return intermediate readings, re-invoke) instead of one
-> long-waiting script body.
+> Prevention (observed 09-04, validated in Run 5): **segmented scripts** —
+> cap each `run_script` body at ~8s of awaited engine time, harvest the
+> readings you need, and return; re-invoke for the next segment. For input
+> across segments, `Input.action_press` state **persists between `run_script`
+> calls** (press in one call, release in a later one). Any single-body wait
+> approaching the ~60s client timeout is a design smell — restructure into
+> segments. Also note: the tool-level `timeout` parameter does **not** raise
+> the client transport cap — passing a larger value still times out (probed
+> 09-04); do not spend calls on it. *(Upstream status: MCP client transport
+> timeout is fixed in the opencode↔godot-mcp-runtime wiring — an upstream
+> configurable transport timeout would obsolete the segmentation workaround;
+> retirement check: if such a release ships, replace this gotcha's recovery
+> with the tool-level `timeout` parameter.)*
 
 > ⚠️ **GDScript compile errors (error 43) in probe scripts.** A failing
 > `run_script` costs a full engine round-trip (~10–30s). Before the FIRST
@@ -142,7 +152,7 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 - `Property 'X' does not exist` → wrong node type for the property
 - `Resource file not found` → ext_resource path incorrect
 - `Script not found` → path mismatch between scene and actual file
-- Resource-typed property (e.g. `shape`) reads back as `null` after a successful-looking `set_node_properties`/`add_node` → **not fixable via MCP**: the runtime's value coercer (`_coerce_property_value` in godot_operations.gd) only maps `{x,y,z}` → Vector and `{r,g,b}` → Color; any other dict is `set()` raw, the typed assignment fails, and the tool reports `success: true` regardless. Sanctioned path: direct `.tscn` edit embedding `[sub_resource]` blocks (see SKILL.md Step 5a). **Do not debug the MCP server source, do not probe alternate dict formats** — >2 failed attempts on the same Resource property = switch to the direct-edit path immediately (observed 09-02: paddle task burned ~8 min probing four serialization formats before stalling)
+- Resource-typed property (e.g. `shape`) reads back as `null` after a successful-looking `set_node_properties`/`add_node` → **not fixable via MCP**: the runtime's value coercer (`_coerce_property_value` in godot_operations.gd) only maps `{x,y,z}` → Vector and `{r,g,b}` → Color; any other dict is `set()` raw, the typed assignment fails, and the tool reports `success: true` regardless. Sanctioned path: direct `.tscn` edit embedding `[sub_resource]` blocks (see SKILL.md Step 5a). **Do not debug the MCP server source, do not probe alternate dict formats** — >2 failed attempts on the same Resource property = switch to the direct-edit path immediately (observed 09-02: paddle task burned ~8 min probing four serialization formats before stalling). *(Upstream status: dependency limitation in godot-mcp-runtime `_coerce_property_value` — workaround is the permanent sanctioned path until upstream extends the coercer's dict→Variant mapping; retirement check: if a release maps typed Resource dicts, this bullet's direct-edit mandate can be narrowed.)*
 
 **Validation strategy:**
 - Before `run_project`: Call `godot-mcp-runtime:validate()` on all .tscn/.gd files

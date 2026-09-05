@@ -23,7 +23,7 @@ Random input fuzzing. Works for any game with InputMap actions.
 | `input_rate_hz` | int | 10 | Inputs per second |
 
 #### pursuit
-Moves toward a target node by pressing directional input actions. Auto-discovers action names by convention (`move_up`, `up`, `ui_up`, etc.) or uses explicit `actions` override.
+Moves toward a target node by pressing directional input actions. Auto-discovers action names by convention (`move_up`, `up`, `ui_up`, etc.) or uses explicit `actions` override (`up`/`down`/`left`/`right` → InputMap names). Fields: `agent_path`, `target_path` (absolute node paths), `deadzone` (float, default 10.0 — minimum distance before issuing input).
 
 ```json
 {
@@ -40,60 +40,17 @@ Moves toward a target node by pressing directional input actions. Auto-discovers
 }
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `agent_path` | string | "" | Absolute node path to the actor |
-| `target_path` | string | "" | Absolute node path to the target |
-| `deadzone` | float | 10.0 | Minimum distance before issuing input |
-| `actions` | object | (convention) | Optional override mapping `up`/`down`/`left`/`right` to InputMap action names. Falls back to convention discovery when omitted. |
-
 #### replay
-Plays back recorded inputs for regression testing. Runs on the physics tick for deterministic replay.
-
-```json
-{
-  "type": "replay",
-  "inputs": [
-    {"frame": 1, "action": "move_right", "pressed": true},
-    {"frame": 10, "action": "move_right", "pressed": false},
-    {"frame": 15, "action": "jump", "pressed": true}
-  ]
-}
-```
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `inputs` | array | [] | Array of `{frame, action, pressed}` entries, frame is physics-tick index |
+Plays back recorded inputs for regression testing. Runs on the physics tick for deterministic replay. `inputs` = array of `{frame, action, pressed}` entries (frame = physics-tick index).
 
 #### nav_agent
-Wraps Godot's built-in NavigationAgent2D/3D to path toward a goal node. Delegates all pathfinding to the engine — equally valid for platformers, top-down games, or 3D levels.
+Wraps Godot's built-in NavigationAgent2D/3D to path toward a goal node — delegates all pathfinding to the engine. Fields: `actor` (absolute node path, must have a NavigationAgent2D/3D child — or BE one), `goal` (absolute node path or group tag), `actions` + `deadzone` (same semantics as pursuit bot).
 
-```json
-{
-  "type": "nav_agent",
-  "actor": "/root/Game/Player",
-  "goal": "/root/Game/Goal",
-  "actions": {
-    "up": "jump",
-    "left": "move_left",
-    "right": "move_right"
-  },
-  "deadzone": 10.0
-}
-```
+**Error handling:** unresolvable actor/goal or missing NavigationAgent reports a `nav_agent_bot_config` violation and issues no input.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `actor` | string | "" | Absolute node path to the actor (must have a NavigationAgent2D or NavigationAgent3D child) |
-| `goal` | string | "" | Absolute node path or group tag for the goal |
-| `actions` | object | (convention) | Same override as pursuit bot |
-| `deadzone` | float | 10.0 | Minimum distance before issuing input |
-
-**Error handling:** If no NavigationAgent2D/3D is found on or under the actor node, or the navigation goal can't be resolved, the scenario reports a `nav_agent_bot_config` violation and issues no input. The actor can also itself BE a NavigationAgent2D/3D.
+**Gotcha:** `nav_agent` needs a baked navigation mesh on the scene's NavigationRegion(s). Without one, `get_next_path_position()` returns the actor's current position and the bot issues **no input at all — silently**. If a nav_agent scenario passes with zero inputs, check `input_count` in the report and verify the scene has a baked navmesh.
 
 **Gotcha (bots that issue no input are INVALID, not green):** a pursuit/nav_agent scenario with zero inputs in its report is a failed exercise, not a passing one. If `agent_path`/`target_path` don't resolve, or no movement actions match by convention or `actions` override, the bot now reports a violation named `pursuit_bot_config`/`nav_agent_bot_config` instead of silently standing still. Treat either as a scenario misconfiguration: fix the paths or the action mapping and re-run. Observed 09-03: a pursuit run with zero inputs nearly produced a false "vision achieved" report.
-
-**Gotcha:** `nav_agent` needs a baked navigation mesh on the scene's NavigationRegion(s). Without one, `get_next_path_position()` returns the actor's current position, so dx/dy are ~0 and the bot issues **no input at all — silently**. If a nav_agent scenario passes with zero inputs, check `input_count` in the report and verify the scene has a baked navmesh.
 
 ---
 
@@ -161,7 +118,7 @@ Numeric custom invariants can also declare a `max_delta_per_sec` — the tracked
 }
 ```
 
-**Observed failure this catches (09-03, RallyWall):** a paddle-hit handler re-fired every physics tick while contact persisted — a scripted perfect player racked up 15 points in 0.22s and "won" on the first catch. Point-in-time invariants (`equals`, `below`) cannot see this class of bug; only rate-of-change can. Add a `max_delta_per_sec` to every game-economy counter (score, currency, combo, ammo) sized to a plausible human ceiling.
+**Observed failure this catches (09-03):** a hit-handler re-fired every physics tick while contact persisted — a scripted perfect player accrued points ~60× faster than intended and reached the win threshold on the first catch. Point-in-time invariants (`equals`, `below`) cannot see this class of bug; only rate-of-change can. Add a `max_delta_per_sec` to every game-economy counter (score, currency, combo, ammo) sized to a plausible human ceiling.
 
 ---
 

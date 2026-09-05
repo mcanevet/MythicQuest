@@ -2,7 +2,7 @@
 
 **Harness revision**: `8a50f0f` at start + mid-run fixes from Runs 3/4 (`0439325` validator tolerance, `7b702f2`+`07188ec` test_player parse fix + GDScript lint, `83a37c9` batch cap + verbosity guard landed *after* the stall, untested this run).
 **Prompt**: `benchmarks/prompts/rallywall.md` (verbatim).
-**Model**: ling-3.0-flash-fin-free (free tier). Third data point on the model curve: lumo-max (frontier), nemotron-3.5-lightning (floor), ling flash (middle-low).
+**Model**: ling-3.0-flash-fin-free (free tier). Third data point on the model curve: frontier-max-class (frontier), nemotron-3.5-lightning (floor), ling flash (middle-low).
 
 ## Executive Summary
 
@@ -64,7 +64,7 @@ Cache-read explosion (24.8M poppy vs Run 2's 16.5M for 1.5x the tasks): ling's l
 
 ## Model Curve Summary
 
-| | lumo-max | ling-3.0-flash | nemotron-3.5-lightning |
+| | frontier-max-class | ling-3.0-flash | nemotron-3.5-lightning |
 |---|---|---|---|
 | Outcome | SHIPPED 14/14 | **SHIPPED 10/10 core** | BLOCKED 1/16 |
 | Human nudges | 0 | 2 (`continue`) | 1 (kill) |
@@ -72,11 +72,11 @@ Cache-read explosion (24.8M poppy vs Run 2's 16.5M for 1.5x the tasks): ling's l
 | Harness bugs found | 0 | 2 (batch overload, verbose blowout) | 3 (validator, parse bug, retry blindness) |
 | Diagnostic yield | low | high | highest-per-minute |
 
-**Floor confirmed above nemotron; ling flash is above the floor but below hands-off autonomy.** The supported autonomy boundary is currently between ling flash and lumo-max — unmapped territory for a mid-tier paid model.
+**Floor confirmed above nemotron; ling flash is above the floor but below hands-off autonomy.** The supported autonomy boundary is currently between ling flash and frontier-max-class — unmapped territory for a mid-tier paid model.
 
 ## Recommendation
 
-1. Next benchmark: a **paid mid-tier model** to map the middle of the curve (the gap between ling flash and lumo-max is where the library's "minimum supported model" claim will be staked).
+1. Next benchmark: a **paid mid-tier model** to map the middle of the curve (the gap between ling flash and frontier-max-class is where the library's "minimum supported model" claim will be staked).
 2. Before that run: decide whether to pursue the opencode-side output-watchdog upstream (structural fix for verbose blowout) or accept prompt-layer mitigation for now.
 3. Consider a playtest "fast-verify" mode to remove the skip-incentive that corrupted protocol adherence here.
 

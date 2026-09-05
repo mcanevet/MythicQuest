@@ -1,6 +1,6 @@
 ---
 name: create-scene-with-script
-description: Create and assemble Godot scenes with scripts and collision physics. Use when implementing game entities (characters, projectiles, enemies, obstacles), UI screens (menus, HUD, pause), or complete game levels. Applies architecture patterns from project docs and role-specific quality standards. Includes validation via scripts/validate.sh.
+description: Create and assemble Godot scenes with scripts and collision physics. Use when implementing game entities (characters, projectiles, enemies, obstacles), UI screens (menus, HUD, pause), or complete game levels. Applies architecture patterns from project docs. Includes validation via scripts/validate.sh.
 ---
 
 ## What I do
@@ -15,7 +15,8 @@ Creates complete Godot scenes by:
 
 **See reference files for detailed patterns:**
 - **Physics nodes & collision** → [reference/physics-nodes.md](reference/physics-nodes.md)
-- **MCP tool usage** → [reference/mcp-patterns.md](reference/mcp-patterns.md)  
+- **MCP tool usage & error recovery** → [reference/mcp-patterns.md](reference/mcp-patterns.md)
+- **Worked examples** (player entity, pickup trigger, physics projectile — exact node hierarchies + script skeletons): [reference/examples.md](reference/examples.md) — read the one matching your entity type before Step 3
 - **Testing & validation** → `./.opencode/skills/setup-project/reference/testing-patterns.md` (canonical schema: bot types, invariant rules, metrics, test hooks)
 - **Godot architecture best practices** → [reference/godot-best-practices.md](reference/godot-best-practices.md) — consult when designing hierarchy, node coupling, autoloads, or choosing process callbacks
 
@@ -190,7 +191,7 @@ See `./.opencode/skills/setup-project/reference/testing-patterns.md` (_Verificat
 - **Interactive** — Run chaos scenario. Zero violations = pass; screenshots are debugging aids for reported violations only, never an alternative pass path
 - **UI** — Same as interactive + `godot-mcp-runtime:simulate_input` with `click_element`
 
-> **If `godot-mcp-runtime:run_project` fails:** follow the run-recovery procedure in [reference/mcp-patterns.md](reference/mcp-patterns.md) — `get_debug_output()` first, fix root cause, retry once, then stop and report to the build agent. Do not infinite-loop.
+> **If `godot-mcp-runtime:run_project` fails:** the full error-recovery procedure (retry ladder, BLOCKED terminus, do-not-improvise list, pkill prohibition) lives in [reference/mcp-patterns.md](reference/mcp-patterns.md) — follow it there, do not re-derive it.
 
 ### Step 7: Run Shell-Based Validators (MANDATORY)
 
@@ -228,28 +229,15 @@ This loads the project headlessly and quits — any script parse errors will sur
 
 ## Success Criteria
 
-- Scene file created (MCP tools for node hierarchies; direct edit for sub_resources/Resource props — MCP silently drops Resource-typed values)
-- Script file exists with correct `extends`
-- Validates without errors (call `godot-mcp-runtime:validate()` before `godot-mcp-runtime:run_project`), loads without FATAL/ERROR
-- **Shell validator passes** — `./.opencode/skills/create-scene-with-script/scripts/validate.sh` exits 0
-- **Entity integrated into parent/main scene and verified in the running scene tree** (`get_scene_tree` + `run_project`) — not just a standalone file that validates
-- All signal connections verified via `godot-mcp-runtime:get_node_signals()` after wiring
-- Test hooks added (`test_exposed` group, `get_test_state()` method) for interactive entities
-- Test scenario config created in `tests/scenarios/` for interactive entities
-- Follows established patterns
-- Error handling for missing dependencies
-- Invariant-based verification passed (scenario report shows zero violations); screenshots serve as diagnostic aids for reported violations only, never as a pass path
+- Scene + script created and pass `godot-mcp-runtime:validate()` (no errors, loads without FATAL/ERROR)
+- **Shell validator passes** — `validate.sh` exits 0 (plus `headless_check.sh` before runtime verification)
+- **Entity integrated into parent/main scene and verified in the running scene tree** — not just a standalone file that validates
+- Signal connections verified via `get_node_signals()`; test hooks + `tests/scenarios/` config present for interactive entities
+- Invariant-based verification passed (zero violations); screenshots are diagnostic aids for violations, never a pass path
 
 ## Failure Patterns & Recovery
 
-**Common errors:**
-- `Property 'collision_layer' does not exist` → wrong node type used in `godot-mcp-runtime:add_node`/`godot-mcp-runtime:create_scene`
-- `Signal 'body_entered' not connected` → missing `_on_body_entered`
-- `Method 'get_axis' not found` → input action not registered in project.godot
-- `godot-mcp-runtime:run_project` process exited with code 1 → scene has syntax errors; fix by switching to MCP tools and use `godot-mcp-runtime:validate()` to confirm
-- `godot-mcp-runtime:run_project` bridge timeout → call `godot-mcp-runtime:get_debug_output()` immediately
-
-**Retry:** Parse error, identify pattern, apply fix, re-validate. Max 3 attempts.
+Common errors and their fixes are tabulated in [reference/mcp-patterns.md](reference/mcp-patterns.md) (_Common errors and fixes_) — consult before diagnosing. **Retry:** parse error → identify pattern → apply fix → re-validate. Max 3 attempts, then `⛔ BLOCKED`.
 
 ## Critical Rules
 
@@ -261,7 +249,3 @@ This loads the project headlessly and quits — any script parse errors will sur
 6. **Collision shapes** → embed `[sub_resource]` blocks via direct `.tscn` edit and verify on disk (see Step 5a and [reference/physics-nodes.md](reference/physics-nodes.md))
 7. No repeated directory scans — one glob per directory
 8. EXECUTE IMMEDIATELY — no questions when skill loads
-
-## Examples
-
-Three worked examples (player entity, pickup trigger, physics projectile) with exact node hierarchies and script skeletons: [reference/examples.md](reference/examples.md). Read the one matching your entity type before Step 3.
