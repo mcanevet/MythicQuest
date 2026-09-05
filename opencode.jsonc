@@ -3,9 +3,12 @@
   "mcp": {
     "godot-mcp-runtime": {
       "type": "local",
-      // v3.2.3 includes the relative-projectPath fix + TDD regression test
-      // (released 05-05; shipped from our fork's fix/relative-project-path).
-      "command": ["npx", "-y", "godot-mcp-runtime@3.2.3"],
+      // TEMPORARY: local checkout of combined/mythicquest-integration branch
+      // (@1479a2f, ahead of v3.2.3): progress heartbeats for long tool calls
+      // (MCP client timeout fix) + type-validation on property assignments
+      // (no more silent Resource drops). Revert to the published package
+      // once these land in a release (tracked in docs/upstream-backlog.md).
+      "command": ["node", "/Users/mcanevet/src/github.com/Erodenn/godot-mcp-runtime/dist/index.js"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
       // server's stderr into ~/.local/share/opencode/log/opencode.log —
