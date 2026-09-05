@@ -419,6 +419,7 @@ When writing or revising skills, follow the **`skill-authoring`** skill (`.openc
 3. **"Did I assume naming conventions?"** — Don't assume `move_up` exists; discover actions dynamically or require explicit config
 4. **"Is this pattern portable to other engines?"** — Core logic should be engine-agnostic; only API calls differ
 5. **"Did I encode the last real failure this skill hit?"** — turn observed playtest/validation failures into a gotcha line or validator check
+6. **"Is my 'observed' citation resolvable?"** — when a gotcha cites evidence ("observed <date>: …"), the citation must be traceable from this repo: a dated file in `benchmarks/results/`, a commit hash, or an entry in `docs/upstream-backlog.md`. A bare date with no locatable evidence is provenance theater — keep the lesson, drop the date, or write the evidence up first. Do not cite session DB IDs or traces that only exist on the author's machine. (Cleanup of existing violations is pending — apply this rule to any gotcha you touch from now on.)
 
 ### Automated Enforcement
 
