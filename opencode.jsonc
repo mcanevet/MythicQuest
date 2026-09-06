@@ -3,12 +3,12 @@
   "mcp": {
     "godot-mcp-runtime": {
       "type": "local",
-      // TEMPORARY: local checkout of combined/mythicquest-integration branch
-      // (@1479a2f, ahead of v3.2.3): progress heartbeats for long tool calls
-      // (MCP client timeout fix) + type-validation on property assignments
-      // (no more silent Resource drops). Revert to the published package
-      // once these land in a release (tracked in docs/upstream-backlog.md).
-      "command": ["node", "/Users/mcanevet/src/github.com/Erodenn/godot-mcp-runtime/dist/index.js"],
+      // v3.2.4: includes our PRs #28 (relative-projectPath, v3.2.3),
+      // #29 (property type-validation) and #30 (progress heartbeats).
+      // The fork-branch workaround is fully retired (see
+      // docs/upstream-backlog.md); contribution roadmap lives at
+      // plans/roadmap-godot-mcp-contributions/.
+      "command": ["npx", "-y", "godot-mcp-runtime@3.2.4"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
       // server's stderr into ~/.local/share/opencode/log/opencode.log —

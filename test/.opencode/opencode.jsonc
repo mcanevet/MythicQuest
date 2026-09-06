@@ -3,9 +3,12 @@
   "mcp": {
     "godot-mcp-runtime": {
       "type": "local",
-      // v3.2.3 includes the relative-projectPath fix + TDD regression test
-      // (released 05-05; shipped from our fork's fix/relative-project-path).
-      "command": ["npx", "-y", "godot-mcp-runtime@3.2.3"],
+      // v3.2.4: includes our PRs #28 (relative-projectPath, v3.2.3),
+      // #29 (property type-validation) and #30 (progress heartbeats).
+      // The fork-branch workaround is fully retired (see
+      // docs/upstream-backlog.md); contribution roadmap lives at
+      // plans/roadmap-godot-mcp-contributions/.
+      "command": ["npx", "-y", "godot-mcp-runtime@3.2.4"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
       // server's stderr into ~/.local/share/opencode/log/opencode.log —

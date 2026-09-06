@@ -57,6 +57,9 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Retire:** once released upstream, repoint `opencode.jsonc` at the release,
   then delete the segmented-script recipe (mcp-patterns.md, commit 55a3fe5)
   and its gotcha — long sims can run as single awaited scripts.
+- **RETIRED (09-05):** PR #30 merged and released in v3.2.4; configs
+  repointed; retirement of the segmented-script recipe pending the next
+  run that touches mcp-patterns.md.
 
 ## opencode
 
@@ -82,19 +85,19 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - Relative-`projectPath` bug (09-01): reproduced → patched on fork with TDD
   regression test → released in godot-mcp-runtime v3.2.3 → `opencode.jsonc`
   repointed to the published package. The model workflow per AGENTS.md.
-- Progress heartbeats for long tool calls (09-05, `fix/progress-heartbeat-long-tools`):
-  server-side `notifications/progress` every 20s so `resetTimeoutOnProgress`
-  clients (opencode) don't kill run_script sims at the SDK's 60s default.
-  Patched on integration branch `combined/mythicquest-integration` (@1479a2f)
-  with 172-line integration test; NOT yet released upstream —
-  `opencode.jsonc` TEMPORARILY points at the local branch checkout. Revert to
-  the published package when released.
+- Progress heartbeats for long tool calls (09-05, `fix/progress-heartbeat-long-tools`,
+  PR #30): server-side `notifications/progress` every 20s so
+  `resetTimeoutOnProgress` clients (opencode) don't kill run_script sims at
+  the SDK's 60s default. **MERGED 2026-09-05 and released in v3.2.4.**
+  Configs repointed to upstream main; fork-branch workaround retired.
 - Type-validation on property assignments (09-05,
-  `fix/property-set-type-validation`): dict→Resource assignments to
+  `fix/property-set-type-validation`, PR #29): dict→Resource assignments to
   `set_node_properties`/`add_node` now error explicitly instead of silently
   dropping while reporting success. Retires the "reports success but the write
   never landed" half of the coercer-gap gotcha (see poppy's `.tscn` edit
   rationale in AGENTS.md — the edit path itself remains necessary for Resource
-  values; this fix only makes the failure loud). Patched on
-  `combined/mythicquest-integration` (@1479a2f) with real-headless-Godot
-  integration tests; NOT yet released upstream — same TEMPORARY local pin.
+  values; this fix only makes the failure loud). **MERGED 2026-09-05 and
+  released in v3.2.4.** Configs repointed; fork-branch workaround retired.
+- Contribution roadmap going forward lives at
+  `Erodenn/godot-mcp-runtime/plans/roadmap-godot-mcp-contributions/`
+  (Phases 1–13, all evidence-grounded from the RallyWall/GLM run traces).
