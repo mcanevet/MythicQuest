@@ -1,15 +1,17 @@
-# Run 7: RallyWall E2E — SHIPPED (GLM 5.3 reasoning=medium: quality parity with qwen at 3× wall clock) (2026-09-05 08:40 → 13:49)
+# Run 7: RallyWall E2E — SHIPPED (GLM 5.3 native-high reasoning: quality parity with qwen-medium at 3× wall clock) (2026-09-05 08:40 → 13:49)
 
 **Harness revision**: `f8126b7` (run-6 harness + TEMPORARY godot-mcp-runtime pin to local `combined/mythicquest-integration` @1479a2f: progress heartbeats + property type-validation).
 **Prompt**: `benchmarks/prompts/rallywall.md` (verbatim).
-**Model**: GLM 5.3, reasoning effort **medium** — 7th data point; first cross-family comparison at matched effort against run 6 (qwen 3.8 27B / medium).
+**Model**: GLM 5.3 (lumo-max), requested reasoning effort **medium** — 7th data point; cross-family comparison against run 6 (qwen 3.8 27B / medium).
+
+**Correction (2026-09-06, discovered reading the Lumo backend config):** the Lumo scheduler folds requested "medium" onto GLM 5.3's native **high** tier (GLM has no medium; low|high|max only — glm53.rs). This run therefore measured **GLM at native high** against **qwen at native medium**, i.e. best-vs-stronger. The parity conclusion below survives with this framing: GLM matching qwen's quality while reasoning one tier hotter strengthens the "qwen is more token-efficient per reasoning level" reading, but the runs are NOT effort-matched as originally claimed.
 **Host**: no host-sleep gaps; wall-clock clean.
 
 ## Executive Summary
 
 **Status: SHIPPED — 16/16 tasks, zero human interventions, one critique cycle (REWORK on a real bug → fix → SHIP).** Functional QA PASS with zero invariant violations, vision QA HIGH, consumer critique caught a genuine defect (WinScreen labels at negative coordinates clipping the victory screen), fix verified to the pixel, re-check SHIP.
 
-This is the **first cross-family best-vs-best comparison**: GLM 5.3 at medium vs run 6's qwen 3.8 27B at medium. Result: **quality and token parity, latency 3× worse** (5h09m vs 1h43m at the same 12.5–12.6M input budget).
+This was billed as a matched-effort comparison; in fact it is GLM-high vs qwen-medium. Result: **quality and token parity, latency 3× worse** (5h09m vs 1h43m at the same 12.5–12.6M input budget).
 
 The pinned integration runtime (@1479a2f) held across the whole run: QA phases ran repeated long `run_script` simulations (60s+) with **zero MCP client timeouts** — the progress-heartbeat fix exercised under real 5-hour load.
 
@@ -58,9 +60,9 @@ The pinned integration runtime (@1479a2f) held across the whole run: QA phases r
 - **Adaptive testing**: poppy noticed chaos-input runs yielded zero collision coverage (ball flew out open bottom pre-restart) and switched to a pursuit bot unprompted.
 - **Honest hygiene note**: flagged an unused scratch file in `/private/tmp/opencode/` it couldn't remove under sandbox rules — accurate self-report, no evasion.
 
-## Comparison Table (matched effort, medium)
+## Comparison Table (GLM native-high vs qwen native-medium)
 
-| Metric | Run 6: qwen 3.8 27B | Run 7: GLM 5.3 |
+| Metric | Run 6: qwen 3.8 27B (native medium) | Run 7: GLM 5.3 (native high) |
 |---|---|---|
 | Outcome | SHIP | SHIP |
 | Tasks | 12 | 16 (finer decomposition) |
@@ -72,7 +74,7 @@ The pinned integration runtime (@1479a2f) held across the whole run: QA phases r
 | Retries/respawns | 2 silent-death respawns | 1 mid-stream death, resumed from plan file |
 | Extra discipline | — | 2 milestone smoke tests |
 
-**Cross-family conclusion:** at matched reasoning effort, GLM 5.3 delivers qwen-grade quality (both zero-violation SHIPs) at identical token cost but ~3× the wall clock. Token-per-outcome is the wrong cost lens for latency-sensitive benchmarking; GLM's finer task decomposition (16 vs 12) didn't add cost. Neither family dominated — GLM's critique caught a subtler bug (negative-coordinate labels) than run 6's single cosmetic flag, but also needed the extra cycle to find it.
+**Cross-family conclusion (revised):** GLM 5.3 at native **high** delivered qwen-medium-grade quality (both zero-violation SHIPs) at identical token cost but ~3× the wall clock — i.e. GLM spent one more reasoning tier to merely match. A true effort-matched comparison would be GLM at native **low** (its weakest tier) vs qwen medium; untested. Token-per-outcome is the wrong cost lens for latency-sensitive benchmarking; GLM's finer task decomposition (16 vs 12) didn't add cost. Neither family dominated — GLM's critique caught a subtler bug (negative-coordinate labels) than run 6's single cosmetic flag, but also needed the extra cycle to find it.
 
 ## Series Table (updated)
 
@@ -83,7 +85,7 @@ The pinned integration runtime (@1479a2f) held across the whole run: QA phases r
 | 4 (09-04) | ling flash | SHIPPED (nudges) | — | 1.85M | — |
 | 5 (09-04) | qwen 27B / none | SHIPPED | 5 (4 REWORK) | 17.6M | 2h51m |
 | 6 (09-05) | qwen 27B / medium | SHIPPED | 1 (0 REWORK) | 12.5M | 1h43m |
-| **7 (09-05)** | **GLM 5.3 / medium** | **SHIP** | **2 (1 REWORK)** | **12.6M** | **5h09m** |
+| **7 (09-05)** | **GLM 5.3 / req. medium → native high** | **SHIP** | **2 (1 REWORK)** | **12.6M** | **5h09m** |
 
 ## Incidents
 

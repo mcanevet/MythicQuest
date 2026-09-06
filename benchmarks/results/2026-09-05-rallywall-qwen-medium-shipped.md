@@ -84,5 +84,5 @@ Quality held or improved: merged QA gauntlet at **0 violations** (11 invariants 
 
 ## Next Steps
 
-- Next datapoint candidates: qwen reasoning=high (is the effort curve monotonic, or does output-token latency start dominating?), or the cross-family GLM 5.3 comparison at **matched effort (medium)** — best-vs-best is the fair fight.
+- Next datapoint candidates: qwen reasoning=max (native xhigh — the only higher tier; is the effort curve monotonic?), or the cross-family GLM 5.3 comparison. Note (2026-09-06): GLM has no native medium — requesting medium executes native high — so a true effort-matched GLM run would use its native low tier. Run 7 ultimately tested GLM-high; see its correction note.
 - Watch item for future runs: silent-death respawn rate (2 this run, 2 in run 5's tail). If it's stable, the respawn path is healthy; if it grows, investigate the MCP-suicide class in `failure-modes.md`.
