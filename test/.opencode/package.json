@@ -1,6 +1,0 @@
-{
-  "private": true,
-  "dependencies": {
-    "godot-mcp-runtime": "3.2.3"
-  }
-}
