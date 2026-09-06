@@ -23,8 +23,14 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   runtime).
 - **Status:** defect (2) FIXED — error contract landed upstream via PR #29
   (v3.2.4, plus follow-on type-compatibility validation in 9a140af/9d401c0).
-  Defect (1), inline Resource construction, remains open — the next
-  contribution target.
+  Defect (1), inline Resource construction: implemented on fork branch
+  `feat/inline-resource-construction` (local commit 617963a, 2026-09-06) —
+  typed-dict `{type: ClassName, ...props}` → ClassDB.instantiate → recursive
+  validated inner-property assignment via `_prepare_property_value`; 6
+  integration tests + full suite green. **Pending: user consent to push/open
+  PR; then release-pin and retire poppy's `.tscn`-edit exception.**
+- **Lifecycle:** filed → patched locally → (awaiting PR + release) →
+  workaround-retirement pending.
 - **Retire:** error contract retires the "verify the write landed on disk"
   footgun; full Resource support retires poppy's .tscn-edit exception.
 
