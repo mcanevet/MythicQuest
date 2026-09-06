@@ -21,7 +21,10 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   uncontroversial); second PR = Resource support (`{"type": "<Class>",
   ...}` → sub_resource serialization in scene edits, ClassDB.instantiate at
   runtime).
-- **Status:** not filed.
+- **Status:** defect (2) FIXED — error contract landed upstream via PR #29
+  (v3.2.4, plus follow-on type-compatibility validation in 9a140af/9d401c0).
+  Defect (1), inline Resource construction, remains open — the next
+  contribution target.
 - **Retire:** error contract retires the "verify the write landed on disk"
   footgun; full Resource support retires poppy's .tscn-edit exception.
 
@@ -57,9 +60,9 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Retire:** once released upstream, repoint `opencode.jsonc` at the release,
   then delete the segmented-script recipe (mcp-patterns.md, commit 55a3fe5)
   and its gotcha — long sims can run as single awaited scripts.
-- **RETIRED (09-05):** PR #30 merged and released in v3.2.4; configs
-  repointed; retirement of the segmented-script recipe pending the next
-  run that touches mcp-patterns.md.
+- **RETIRED (09-06):** PR #30 merged and released in v3.2.4; configs
+  repointed; segmented-script recipe and gotcha replaced in mcp-patterns.md
+  with a "long bodies are safe" note — recipe deletion complete.
 
 ## opencode
 

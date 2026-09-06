@@ -6,7 +6,7 @@ Use **batch operations first**, individual tools for simple cases:
 
 - **3+ nodes** → `godot-mcp-runtime:batch_scene_operations` (saves ~3s per operation)
 - **1-2 nodes** → `godot-mcp-runtime:create_scene` + `godot-mcp-runtime:add_node`
-- **Update properties** → `godot-mcp-runtime:set_node_properties` (primitives + Vector/Color dicts only — its coercer has no Resource path and reports success even when the typed assignment fails; see SKILL.md Step 5a; Resources/packed arrays need direct `.tscn` edit)
+- **Update properties** → `godot-mcp-runtime:set_node_properties` (primitives + Vector/Color dicts; type-incompatible assignments now return an explicit error as of godot-mcp-runtime v3.2.4 — no more silent drops. Resources still cannot be constructed inline: pass a `res://` path to load a saved one, or use direct `.tscn` edit to inject sub_resources — see SKILL.md Step 5a)
 - **Attach script** → `godot-mcp-runtime:attach_script`
 - **Check hierarchy** → `godot-mcp-runtime:get_scene_tree`
 - **Wire signals** → `godot-mcp-runtime:connect_signal`
@@ -94,31 +94,21 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 > coordination problem — let one session finish its runtime phase before the
 > other starts. File writes (implementation) always run freely in parallel.
 
-> ⚠️ **Long-bodied `run_script` → timeout + stuck "in flight" slot.** A
-> `run_script` whose body waits in-engine (loops, timers, empirical tuning
-> measurements) can exceed the MCP client timeout (~60s): the client reports
-> `MCP error -32001: Request timed out`, but the script **keeps executing
-> server-side and holds the single command slot**. Every retry is rejected
-> with "another command ('run_script') is in flight", and `stop_project` +
-> `run_project` cycles may NOT clear it if the long script's in-engine wait
-> survives the restart path (tuning probes have wedged the slot across three
-> bridge restarts; only waiting out the server-side script lifetime freed it).
-> Sanctioned recovery: after the first `-32001` on `run_script`, do NOT
-> hammer retries; issue `bash sleep <client-timeout>` once (60s), then retry.
-> If the retry still hits "in flight", that is the `⛔ BLOCKED:` terminus.
-> Prevention (validated in the 09-04 qwen benchmark run): **segmented scripts** —
-> cap each `run_script` body at ~8s of awaited engine time, harvest the
-> readings you need, and return; re-invoke for the next segment. For input
-> across segments, `Input.action_press` state **persists between `run_script`
-> calls** (press in one call, release in a later one). Any single-body wait
-> approaching the ~60s client timeout is a design smell — restructure into
-> segments. Also note: the tool-level `timeout` parameter does **not** raise
-> the client transport cap — passing a larger value still times out (probed
-> 09-04); do not spend calls on it. *(Upstream status: MCP client transport
-> timeout is fixed in the opencode↔godot-mcp-runtime wiring — an upstream
-> configurable transport timeout would obsolete the segmentation workaround;
-> retirement check: if such a release ships, replace this gotcha's recovery
-> with the tool-level `timeout` parameter.)*
+> ℹ️ **Long `run_script` bodies are safe as of godot-mcp-runtime v3.2.4.** The
+> server emits `notifications/progress` heartbeats every 20s for the lifetime
+> of every tool call, so clients that set `resetTimeoutOnProgress` (opencode
+> does) keep long-running scripts (simulations, playtests, empirical tuning)
+> alive past the SDK's 60s default. Write long-bodied scripts as a single
+> awaited call — including the tool-level `timeout` parameter when you want an
+> explicit cap. The historical segmented-script recipe (multiple ~8s bodies
+> with state carried across calls) is **retired**: the MCP client timeout it
+> worked around no longer applies (fix merged upstream in v3.2.4, PR #30;
+> validated under sustained load in the 09-05 GLM benchmark run — zero client
+> timeouts across 5h of long QA sims). Legacy hazard note: on runtimes older
+> than v3.2.4, a timed-out long script kept executing server-side and held
+> the single command slot; if you ever see `MCP error -32001` on
+> `run_script` again, that indicates a pre-3.2.4 runtime or a non-heartbeat
+> client — report it rather than working around it with segmentation.
 
 > ⚠️ **GDScript compile errors (error 43) in probe scripts.** A failing
 > `run_script` costs a full engine round-trip (~10–30s). Before the FIRST

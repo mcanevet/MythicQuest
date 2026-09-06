@@ -176,4 +176,4 @@ These run **once per game** (after all tasks complete), not per task — not bef
 
 Full workflows, scenario configs, and report templates: [reference/full-modes.md](reference/full-modes.md).
 
-**Rate-limitation gotcha:** start_test invariants are checked for `duration_s` of gameplay — do not confuse run_script probe timeouts (MCP client-side) with the scenario clock. Long in-engine waits from `run_script` bodies hit the MCP client timeout — see `create-scene-with-script/reference/mcp-patterns.md`.
+**Rate-limitation gotcha:** start_test invariants are checked for `duration_s` of gameplay — do not confuse run_script probe timeouts (MCP client-side) with the scenario clock. As of godot-mcp-runtime v3.2.4, long in-engine waits in `run_script` bodies are safe (server heartbeats keep the request alive) — see `create-scene-with-script/reference/mcp-patterns.md`.
