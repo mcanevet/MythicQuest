@@ -1,7 +1,6 @@
 {
   "private": true,
   "dependencies": {
-    "@opencode-ai/plugin": "1.18.27",
-    "godot-mcp-runtime": "3.2.4"
+    "godot-mcp-runtime": "3.2.3"
   }
 }

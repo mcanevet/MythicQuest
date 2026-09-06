@@ -94,7 +94,7 @@ if ! grep -qx 'node_modules' "$GD/info/exclude" 2>/dev/null; then
 fi
 if [ "$EXCL_DONE" -eq 1 ] || [ ! -d "$OC/node_modules/godot-mcp-runtime" ]; then
   if [ ! -f "$OC/package.json" ]; then
-    printf '{\n  "private": true,\n  "dependencies": {\n    "godot-mcp-runtime": "3.2.3"\n  }\n}\n' > "$OC/package.json"
+    printf '{\n  "private": true,\n  "dependencies": {\n    "godot-mcp-runtime": "3.2.4"\n  }\n}\n' > "$OC/package.json"
   fi
   (cd "$OC" && npm install --no-audit --no-fund) ||
     printf 'prepare_test_dir.sh: npm install failed — run: (cd %s && npm install)\n' "$OC" >&2
