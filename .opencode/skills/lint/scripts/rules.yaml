@@ -278,3 +278,21 @@
   enforcement: both
   check: actor_wording
   check-tier: tripwire
+
+- id: benchmark-objective-triad
+  rule: >
+    All harness evaluation and benchmark-record decisions optimize a
+    three-part objective, strictly ordered: (1) OUTCOME — the game must
+    work as per the vision (playtest/invariant pass rates, vision-QA
+    alignment, consumer critique SHIP); (2) SPEED — the game-build session
+    must run fast (wall clock); (3) TOKEN EFFICIENCY — the session must
+    be token efficient (input/output totals). Lexicographic, not weighted:
+    a faster or cheaper run that ships a broken or vision-missing game is
+    a REGRESSION, never an acceptable trade. Between runs of equal outcome
+    quality, prefer faster; between equal speed, prefer cheaper. Run
+    reports and model/config comparisons must state results in terms of
+    these three axes before drawing conclusions.
+  audience: both
+  scope: skills/**, agents/**
+  enforcement: llm-review
+  check-tier: tripwire

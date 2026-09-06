@@ -313,6 +313,8 @@ When invoked while a game-build session is in progress, follow the **`debug-harn
 - **Efficiency axis:** retry counts, session duration, skill invocation success, stall detection
 - **Outcome axis:** playtest pass rates, invariant violation counts, crash rates
 
+**Objective Triad (evaluation rubric):** All harness evaluation and benchmark-record conclusions optimize three objectives, strictly ordered: **(1) Outcome** — the game works as per the vision; **(2) Speed** — the build session runs fast; **(3) Token efficiency** — the session is token-cheap. Lexicographic, not weighted: a faster or cheaper run that ships a broken or vision-missing game is a regression, never a trade. Run reports and model/config comparisons must state results on these three axes before drawing conclusions. (Rule text lives in the lint registry, `benchmark-objective-triad`.)
+
 **Why this separation?**
 - **Cleaner game-build sessions:** Less cognitive load, no dual-tracking (building + self-monitoring)
 - **Better data quality:** External observation avoids bias from the building agent trying to "optimize" its own metrics
