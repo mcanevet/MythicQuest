@@ -51,12 +51,23 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   single-awaited-call pattern and forbids sleep-polling; `bash "sleep *"`
   permission removed from poppy/ian/pootie. Deterministic rule per
   AGENTS.md: the awaited body lives in the autoload script, not instructions.
-- **Upstream-worthy?** Mildly — a `run_scenario`-style engine tool (blocking
-  with progress heartbeats, which v3.2.4 already supports) would remove the
-  need for agents to compose `run_script` + autoload calls at all. Candidate
-  Phase 15; not blocking anything.
-- **Retire:** in-harness fix is complete; upstream tool remains an ergonomics
-  nice-to-have.
+- **Upstream-worthy?** **Hold — evidence pending.** In-harness fix (skill
+  mandate + `await_test_done` + permission removal) addresses the root cause;
+  a first-class wait/blocking-scenario tool would NOT have prevented this
+  incident (poll-across-calls is the failure shape, and a wait tool used in
+  the same loop recreates it). Decision gate: rerun the same model/prompt on
+  harness `86476b4`; only if a wait-shaped need still surfaces does tool work
+  get justified. Findings from reading the runtime source (09-06):
+  (a) an in-engine wait ALREADY exists — `simulate_input`'s `type: "wait"`
+  action (`create_timer` + timeout auto-sizing + heartbeats) — but it's
+  undiscoverable as a general wait, which is why agents reach for `bash sleep`;
+  (b) `run_script`'s tool description doesn't advertise long-await usage.
+  The only immediately justified upstream piece is **doc-only**: clarify
+  `run_script`'s description (long-await allowed, heartbeats keep the client
+  alive, poll inside the call). A general `wait` tool / `run_scenario`
+  blocking tool stays deferred until a run demonstrates the need.
+- **Retire:** in-harness fix is complete; upstream doc tweak is queued as a
+  small PR candidate; tool work deferred pending rerun evidence.
 
 ### FileAccess elicitation gate is lexically evadable
 - **Observed:** 09-04 Run 5 (qwen). The MCP runtime's file-write elicitation
