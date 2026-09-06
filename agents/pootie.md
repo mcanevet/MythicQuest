@@ -22,7 +22,6 @@ permission:
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
     # "godot" and kills the MCP server (npx godot-mcp-runtime). To stop a hung
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).
-    "sleep *": allow
   task: deny
   webfetch: deny
   websearch: deny

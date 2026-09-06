@@ -62,7 +62,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 1. **Ensure harness autoload:** `godot-mcp-runtime:list_autoloads(projectPath=".")` → if `TestPlayer` is not registered, call `godot-mcp-runtime:add_autoload(projectPath=".", autoloadName="TestPlayer", autoloadPath="scripts/test_player.gd")`. The harness script is created by `setup-project` (Step 3b) but deliberately NOT registered there. This start is idempotent — every mode (re)registers it here, and every mode unregisters it at Finish (step 5), so the harness never survives a mode run.
 
-2. **Launch with retry:** `godot-mcp-runtime:run_project(scene=scene, background=true)` → `start_test(scenario)` (Godot autoload) → Godot runs autonomously at 60Hz → `get_test_report()` (Godot autoload) → structured JSON report. `start_test` returns immediately and the simulation keeps running between MCP calls — use that window for spot screenshots (see the vision/critique modes).
+2. **Launch with retry:** `godot-mcp-runtime:run_project(scene=scene, background=true)` → `start_test(scenario)` (Godot autoload) → Godot runs autonomously at 60Hz → final report via `await tp.await_test_done()` inside the SAME `run_script` call → structured JSON report (see _Waiting for a scenario_ under fast-verify: one awaited call, never sleep-poll). Exception: vision/critique modes deliberately use the running window for spot screenshots between calls.
 
 3. **Verify invariants:** Report contains `violations[]` array and `metrics` dict. If `violations.is_empty()`, pass. Otherwise, take spot screenshots for each violation type for debugging.
 
@@ -114,6 +114,23 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 4. `get_test_report()` → if `violations.is_empty()`, PASS
 5. Finish: `stop_project()` + `remove_autoload` (Common Workflow step 5)
 
+### Waiting for a scenario: ONE awaited run_script, never sleep-poll
+
+`start_test` returns immediately and the scenario runs autonomously. To obtain the report, hold **one** `run_script` call open for the whole scenario — start it, await completion, return the final report — with the tool's `timeout` parameter sized to `duration_s` plus ~30s margin:
+
+```gdscript
+extends RefCounted
+func execute(scene_tree: SceneTree) -> Variant:
+    var tp = scene_tree.root.get_node_or_null("TestPlayer")
+    if tp == null:
+        return {"success": false, "error": "TestPlayer autoload not found"}
+    tp.start_test(scenario)
+    var report = await tp.await_test_done(max_wait_s = scenario_duration + 30)
+    return {"success": true, "report": report}
+```
+
+**NEVER poll a running scenario across separate tool calls** — no `bash sleep` between `get_test_report()` checks. Sleep-polling was observed burning 2+ hours and 100+ model steps on a single 15s scenario (09-06 qwen run): every wake-up re-sends the whole diagnostic context for a one-line status check, the engine idles (macOS background-throttles idle frames to 10-12s each, so a 15s sim can stretch past every reasonable deadline), and the loop can outlive the session's usefulness. The awaited form has none of these failure modes: the engine keeps ticking at full rate while the call is open, and the client-side 60s transport cap is not a factor for calls with progress heartbeats (godot-mcp-runtime ≥ v3.2.4). Hand-rolling a `while ... await physics_frame` loop is acceptable if `await_test_done()` is unavailable; a `bash sleep` wait is not — it is permission-denied, and improvising a different idle-wait is the same violation in another coat.
+
 ### Scope and limits
 
 - Covers: parse errors, autoload failures, crash-on-load, NaN/Inf blowups, FPS floor
@@ -144,7 +161,7 @@ Quick check after creating a single scene. Pass the scene path via the `scene` p
     ]
 })`
 > **Bounds rationale:** the defaults above are an ILLUSTRATION sized to a 1280×720 viewport plus a generous margin — for each game, derive bounds from the project's actual viewport settings (plus margin), or use the bounds the task's plan specifies; never assume this resolution. Entities legitimately leaving the screen during normal play (camera-follow games, wrap-around fields) violate this — that is a *finding about the game's current state*, not a validator bug: before ship, either walls/camera logic confines actors or the scenario widens bounds DELIBERATELY (with a note in the report), never by silently dropping the invariant. *(observed in a 09-04 benchmark run, see git log "Three learnings from mimo run 5"):* default scene-verify passed while a wall-less ball flew to (3510, −2510) — a "clean PASS" that actually meant "physics runs, containment not yet built."
-3. Get report via `get_test_report()`
+3. Get report via ONE awaited `run_script`: `tp.start_test(scenario)` then `await tp.await_test_done(duration_s + 30)` (see _Waiting for a scenario_ under fast-verify)
 4. If `violations.is_empty()`, PASS. Otherwise, take 1-2 screenshots for each violation type.
 
 ### Success Criteria

@@ -39,7 +39,6 @@ permission:
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
     # "godot" and kills the MCP server (npx godot-mcp-runtime). To stop a hung
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).
-    "sleep *": allow
   task: deny
   skill: allow
   webfetch: allow
@@ -257,7 +256,7 @@ When validation fails:
    STOP attempting that route — it is not a puzzle to route around.
 
 7. **Permission-rule errors terminate the route, immediately.** Bash is deny-by-default
-   (only skill `scripts/*.sh` helpers and `sleep` are allowlisted). A tool error reading
+   (only skill `scripts/*.sh` helpers are allowlisted). A tool error reading
    "The user has specified a rule which prevents you from using this specific tool call"
    means the action is *forbidden*, not temporarily blocked. The worst response is to
    rephrase the command and try again — a rule-mismatched command may become a silent

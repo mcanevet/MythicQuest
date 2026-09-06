@@ -46,7 +46,9 @@ start_test(scenario={
 ### Step 2: Get structured report
 
 ```gdscript
-var report = get_test_report()
+# Inside ONE awaited run_script call (tool timeout sized to duration + margin):
+var tp = scene_tree.root.get_node_or_null("TestPlayer")
+var report = await tp.await_test_done(max_wait_s = scenario_duration + 30)
 # report = {
 #   "status": "running" or "complete",
 #   "violations": [ { "frame": N, "rule": ..., "detail": ..., "node"?: ... } ],

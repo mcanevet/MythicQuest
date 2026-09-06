@@ -104,6 +104,20 @@ func finish_test() -> Dictionary:
 	print("[TestHarness] Finished: %d violation groups, %d inputs" % [_violation_counts.size(), _metrics["input_count"]])
 	return get_test_report()
 
+## Blocking counterpart to start_test()/get_test_report() polling: waits
+## inside one run_script body until the scenario completes, then returns the
+## final report. Use this from an awaited run_script (tool `timeout` sized
+## to duration_s plus margin) instead of poll-across-MCP-calls sleep loops:
+## the engine keeps ticking normally while the call is open (no background
+## idle-throttling) and the result arrives in a single tool call.
+func await_test_done(max_wait_s: float = 120.0) -> Dictionary:
+	var deadline_ms := Time.get_ticks_msec() + int(max_wait_s * 1000.0)
+	while _running and Time.get_ticks_msec() < deadline_ms:
+		await get_tree().physics_frame
+	if _running:
+		push_warning("[TestHarness] await_test_done timed out after %ss; returning incomplete report" % max_wait_s)
+	return get_test_report()
+
 func _physics_process(delta):
 	if not _running: return
 

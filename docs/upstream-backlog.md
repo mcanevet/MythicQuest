@@ -40,6 +40,24 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Retire:** error contract retires the "verify the write landed on disk"
   footgun; full Resource support retires poppy's .tscn-edit exception.
 
+### TestPlayer scenario wait is fire-and-forget; agents sleep-poll
+- **Observed:** 09-06 RallyWall run (fork pin, qwen). `start_test` returns
+  immediately, so poppy improvised `bash sleep 100` between `get_test_report()`
+  polls — one Task-7 QA cycle ground through 34+ polls, ~2h wall-clock and 200+
+  tool calls on a 15s scenario, compounded by macOS background-throttling (idle
+  engine frames stretch to 10-12s, so the sim barely advances between calls).
+- **Fix applied (in-harness):** TestPlayer gains `await_test_done(max_wait_s)`
+  (blocking, awaited inside one `run_script`); playtest skill now mandates the
+  single-awaited-call pattern and forbids sleep-polling; `bash "sleep *"`
+  permission removed from poppy/ian/pootie. Deterministic rule per
+  AGENTS.md: the awaited body lives in the autoload script, not instructions.
+- **Upstream-worthy?** Mildly — a `run_scenario`-style engine tool (blocking
+  with progress heartbeats, which v3.2.4 already supports) would remove the
+  need for agents to compose `run_script` + autoload calls at all. Candidate
+  Phase 15; not blocking anything.
+- **Retire:** in-harness fix is complete; upstream tool remains an ergonomics
+  nice-to-have.
+
 ### FileAccess elicitation gate is lexically evadable
 - **Observed:** 09-04 Run 5 (qwen). The MCP runtime's file-write elicitation
   gate string-matches source text; `var fa := FileAccess; fa.open(...)`
