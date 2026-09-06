@@ -14,13 +14,16 @@ permission:
     "**/*.gdshader": allow
     "**/*.md": allow
     "**/project.godot": allow
-    # Scene files: MCP scene tools cannot persist Resources (CollisionShape2D
-    # shape) — their coercer maps only Vector/Color dicts, everything else
-    # fails the typed assignment silently while reporting success (godot-mcp-runtime coercer
-    # gap, docs/upstream-backlog.md: paddle task stalled on this). Direct .tscn edit
-    # is REQUIRED for sub_resource injection; never edit a .tscn while a
-    # run/playtest is active (runtime-state risk is handled procedurally, see
-    # create-scene-with-script gotchas).
+    # Scene files: RETAINED as a fallback only. Since godot-mcp-runtime
+    # gained inline Resource construction (typed-dict {type: ClassName,
+    # ...props} in set_node_properties/add_node — fork branch
+    # feat/inline-resource-construction, pending upstream release; see
+    # docs/upstream-backlog.md), Resource-typed properties and sub_resource
+    # injection go through the MCP tools, and the writes are validated (they
+    # error on type mismatches rather than dropping silently). Direct .tscn
+    # edit remains permitted for the narrow cases the tools still cannot
+    # express (ext_resource reordering, metadata tweaks, corruption repair);
+    # never edit a .tscn while a run/playtest is active.
     "**/*.tscn": allow
     # Harness/skill files are protected from runtime edits (AGENTS.md file-access
     # rules). Must come AFTER the allows — last matching rule wins. Covers both

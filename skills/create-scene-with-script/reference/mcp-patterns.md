@@ -6,7 +6,7 @@ Use **batch operations first**, individual tools for simple cases:
 
 - **3+ nodes** → `godot-mcp-runtime:batch_scene_operations` (saves ~3s per operation)
 - **1-2 nodes** → `godot-mcp-runtime:create_scene` + `godot-mcp-runtime:add_node`
-- **Update properties** → `godot-mcp-runtime:set_node_properties` (primitives + Vector/Color dicts; type-incompatible assignments now return an explicit error as of godot-mcp-runtime v3.2.4 — no more silent drops. Resources still cannot be constructed inline: pass a `res://` path to load a saved one, or use direct `.tscn` edit to inject sub_resources — see SKILL.md Step 5a)
+- **Update properties** → `godot-mcp-runtime:set_node_properties` (primitives, Vector/Color dicts, and Resource-typed dicts — `{type: "ClassName", ...props}` constructs the resource inline, including nested resources; `res://` paths load saved ones. Type-incompatible assignments return an explicit error as of godot-mcp-runtime v3.2.4; inline construction per SKILL.md Step 5a)
 - **Attach script** → `godot-mcp-runtime:attach_script`
 - **Check hierarchy** → `godot-mcp-runtime:get_scene_tree`
 - **Wire signals** → `godot-mcp-runtime:connect_signal`
@@ -142,7 +142,7 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 - `Property 'X' does not exist` → wrong node type for the property
 - `Resource file not found` → ext_resource path incorrect
 - `Script not found` → path mismatch between scene and actual file
-- Resource-typed property (e.g. `shape`) reads back as `null` after a successful-looking `set_node_properties`/`add_node` → **not fixable via MCP**: the runtime's value coercer (`_coerce_property_value` in godot_operations.gd) only maps `{x,y,z}` → Vector and `{r,g,b}` → Color; any other dict is `set()` raw, the typed assignment fails, and the tool reports `success: true` regardless. Sanctioned path: direct `.tscn` edit embedding `[sub_resource]` blocks (see SKILL.md Step 5a). **Do not debug the MCP server source, do not probe alternate dict formats** — >2 failed attempts on the same Resource property = switch to the direct-edit path immediately (a paddle task burned ~8 min probing four serialization formats before stalling). *(Upstream status: dependency limitation in godot-mcp-runtime `_coerce_property_value` — workaround is the permanent sanctioned path until upstream extends the coercer's dict→Variant mapping; retirement check: if a release maps typed Resource dicts, this bullet's direct-edit mandate can be narrowed.)*
+- Resource-typed property (e.g. `shape`) reads back as `null` after a `set_node_properties`/`add_node` → the value was probably not a recognized Resource form. Construct inline with a typed dict `{type: "RectangleShape2D", size: {x: 20, y: 100}}` or pass a `res://` path to a saved resource (see SKILL.md Step 5a). Inner-property type violations and wrong-class constructions return explicit errors naming the property. Historical note: before this capability, dict-shaped values silently no-oped and a paddle task burned ~8 min probing four serialization formats — **do not probe alternate dict formats**; >2 failed attempts = report `⛔ BLOCKED` with the tool error text.
 
 **Validation strategy:**
 - Before `run_project`: Call `godot-mcp-runtime:validate()` on all .tscn/.gd files

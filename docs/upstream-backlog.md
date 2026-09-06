@@ -23,14 +23,20 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   runtime).
 - **Status:** defect (2) FIXED — error contract landed upstream via PR #29
   (v3.2.4, plus follow-on type-compatibility validation in 9a140af/9d401c0).
-  Defect (1), inline Resource construction: implemented on fork branch
-  `feat/inline-resource-construction` (local commit 617963a, 2026-09-06) —
-  typed-dict `{type: ClassName, ...props}` → ClassDB.instantiate → recursive
-  validated inner-property assignment via `_prepare_property_value`; 6
-  integration tests + full suite green. **Pending: user consent to push/open
-  PR; then release-pin and retire poppy's `.tscn`-edit exception.**
-- **Lifecycle:** filed → patched locally → (awaiting PR + release) →
-  workaround-retirement pending.
+  Defect (1), inline Resource construction: implemented and PUSHED to fork
+  branch `feat/inline-resource-construction` (tip 4acfa4b, 2026-09-06; history
+  scrubbed of project references) — typed-dict `{type: ClassName, ...props}` →
+  ClassDB.instantiate → recursive validated inner-property assignment via
+  `_prepare_property_value`; 6 integration tests + full suite green.
+  **Phase: user testing before PR.** `opencode.jsonc` temporarily pins the
+  fork branch (TEMPORARY marker + revert condition in the file) — revert to
+  a published release (`godot-mcp-runtime@>=3.3`) once merged and released,
+  then finalize retirement of the direct-`.tscn`-edit fallback guidance.
+- **Lifecycle:** filed → implemented → pushed to fork (awaiting user test →
+  PR) → release-pin pending → workaround-retirement mostly applied
+  (poppy permission comment, AGENTS.md rationale, and create-scene-with-script
+  guidance all point at the MCP path; residual direct-edit fallback retained
+  intentionally — remove if benchmarks show it unused).
 - **Retire:** error contract retires the "verify the write landed on disk"
   footgun; full Resource support retires poppy's .tscn-edit exception.
 

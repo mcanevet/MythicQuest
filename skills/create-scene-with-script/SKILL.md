@@ -105,7 +105,7 @@ If unsure what the root node name is, call `godot-mcp-runtime:get_scene_tree()` 
 
 **Node hierarchies: MCP tools.** `godot-mcp-runtime:create_scene` / `add_node` / `batch_scene_operations` build nodes, set primitive properties, and attach scripts.
 
-**Resource-typed values: direct `.tscn` edit** (see Step 5a): `[sub_resource]` blocks, Resource-typed properties (`shape`, `polygon`, fonts, materials), and `PackedVector2Array`/`PackedColorArray` values. This is a domain split, not a preference — MCP tools silently drop these (they report success and write nothing; root cause: the runtime's value coercer has no Resource-construction path). Edit the `.tscn` directly (direct scene-file edit is permission-granted to the implementing agent) — **but never while a run/playtest is active** (live engine sessions serialize runtime state into scene files; stop the project first).
+**Resource-typed values: MCP tools.** Since godot-mcp-runtime gained inline Resource construction (typed-dict `{type: "ClassName", ...props}` values in `add_node`/`set_node_properties` — fork branch `feat/inline-resource-construction`, pending upstream release; see docs/upstream-backlog.md), `[sub_resource]`-backed properties (`shape`, `polygon`, fonts, materials) are set through the engine MCP tools with validated writes. Direct `.tscn` edit survives only for cases the tools cannot express (ext_resource reordering, scene metadata, corruption repair) — and never while a run/playtest is active (live engine sessions serialize runtime state into scene files; stop the project first).
 
 See [reference/mcp-patterns.md](reference/mcp-patterns.md) for:
 - Tool selection strategy (batch vs individual)
@@ -145,11 +145,11 @@ See [reference/mcp-patterns.md](reference/mcp-patterns.md) for error recovery pa
 
 ### Step 5a: Setting Resource-Type Properties (Collision Shapes)
 
-MCP tools silently drop Resource-typed values (they report success and write nothing; mechanism and upstream lifecycle status: [reference/physics-nodes.md](reference/physics-nodes.md), error-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md)). Trust nothing Resource-typed through `set_node_properties`/`add_node`.
+Resource-typed values (`shape`, `polygon`, fonts, materials) are set through the engine MCP tools via inline construction: pass a typed dict `{type: "ClassName", ...props}` as the property value in `set_node_properties`/`add_node` (e.g. `shape: {type: "RectangleShape2D", size: {x: 80, y: 16}}`). Nested resources recurse; `res://` paths still work for pre-existing files.
 
-> **Upstream status (upstream-worthy):** identified in godot-mcp-runtime (coercer gap, docs/upstream-backlog.md); issue drafted for the coercer gap + unconditional success reporting. This direct-edit workaround retires when a godot-mcp-runtime release supports Resource-typed property coercion — re-check against the runtime changelog before relying on it.
+> **Upstream status:** inline Resource construction landed in godot-mcp-runtime (fork branch `feat/inline-resource-construction`, pending upstream release — docs/upstream-backlog.md). Writes are validated — type mismatches, unknown classes, and wrong-class constructions return explicit errors instead of succeeding silently. Direct `.tscn` edit is no longer the sanctioned path for sub_resources; it survives only for cases the tools cannot express (ext_resource reordering, scene metadata, corruption repair), and never while a run/playtest is active.
 
-**Sanctioned path:** Direct-edit the `.tscn` to embed `[sub_resource]` blocks (direct scene edit is allowed for this exact purpose; no run/playtest active). Full templates and patterns: [reference/physics-nodes.md](reference/physics-nodes.md) (_Collision Shape Setup_), failure-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md). Then confirm the persisted file on disk actually contains the `shape = SubResource(...)` binding — this class of write can fail silently, and the runtime read-back can lag the bridge's in-memory state.
+**Sanctioned path:** `godot-mcp-runtime:set_node_properties` / `add_node` with typed-dict values; shapes for new nodes go in the same `add_node` call's `properties`. Template examples: [reference/physics-nodes.md](reference/physics-nodes.md) (_Collision Shape Setup_), failure-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md).
 
 **Runtime-only assignment (special case):** Use `godot-mcp-runtime:run_script` to assign shape via GDScript. Only when dynamic modification is required after creation.
 
@@ -245,7 +245,7 @@ Common errors and their fixes are tabulated in [reference/mcp-patterns.md](refer
 2. No post-write re-reads — if write returned no error, file was created
 3. Screenshot → `read()` → analysis before next tool call
 4. Validate each file exactly once
-5. **MCP tools for node setup; direct `.tscn` edit for sub_resources/Resource-typed properties (never during a run)** — see Step 5a
-6. **Collision shapes** → embed `[sub_resource]` blocks via direct `.tscn` edit and verify on disk (see Step 5a and [reference/physics-nodes.md](reference/physics-nodes.md))
+5. **MCP tools for node setup and Resource-typed properties (typed-dict values; never direct-edit during a run)** — see Step 5a
+6. **Collision shapes** → `properties: {shape: {type: ...}}` via `add_node`/`set_node_properties` (see Step 5a and [reference/physics-nodes.md](reference/physics-nodes.md))
 7. No repeated directory scans — one glob per directory
 8. EXECUTE IMMEDIATELY — no questions when skill loads

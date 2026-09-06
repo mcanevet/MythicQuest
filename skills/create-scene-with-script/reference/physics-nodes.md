@@ -23,17 +23,24 @@ Interactive UI                     → Button / Control hierarchy
 
 ## Collision Shape Setup
 
-**Critical:** MCP tools cannot persist Resources like `RectangleShape2D` — their value coercer has no Resource path, so dict-shaped resources are `set()` raw, fail the typed assignment, and the tool still reports success (the shape stays `<Object#null>` in memory too; godot-mcp-runtime coercer gap, docs/upstream-backlog.md). *(Upstream lifecycle trail: SKILL.md Step 5a records the issue status and retirement condition — check there before relying on this workaround.)* Use sub_resources via **direct `.tscn` edit** (allowed; never while a run/playtest is active):
+**Primary path — MCP tools with inline Resource construction** (typed-dict values in `add_node`/`set_node_properties`; writes are validated and persist as `[sub_resource]` blocks; upstream status in SKILL.md Step 5a):
+
+```
+add_node(
+  node_type="CollisionShape2D", node_name="ColShape", parent_node_path="Entity1",
+  properties={ "shape": { "type": "RectangleShape2D", "size": { "x": 20, "y": 100 } } }
+)
+```
+
+Or after the fact: `set_node_properties` with `property: "shape"`, `value: {type: "RectangleShape2D", size: {x: 20, y: 100}}`.
+
+**Reference — what the persisted scene looks like** (the tools produce this automatically; only relevant for the rare direct-edit fallback — ext_resource reordering, corruption repair — never during a run):
 
 ```ini
 [gd_scene format=3]
 
 [sub_resource type="RectangleShape2D" id="shape_1"]
 size = Vector2(20, 100)
-
-[sub_resource type="CapsuleShape2D" id="shape_2"]
-radius = 7.5
-height = 15
 
 [node name="Entity1" type="Area2D" parent="."]
 collision_layer = 1
@@ -50,8 +57,6 @@ var shape = RectangleShape2D.new()
 shape.size = Vector2(20, 100)
 col_shape.shape = shape
 ```
-
-After any `.tscn` edit, confirm the `shape = SubResource(...)` binding actually landed on disk (`read`/`grep` the file) — this write class has failed silently via MCP before.
 
 **RigidBody2D critical config** (if used):
 - `contact_monitor = true` is REQUIRED for collision signals to fire (defaults to false!)

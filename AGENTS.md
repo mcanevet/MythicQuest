@@ -171,7 +171,7 @@ permission:
 
 ### File Access Rules
 
-- `edit: "**/*.tscn": allow` for poppy — engine MCP scene tools cannot construct Resources inline (no dict→Resource coercion path; as of godot-mcp-runtime v3.2.4 such assignments return an explicit error rather than failing silently, but the write still can't happen via the tool), so sub_resource injection requires direct scene-file edits. Safe only when no run/playtest is active (procedural rule in create-scene-with-script). Retire when inline Resource construction lands upstream (docs/upstream-backlog.md). Other agents keep it denied.
+- `edit: "**/*.tscn": allow` for poppy — retained as a narrow fallback. Inline Resource construction landed in godot-mcp-runtime (fork branch `feat/inline-resource-construction`, pending upstream release — see docs/upstream-backlog.md), so sub_resource injection and Resource-typed properties now go through the engine MCP tools with validated writes. The allow survives only for cases the tools cannot express (ext_resource reordering, scene metadata, corruption repair), under the standing rule that direct scene-file edits are safe only when no run/playtest is active (procedural rule in create-scene-with-script). Once the capability is released upstream and battle-tested in benchmarks, consider narrowing to deny.
 - `edit: "**/*.gd": allow` — Game logic scripts are engine-specific but portable within engine
 - `edit: "skills/*/scripts/*.gd": deny` — Skill implementations protected from runtime edits (note: `setup-project` legitimately *copies* `test_player.gd` into consumer projects, so scoping the deny to skill dirs — not `**/test_*.gd` — avoids blocking that bootstrap step)
 - `bash: "*": deny` — No direct shell access; skills handle process management
