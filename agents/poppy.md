@@ -24,6 +24,14 @@ permission:
     "**/*.gd": allow
     "**/*.gdshader": allow
     "**/project.godot": allow
+    # Data/art sidecars written by documented skill steps: scenario JSONs
+    # (create-scene-with-script Step 5c), placeholder art (setup-project
+    # icon.svg, assets/*.svg), Godot .import sidecars, and .gitignore
+    # (extension-less — no type-scoped pattern matches it).
+    "**/*.json": allow
+    "**/*.svg": allow
+    "**/*.import": allow
+    "**/.gitignore": allow
     # Scene files: DENIED. All scene mutations go through the engine MCP
     # tools (add_node, set_node_properties, batch_scene_operations, …) —
     # validated writes, inline Resource construction since godot-mcp-runtime
