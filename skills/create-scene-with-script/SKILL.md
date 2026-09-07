@@ -41,8 +41,6 @@ Read files in this order — stop once you have what you need:
 3. `GAME_STATE.md` → Vision context (only if the plan references visual style or feel)
 4. `./.opencode/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)
 
-**Optional Step 1a — cross-project lessons check:** `glob("LESSONS.jsonl")`. If present, `grep` it for tags matching the current task's domain (e.g. "signals", "collision", "instanced-nodes"). This is the harness-level cross-project lessons store — a cheap keyword lookup, not a blocking step. If the file doesn't exist, skip silently; most projects won't have it unless a human has placed a copy. This repo does not generate the file itself.
-
 Do NOT read `project.godot` unless you need to verify specific input action names.
 Do NOT call `godot-mcp-runtime:get_project_info` more than once.
 

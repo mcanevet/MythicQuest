@@ -29,10 +29,6 @@ Contains:
 
 ## Execution
 
-### Step 0: Check for lessons (optional, cheap)
-
-`glob("LESSONS.jsonl")`. If it exists in the project root (a human/harness distribution step may place a copy of the harness's accumulated cross-project lessons here), `read()` it and keep in mind any entries whose `tags` are relevant to genre/mechanics you're about to invent (e.g. a lesson tagged `collision` if you're about to design a physics-heavy game). This is a lightweight keyword scan, not mandatory research — if the file doesn't exist, skip this step entirely and proceed normally. **Note:** nothing in this repo generates this file — it's an optional external input from a harness-build session's cross-project analysis (see `AGENTS.md`), not a bug if absent.
-
 ### Step 1: Invent Game Concept
 
 1. Invent game concept with memorable title
