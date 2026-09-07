@@ -10,9 +10,14 @@ permission:
   todowrite: allow
   question: allow
   edit:
-    # Least privilege: Ian's only documented file edit is the vision-evaluation
-    # report (Creative Evaluation Framework below). Everything else denied.
+    # Least privilege: Ian edits exactly two artifact classes:
+    # 1. the vision-evaluation report (Creative Evaluation Framework below)
+    # 2. genesis outputs — GAME_STATE.md + README.md at project root
+    #    (the genesis skill's documented deliverables, which Ian executes).
+    # Everything else denied.
     "reports/**": allow
+    "GAME_STATE.md": allow
+    "README.md": allow
     "*": deny
     # Harness files are protected from runtime edits — last matching rule wins.
     # Covers repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
