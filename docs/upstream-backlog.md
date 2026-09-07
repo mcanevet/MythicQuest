@@ -172,7 +172,8 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Proposed upstream fix:** in `executeSceneOp`'s `parseStdoutAsJson` branch,
   surface the non-JSON stdout content and/or stderr diagnostics instead of
   "invalid JSON"; ideally emit the payload on a marker-delimited channel.
-- **Status:** branch ready, not filed.
+- **Status:** branch ready (`fix/stdout-noise-masking`, test-only, pinning
+  the gap), folded into `feat/import-assets-plus-noise-masking`; not filed.
 
 ### Sub-property paths rejected (theme_override_font_sizes/font_size)
 - **Observed:** 09-07 run 9 (task 8): add_node/set_node_properties with
@@ -193,10 +194,14 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   background `run_project` does not run the import step. The subagent spent
   ~6 min and 4 denied-bash probes before correctly falling back to vector
   shapes (game outcome unaffected).
-- **Proposed upstream fix:** auto-run `godot --headless --import` on first
-  resource-touching operation when `.godot/imported` is missing/stale, or
-  expose an explicit `import_assets` tool.
-- **Status:** not filed; strong evidence trail in the run-9 trace.
+- **Implemented upstream:** `import_assets` tool on branch
+  `feat/import-assets-plus-noise-masking` (Erodenn/godot-mcp-runtime),
+  TDD-covered (unit + GODOT_PATH-gated integration test reproducing the
+  run-9 failure shape: LOAD_FAILED before, LOAD_OK after, idempotent).
+  Pending upstream PR. Sandbox consumes the branch via a temporary
+  node_modules pin.
+- **Lifecycle:** patched → pending PR → release retires the temp pin
+  (test/.opencode/opencode.jsonc revert condition).
 
 ## Resolved: godot-mcp-runtime v3.3.0 (2026-09-07)
 

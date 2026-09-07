@@ -22,35 +22,27 @@ Create `project.godot` with Godot 4.x format. Copy the template in [reference/pr
 
 ### Step 2: Create Placeholder icon.svg
 
-Minimal SVG placeholder:
-
-```xml
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
-  <rect width="128" height="128" fill="#444"/>
-  <circle cx="64" cy="64" r="32" fill="#fff"/>
-</svg>
-```
+Copy the template in [reference/file-templates.md](reference/file-templates.md) (§Icon SVG placeholder) to `icon.svg` via the `write` tool. Follow with Step 3a — the icon is invisible to the engine until imported.
 
 ### Step 3: Initialize .gitignore
 
-Create `.gitignore` for Godot projects:
+Copy the template in [reference/file-templates.md](reference/file-templates.md) (§Godot project .gitignore) to `.gitignore` via the `write` tool.
 
-```gitignore
-# Godot 4+ specific ignores
-.godot/
-export.cfg
-.export/
+### Step 3a: Run Asset Import
 
-# OS generated files
-.DS_Store
-Thumbs.db
+After writing project files (icon.svg, later any textures/SVGs), run the engine's
+headless asset import via the engine project tooling (`import_assets`). Until
+this runs, `.godot/imported` does not exist and resource loads fail with
+`resource not found` even though the files are on disk — headless operations
+and runtime do not import on their own. The import is idempotent; re-run it
+whenever new assets are added outside the editor.
 
-# Optional: Hide asset source files
-!*.svg
-*.png
-*.jpg
-*.webm
-```
+**Historical note** (upstream status: `import_assets` shipped 2026-09-07 on
+branch `feat/import-assets-plus-noise-masking`; pending upstream PR): before
+this tool existed, a build session lost ~6 minutes and 4 permission-denied
+probes discovering that textures fail to load on fresh projects (run-9 task 3).
+If `import_assets` is not in your toolset, report
+`⛔ BLOCKED: import_assets unavailable — MCP runtime predates the import_assets tool; upgrade godot-mcp-runtime` — do not improvise bash workarounds.
 
 ### Step 3b: Create Test Harness Autoload
 
@@ -70,6 +62,8 @@ See [`scripts/test_player.gd`](scripts/test_player.gd) for the full implementati
 **Schema documentation:** Consult [`reference/testing-patterns.md`](reference/testing-patterns.md) for the complete scenario config schema (all bot types, invariant rules, metrics).
 
 **Game-specific mechanic coverage:** Rather than a separate generation step, each interactive entity gets its own `tests/scenarios/<entity_name>.json` invariant config authored directly by the implementing agent during `create-scene-with-script` (see that skill's Step 5c) — using real knowledge of the entity's actual node paths and behavior, not inference from task titles after the fact. `playtest`'s `functional` mode aggregates all `tests/scenarios/*.json` files alongside the generic baseline invariants (see `./.opencode/skills/playtest/SKILL.md`).
+
+**Assets added later** (SVG/PNG/textures placed by `write`): always follow with an `import_assets` run — files on disk are invisible to the engine until imported (see Step 3a).
 
 ### Step 4: Validate
 

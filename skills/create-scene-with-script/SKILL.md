@@ -147,11 +147,7 @@ See [reference/mcp-patterns.md](reference/mcp-patterns.md) for error recovery pa
 
 Resource-typed values (`shape`, `polygon`, fonts, materials) are set through the engine MCP tools via inline construction: pass a typed dict `{type: "ClassName", ...props}` as the property value in `set_node_properties`/`add_node` (e.g. `shape: {type: "RectangleShape2D", size: {x: 80, y: 16}}`). Nested resources recurse; `res://` paths still work for pre-existing files.
 
-> **Upstream status:** inline Resource construction landed in godot-mcp-runtime (released upstream in v3.2.5 (PR #32) — docs/upstream-backlog.md). Writes are validated — type mismatches, unknown classes, and wrong-class constructions return explicit errors instead of succeeding silently. Direct `.tscn` edit is not a sanctioned path — the permission is denied; an operation the tools cannot express is a `⛔ BLOCKED: tool cannot express <operation>` report.
-
-**Sanctioned path:** `godot-mcp-runtime:set_node_properties` / `add_node` with typed-dict values; shapes for new nodes go in the same `add_node` call's `properties`. Template examples: [reference/physics-nodes.md](reference/physics-nodes.md) (_Collision Shape Setup_), failure-recovery details: [reference/mcp-patterns.md](reference/mcp-patterns.md).
-
-**Runtime-only assignment (special case):** Use `godot-mcp-runtime:run_script` to assign shape via GDScript. Only when dynamic modification is required after creation.
+**Textures from asset files** (`res://assets/*.svg|png` in a `Sprite2D.texture`, or via `load_sprite`): the file must be imported first — on a fresh project, loads fail with `resource not found` even though the file exists. Run the engine's asset-import tooling (`import_assets`) once after placing assets, and again whenever new assets are written. Upstream status: `import_assets` shipped 2026-09-07 on branch `feat/import-assets-plus-noise-masking`, pending upstream PR (docs/upstream-backlog.md; observed-failure story: benchmarks/results/2026-09-07-rallywall-lumo-max-medium-shipped.md, task 3 — a build session burned ~6 minutes and 4 permission-denied probes rediscovering this, then wrongly concluded texture loading was broken). If the tool is unavailable in your toolset, `⛔ BLOCKED: import_assets unavailable — upgrade godot-mcp-runtime`.
 
 ### Step 5b: Signals & Callback Wiring
 
