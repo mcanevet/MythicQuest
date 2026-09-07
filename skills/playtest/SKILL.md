@@ -70,6 +70,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 5. **Finish — teardown, or KEEP-RUNNING across consecutive verifications:** Default is `godot-mcp-runtime:stop_project()` + `godot-mcp-runtime:remove_autoload(autoloadName="TestPlayer")` so test infrastructure never ships. **Exception (engine reuse):** when the SAME task/session continues with another verification of the same project — e.g. fast-verify followed by scene-verify, or back-to-back scenarios on one scene — KEEP the engine running instead of tearing down: skip step 5's `stop_project`, and on the next verification skip step 1's re-registration and step 2's `run_project` entirely (the autoload is already registered; `start_test` resets all scenario state itself). Engine reuse eliminates a full boot + bridge handshake per extra verification (~15-30s wall + one `get_debug_output` health cycle each; 09-06 run measured ~2 boots per task, 29 boots in one run). **Mandatory restart overrides — a kept engine MUST be stopped and relaunched when ANY of these hold:**
    - **Any `.gd`/`.tscn`/`.godot` project file changed since the engine started** (script-staleness rule: Godot caches compiled bytecode; the live process reports stale errors at phantom line numbers — see the warning below)
+     - **Scenario JSON files (`tests/scenarios/*.json`) are NOT staleness-relevant**: they are loaded from disk at `start_test` time inside your `run_script` call (a fresh `load()` each run), not cached at engine boot. Editing a scenario config does NOT require an engine restart. The restart rule covers `.gd`/`.tscn`/`.godot` only. (Note: to read a scenario JSON inside `run_script` you must `load("res://tests/scenarios/x.json")` with a literal path — dynamic/non-literal paths are blocked by the bridge's safety policy.)
    - A different `scene` parameter is needed
    - The next step is a DIFFERENT task's verification (teardown always happens before returning to the orchestrator — the running engine must never leak across `task()` boundaries; the Finish-at-return rule stands)
    - The engine has crashed or an unrecovered error occurred
@@ -126,15 +127,21 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 ```gdscript
 extends RefCounted
 func execute(scene_tree: SceneTree) -> Variant:
+    # Load the scenario from a LITERAL path — non-literal load() paths are
+    # blocked by the bridge's safety policy.
+    var scenario: Dictionary = load("res://tests/scenarios/basic.json").data
     var tp = scene_tree.root.get_node_or_null("TestPlayer")
     if tp == null:
         return {"success": false, "error": "TestPlayer autoload not found"}
     tp.start_test(scenario)
-    var report = await tp.await_test_done(max_wait_s = scenario_duration + 30)
+    var duration: float = float(scenario.get("duration_s", 15))
+    # NOTE: positional args only — `await tp.await_test_done(max_wait_s = 45)`
+    # does not parse ("Assignment is not allowed inside an expression").
+    var report = await tp.await_test_done(duration + 30)
     return {"success": true, "report": report}
 ```
 
-**NEVER poll a running scenario across separate tool calls** — no `bash sleep` between `get_test_report()` checks. Sleep-polling was observed burning 2+ hours and 100+ model steps on a single 15s scenario (09-06 qwen run): every wake-up re-sends the whole diagnostic context for a one-line status check, the engine idles (macOS background-throttles idle frames to 10-12s each, so a 15s sim can stretch past every reasonable deadline), and the loop can outlive the session's usefulness. The awaited form has none of these failure modes: the engine keeps ticking at full rate while the call is open, and the client-side 60s transport cap is not a factor for calls with progress heartbeats (godot-mcp-runtime ≥ v3.2.4). Hand-rolling a `while ... await physics_frame` loop is acceptable if `await_test_done()` is unavailable; a `bash sleep` wait is not — it is permission-denied, and improvising a different idle-wait is the same violation in another coat.
+**NEVER poll a running scenario across separate tool calls** — no `bash sleep` between `get_test_report()` checks. Sleep-polling was observed burning 2+ hours and 100+ model steps on a single 15s scenario (09-06 qwen run): every wake-up re-sends the whole diagnostic context for a one-line status check, the engine idles (macOS background-throttles idle frames to 10-12s each, so a 15s sim can stretch past every reasonable deadline), and the loop can outlive the session's usefulness. The awaited form has none of these failure modes: the engine keeps ticking at full rate while the call is open, and the client-side 60s transport cap is not a factor for calls with progress heartbeats (godot-mcp-runtime ≥ v3.2.4). A `bash sleep` wait is permission-denied — and improvising a different idle-wait is the same violation in another coat. If `await_test_done()` is missing from the deployed TestPlayer (version mismatch after a `setup-project` upgrade), that is a harness defect: report `⛔ BLOCKED: await_test_done() unavailable on deployed TestPlayer — re-install scripts/test_player.gd via setup-project`, do not improvise an alternative wait loop.
 
 ### Scope and limits
 

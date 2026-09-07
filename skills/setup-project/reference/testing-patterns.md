@@ -120,6 +120,8 @@ Numeric custom invariants can also declare a `max_delta_per_sec` — the tracked
 
 **Observed failure this catches (09-03 ling run, benchmarks/results/2026-09-04-rallywall-ling-flash-shipped.md):** a hit-handler re-fired every physics tick while contact persisted — a scripted perfect player accrued points ~60× faster than intended and reached the win threshold on the first catch. Point-in-time invariants (`equals`, `below`) cannot see this class of bug; only rate-of-change can. Add a `max_delta_per_sec` to every game-economy counter (score, currency, combo, ammo) sized to a plausible human ceiling.
 
+**Semantics of the check (important — size thresholds to this):** the rate is measured over a windowed span (~1 second of physics ticks), not between adjacent ticks. A single-step award of magnitude ≤1 is effectively legal under any ceiling ≥ 1 — the violation is the *sustained* rate of change accumulated across the window, which is what a re-firing handler produces. So `max_delta_per_sec: 5` on a score counter means "no more than ~5 points/sec averaged over any 1-second span"; a handler bug firing 60×/sec violates because its cumulative climb outruns the ceiling, not because any single +1 is illegal. Sustained paces AT the ceiling are legal; only averages above it violate. Do not set `max_delta_per_sec` below 1 expecting to forbid discrete events — use a point-in-time invariant (`equals`) for that.
+
 ---
 
 ### Metrics
@@ -130,11 +132,15 @@ The report includes these metrics collected every physics tick:
 |--------|------|-------------|
 | `start_frame` | int | Physics frame at test start |
 | `end_frame` | int | Physics frame at test end |
-| `input_count` | int | Total inputs issued |
+| `input_count` | int | Distinct action presses issued (counts a NEWLY-pressed action, not re-presses while held — a bot holding one direction for 90s reports 1; see gotcha below) |
 | `crash_detected` | bool | Fatal error detected |
 | `frame_times` | array | Rolling buffer of last 300 frame times in ms |
 | `frame_ms_p99` | float | 99th-percentile frame time (computed at report time) |
 | `fps_floor_violations` | int | Count of fps_floor threshold breaches |
+
+**`input_count` gotcha (observed 09-07 lumo-max run, benchmarks/results/2026-09-07-rallywall-lumo-max-medium-shipped.md, vision QA):** the metric increments only when an action transitions from not-held to held. A pursuit bot pressing left/right yields single digits; a chaos bot at 10Hz yields hundreds. **Do not interpret a low `input_count` as "the bot didn't run"** — check the bot's own effect (positions/scores changing) instead. Conversely, `input_count` can also look artificially low if the sim observed few state changes to react to.
+
+**`:=` inference gotcha (observed 09-07 lumo-max run, benchmarks/results/2026-09-07-rallywall-lumo-max-medium-shipped.md — 14 occurrences, largest compile-error class):** `var x := dict.get("k", default)` fails with `Cannot infer the type of "x" variable because the value doesn't have a set type` (same for `node.call(...)`, `get_meta(...)`, and other Variant-returning calls). Use `var x = ...` (untyped) or an explicit annotation `var x: int = ...` in run_script submissions. This single fix eliminates the most frequent one-step penalty in that run's traces.
 
 ---
 

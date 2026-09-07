@@ -178,6 +178,76 @@ check_gdscript_parse() {
 }
 
 # ---------------------------------------------------------------------------
+# check_embedded_gdscript_parse — fenced ```gdscript blocks in skill docs
+# (SKILL.md and reference/*.md) must parse headless. Snippets that teach
+# invalid syntax get copied verbatim by agents and burn validate-retry
+# cycles (observed 09-07: `await tp.await_test_done(max_wait_s = 45)` in
+# two independent subagent sessions — "Assignment is not allowed inside
+# an expression"). Exemptions: usage fragments without an `extends`
+# declaration; placeholder template blocks with <placeholder> tokens on a
+# NON-COMMENT line; blocks carrying the explicit marker
+# <!-- lint:gdscript-unparseable -->. The placeholder heuristic ignores
+# comment lines so a documented example mentioning `<name>.json` in a
+# comment isn't silently excluded from validation.
+# ---------------------------------------------------------------------------
+check_embedded_gdscript_parse() {
+  GODOT_BIN="${GODOT_BIN:-$(command -v godot || true)}"
+  if [ -z "$GODOT_BIN" ] && [ -x "/Applications/Godot.app/Contents/MacOS/godot" ]; then
+    GODOT_BIN="/Applications/Godot.app/Contents/MacOS/godot"
+  fi
+  if [ -z "$GODOT_BIN" ]; then
+    echo "ℹ️  godot binary not found — skipped embedded-GDScript parse check"
+    return
+  fi
+  md_files=$( { ls skills/*/SKILL.md skills/*/reference/*.md .opencode/skills/*/SKILL.md .opencode/skills/*/reference/*.md 2>/dev/null; } | sort -u )
+  [ -z "$md_files" ] && return
+  gd_tmp=$(mktemp -d)
+  printf 'config_version=5\n[application]\nconfig/name="lint-md-gd-check"\n' > "$gd_tmp/project.godot"
+  n_checked=0
+  for md in $md_files; do
+    # Extract fenced gdscript blocks with their start line numbers
+    python3 - "$md" "$gd_tmp" <<'EOF' || true
+import re, sys, os
+
+md, out_dir = sys.argv[1], sys.argv[2]
+src = open(md, encoding="utf-8").read()
+blocks = []
+for m in re.finditer(r"```gdscript\n(.*?)```", src, re.S):
+    body = m.group(1)
+    # Only validate COMPLETE scripts (declare extends). Usage fragments
+    # (bare `tp.start_test(x)` statements shown without a func wrapper)
+    # cannot parse standalone by design. The observed failure class was a
+    # full `extends RefCounted` execute() block copied verbatim by agents.
+    if not re.search(r"^\s*extends\s+\w+", body, re.M):
+        continue
+    # Placeholder template check on NON-COMMENT lines only: a documented
+    # example legitimately mentions <name>.json in a comment, which must
+    # not exclude the block from validation.
+    code_lines = [l for l in body.split("\n") if not l.strip().startswith("#")]
+    code_text = "\n".join(code_lines)
+    if "<" in code_text and ">" in code_text:  # placeholder template block
+        continue
+    if "lint:gdscript-unparseable" in body:
+        continue
+    blocks.append(body)
+for i, body in enumerate(blocks):
+    with open(os.path.join(out_dir, f"{abs(hash(md))%99999}_{i}.gd"), "w") as fh:
+        fh.write(body)
+EOF
+  done
+  for snip in "$gd_tmp"/*.gd; do
+    [ -e "$snip" ] || continue
+    n_checked=$((n_checked + 1))
+    err="$("$GODOT_BIN" --headless --path "$gd_tmp" --check-only --script "res://$(basename "$snip")" 2>&1)"
+    if printf '%s' "$err" | grep -q "SCRIPT ERROR\|Parse Error"; then
+      warn "Embedded GDScript parse error (snippet $(basename "$snip") extracted from a skill markdown file):"
+      printf '%s\n' "$err" | grep -v '^Godot Engine' | sort -u | head -5 | sed 's/^/    /'
+    fi
+  done
+  rm -rf "$gd_tmp"
+}
+
+# ---------------------------------------------------------------------------
 # check_skill_md_size / check_frontmatter_hygiene / check_inline_code_cap —
 # SKILL.md doc hygiene (registry: progressive-disclosure, trigger-quality,
 # deterministic-logic-in-scripts)
@@ -272,6 +342,7 @@ check_engine_file_permissions
 check_actor_wording
 check_observed_citation_resolvable
 check_gdscript_parse
+check_embedded_gdscript_parse
 check_doc_hygiene
 
 if [ "$issues" -eq 0 ]; then

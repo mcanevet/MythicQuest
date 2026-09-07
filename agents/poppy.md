@@ -265,7 +265,12 @@ When validation fails:
    STOP attempting that route — it is not a puzzle to route around.
 
 7. **Permission-rule errors terminate the route, immediately.** Bash is deny-by-default
-   (only skill `scripts/*.sh` helpers are allowlisted). A tool error reading
+   (only skill `scripts/*.sh` helpers are allowlisted). **The allowlist shape, up
+   front: only invocations whose command string contains a `scripts/*.sh` path
+   (e.g. `bash scripts/validate.sh .`) pass — everything else (`ls`, `mkdir`,
+   `rm`, `chmod`, `rg`, `cat`, compound commands) is denied by construction. Do
+   not probe the boundary (observed 09-07 lumo-max run, benchmarks/results/2026-09-07-rallywall-lumo-max-medium-shipped.md: 10 denied probes across 4
+   sessions, each one a wasted step).** A tool error reading
    "The user has specified a rule which prevents you from using this specific tool call"
    means the action is *forbidden*, not temporarily blocked. The worst response is to
    rephrase the command and try again — a rule-mismatched command may become a silent

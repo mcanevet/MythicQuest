@@ -48,7 +48,10 @@ start_test(scenario={
 ```gdscript
 # Inside ONE awaited run_script call (tool timeout sized to duration + margin):
 var tp = scene_tree.root.get_node_or_null("TestPlayer")
-var report = await tp.await_test_done(max_wait_s = scenario_duration + 30)
+# NOTE: pass positional args. `await f(max_wait_s = 45)` is NOT valid in an
+# awaited expression — it compiles as a separate statement's parse error
+# ("Assignment is not allowed inside an expression") on Godot 4.x.
+var report = await tp.await_test_done(scenario_duration + 30)
 # report = {
 #   "status": "running" or "complete",
 #   "violations": [ { "frame": N, "rule": ..., "detail": ..., "node"?: ... } ],

@@ -113,6 +113,20 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   provider tier, complicating benchmark comparisons.
 - **Status:** observation only; possibly provider-side, not opencode.
 
+### Subagent `finish_reason: length` returns an empty task_result indistinguishable from a crash
+- **Observed:** 09-07 run 9: functional-QA subagent's final step died at
+  `finish_reason: "length"` (8190 reasoning tokens, output 2 — max-output hit
+  mid-generation). `task()` returned `state="completed"` with a 98-byte empty
+  `<task_result>`. The orchestrator cannot distinguish output-token exhaustion
+  from a silent crash without digging into the session DB — it cost a
+  diagnostic cycle (filesystem check) before the (correct) respawn.
+- **Proposed upstream fix:** propagate the finish reason into the task result
+  (e.g. `state="truncated"` or a `finish_reason` attribute on task results);
+  at minimum, a `length` finish with an empty final text should not be
+  reported as "completed".
+- **Status:** not filed; harness workaround codified in agents/build.md
+  (silent-death respawn protocol, run-9-validated).
+
 ## Providers
 
 ### Watchdog for verbose-generation brain-death
@@ -145,3 +159,50 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - Contribution roadmap going forward lives at
   `Erodenn/godot-mcp-runtime/plans/roadmap-godot-mcp-contributions/`
   (Phases 1–13, all evidence-grounded from the RallyWall/GLM run traces).
+
+## godot-mcp-runtime
+
+### stdout JSON masked by exit-time RID-leak noise
+- **Observed:** 09-07 run 9 (task 8): a headless operation that exits before
+  emitting its JSON payload leaves stdout = Godot's exit-time RID-leak
+  warnings only. `parseStdoutAsJson` then reports "GDScript returned invalid
+  JSON (Unexpected token 'E', "ERROR: 5 R"...)" — blaming the operation's
+  JSON emission instead of the actual early-exit failure. Repro pinned in
+  `fix/stdout-noise-masking` (tests/unit/stdout-noise-extraction.test.ts).
+- **Proposed upstream fix:** in `executeSceneOp`'s `parseStdoutAsJson` branch,
+  surface the non-JSON stdout content and/or stderr diagnostics instead of
+  "invalid JSON"; ideally emit the payload on a marker-delimited channel.
+- **Status:** branch ready, not filed.
+
+### Sub-property paths rejected (theme_override_font_sizes/font_size)
+- **Observed:** 09-07 run 9 (task 8): add_node/set_node_properties with
+  slash-path theme overrides failed; agent fell back to bare adds + separate
+  styling (3 retries). Supporting `set_indexed`-style paths upstream would
+  remove the workaround class. Needs a minimal repro before proposing.
+- **Status:** observed only.
+
+### quit(1) from _init in a SceneTree script yields exit code 0 (Godot 4.7.2)
+- **Observed:** 09-07: negative scene-instancing test asserts durable
+  contract (no success text + file unchanged) instead of exit code.
+- **Status:** upstream Godot issue candidate, not filed.
+
+### No import step in headless resource loading (SVG/textures fail on fresh projects)
+- **Observed:** 09-07 run 9 (task 3): `res://assets/paddle.svg` and even
+  `icon.svg` failed to load in headless MCP operations on a fresh project —
+  no `.godot/imported` exists until the first editor/import-mode run, and
+  background `run_project` does not run the import step. The subagent spent
+  ~6 min and 4 denied-bash probes before correctly falling back to vector
+  shapes (game outcome unaffected).
+- **Proposed upstream fix:** auto-run `godot --headless --import` on first
+  resource-touching operation when `.godot/imported` is missing/stale, or
+  expose an explicit `import_assets` tool.
+- **Status:** not filed; strong evidence trail in the run-9 trace.
+
+## Resolved: godot-mcp-runtime v3.3.0 (2026-09-07)
+
+All three fork-pinned contributions merged and released — PR #33 (error
+diagnostics: compiler message + line in validate/run_script, bare-ERROR scene
+parses), PR #34 (scene instancing via add_node nodeType), PR #35 (batch
+promoted-params). Maintainer follow-ups landed alongside: path containment
+for instanced scenes, shared promoted-key list, position3d param dropped.
+Fork pin in test/.opencode retired; sandbox back on the published package.

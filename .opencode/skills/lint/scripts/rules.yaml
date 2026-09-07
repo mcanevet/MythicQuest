@@ -354,3 +354,26 @@
   scope: skills/**, agents/**
   enforcement: llm-review
   check-tier: tripwire
+
+- id: embedded-gdscript-parseable
+  rule: >
+    Complete GDScript snippets embedded in skill markdown (fenced
+    ```gdscript blocks that declare `extends`) must parse headless.
+    Agents copy canonical snippets verbatim; a snippet teaching invalid
+    syntax is faithfully reproduced into run_script submissions and burns
+    a validate-fail-retry cycle per agent per task (observed 09-07: the
+    `await tp.await_test_done(max_wait_s = 45)` named-arg form failed
+    identically in two independent subagent sessions). Exempt from the
+    requirement: usage fragments without an `extends` declaration,
+    placeholder template blocks (containing `<...>` tokens on a non-comment
+    line — placeholder tokens appearing only in comments do not exempt a
+    block), and blocks carrying the explicit marker
+    `<!-- lint:gdscript-unparseable -->`.
+    When a snippet is intentionally illustrative-but-not-runnable despite
+    declaring extends, it must either be rewritten to be self-contained or
+    carry the marker.
+  audience: skills
+  scope: skills/**, .opencode/skills/**
+  enforcement: lint
+  check: embedded_gdscript_parse
+  check-tier: exact

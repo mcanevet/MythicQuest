@@ -28,7 +28,7 @@ var _navigation_goal = null
 
 var _last_time = 0.0
 var _warmup_remaining = 3  # settled-ticks required before timing/invariants count
-var _rule_prev_values: Dictionary = {}  # rule_name -> {value, tick} sampled at previous invariant pass
+var _rule_prev_values: Dictionary = {}  # rule_name -> {"samples": [{tick, value}]} for windowed delta-rate checks
 var _frame_time_buffer_size = 300
 var _ticks_per_second = 60
 
@@ -39,6 +39,13 @@ func start_test(scenario: Dictionary) -> Dictionary:
 	_scenario = scenario
 	_running = true
 	_frame_count = 0
+	# Reset warm-up state: a second start_test() in the same process must not
+	# inherit the previous test's settle status or last-tick timestamp — the
+	# gap between tests (engine idle between MCP calls) would otherwise be
+	# sampled as a single multi-second "frame" and trip fps_stable.
+	_warmup_remaining = 3
+	_last_time = 0.0
+	_rule_prev_values.clear()
 	_ticks_per_second = Engine.physics_ticks_per_second
 	_violations.clear()
 	_violation_counts.clear()
@@ -83,12 +90,17 @@ func start_test(scenario: Dictionary) -> Dictionary:
 func get_test_report() -> Dictionary:
 	if not _metrics.frame_times.is_empty():
 		_metrics["frame_ms_p99"] = _compute_p99(_metrics.frame_times)
+	# Snapshot: return a duplicate of the violations array and its entries.
+	# Callers store the returned report across multiple scenarios (loop
+	# start_test/await_test_done); a later start_test() clears the live
+	# array, which previously emptied EARLIER reports' violations lists
+	# retroactively (observed as "violations: 1, violation_details: []").
 	_violations = _violation_counts.values()
 	_violations.sort_custom(func(a, b): return a["first_frame"] < b["first_frame"])
 	return {
 		"status": "running" if _running else "complete",
-		"violations": _violations,
-		"metrics": _metrics,
+		"violations": _violations.duplicate(true),
+		"metrics": _metrics.duplicate(true),
 		"frame_count": _frame_count
 	}
 
@@ -402,7 +414,6 @@ func _check_invariants():
 			"custom":
 				_check_custom_invariant(rule_name, rule)
 				_track_custom_delta(rule_name, rule)
-		_rule_prev_values[rule_name] = {"value": _read_invariant_raw(rule), "tick": _frame_count}
 
 func _check_finite_positions(rule_name: String):
 	var root = get_tree().root if get_tree() else null
@@ -550,8 +561,15 @@ func _check_custom_invariant(rule_name: String, rule: Dictionary):
 				_report_violation(rule_name, path, "%s = %s (expected: %s)" % [path, current_val, value])
 
 ## Rate-of-change tracking for custom invariants. Fires only when the scenario
-## declares max_delta_per_sec; catches "value exploded in one tick" bugs that
-## point-in-time checks miss (e.g. a hit handler re-firing every physics tick).
+## declares max_delta_per_sec; catches "value exploded" bugs that point-in-time
+## checks miss (e.g. a hit handler re-firing every physics tick, awarding +1
+## sixty times a second). Per-consecutive-tick deltas CANNOT express this: a
+## single legitimate +1 award also measures 1 delta in 1 tick (60/sec). So the
+## check is WINDOWED: the rate is the change accumulated over roughly the last
+## second of samples (one full physics second), not between adjacent ticks.
+## A discrete +1 event is a window rate of ~1/sec — legal under any ceiling
+## >= 1. A re-firing handler climbs the whole window — 60/sec — and violates.
+## Size max_delta_per_sec as "plausible sustained human pace, in units/sec".
 func _track_custom_delta(rule_name: String, rule: Dictionary):
 	var max_dps = rule.get("max_delta_per_sec", null)
 	if max_dps == null:
@@ -559,13 +577,24 @@ func _track_custom_delta(rule_name: String, rule: Dictionary):
 	var current = _read_invariant_raw(rule)
 	if current == null or not (current is int or current is float):
 		return
-	var prev = _rule_prev_values.get(rule_name, null)
-	if prev != null and prev.get("value") != null and typeof(prev["value"]) in [TYPE_INT, TYPE_FLOAT]:
-		var dt_ticks = _frame_count - int(prev.get("tick"))
-		if dt_ticks > 0:
-			var rate = abs(float(current) - float(prev["value"])) / (float(dt_ticks) / _ticks_per_second)
-			if rate > float(max_dps):
-				_report_violation(rule_name, rule.get("path", ""), "Delta rate %.1f/sec exceeds max_delta_per_sec %s (value %s -> %s in %d ticks)" % [rate, str(max_dps), str(prev["value"]), str(current), dt_ticks])
+	if not _rule_prev_values.has(rule_name):
+		_rule_prev_values[rule_name] = {"samples": []}
+	var samples: Array = _rule_prev_values[rule_name]["samples"]
+	samples.append({"tick": _frame_count, "value": current})
+	# Keep samples covering the last ~1s of physics ticks.
+	var window_ticks = max(1, int(_ticks_per_second))
+	while samples.size() > 1 and _frame_count - int(samples[0]["tick"]) > window_ticks:
+		samples.pop_front()
+	var oldest = samples[0]
+	var dt_ticks = _frame_count - int(oldest["tick"])
+	# Evaluate only once the window holds a full physics second: shorter spans
+	# measure true rates with warm-up skew (a first-second burst of 5 reads as
+	# 5 * 60/59 = 5.08 and can trip a 5.0 ceiling spuriously).
+	if dt_ticks >= window_ticks:
+		var rate = abs(float(current) - float(oldest["value"])) / (float(dt_ticks) / _ticks_per_second)
+		if rate > float(max_dps):
+			var detail = "Delta rate %.1f/sec exceeds max_delta_per_sec %s (value %s -> %s over %d ticks)" % [rate, str(max_dps), str(oldest["value"]), str(current), dt_ticks]
+			_report_violation(rule_name, rule.get("path", ""), detail)
 
 func _read_invariant_raw(rule: Dictionary):
 	var path = rule.get("path", "")
