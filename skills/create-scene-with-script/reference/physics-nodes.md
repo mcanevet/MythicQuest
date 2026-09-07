@@ -34,7 +34,7 @@ add_node(
 
 Or after the fact: `set_node_properties` with `property: "shape"`, `value: {type: "RectangleShape2D", size: {x: 20, y: 100}}`.
 
-**Reference — what the persisted scene looks like** (the tools produce this automatically; only relevant for the rare direct-edit fallback — ext_resource reordering, corruption repair — never during a run):
+**Reference — what the persisted scene looks like** (the tools produce this automatically; direct-edit is denied — ⛔ BLOCKED if the tools cannot express it):
 
 ```ini
 [gd_scene format=3]

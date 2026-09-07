@@ -72,6 +72,26 @@ check_alt_path_wording() {
 }
 
 # ---------------------------------------------------------------------------
+# check_engine_file_permissions — engine-generated artifacts (.tscn and
+# friends) must be permission-denied; MCP tools are the only write path
+# (registry: sanctioned-paths-only, no-improvised-alternatives)
+# ---------------------------------------------------------------------------
+check_engine_file_permissions() {
+  hits=""
+  for agent_md in agents/*.md; do
+    [ -f "$agent_md" ] || continue
+    bad=$(grep -n '"\*\*/\*\.tscn": *allow' "$agent_md" || true)
+    if [ -n "$bad" ]; then
+      hits="${hits}${agent_md}: ${bad}\n"
+    fi
+  done
+  if [ -n "$hits" ]; then
+    printf '%b' "$hits"
+    warn "engine scene files must be permission-denied — all .tscn mutation goes through engine MCP tools; tool-inexpressible ops are ⛔ BLOCKED reports (see poppy.md for the pattern)"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # check_actor_wording — second-person edit imperatives must attribute file
 # mutation to the acting party (registry: misleading-actor-wording).
 # Opt-out marker for skills whose purpose IS editing.
@@ -222,6 +242,7 @@ check_genre_keywords
 check_agent_names_in_skills
 check_pkill_ban
 check_alt_path_wording
+check_engine_file_permissions
 check_actor_wording
 check_observed_citation_resolvable
 check_gdscript_parse

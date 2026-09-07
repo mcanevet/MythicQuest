@@ -14,17 +14,14 @@ permission:
     "**/*.gdshader": allow
     "**/*.md": allow
     "**/project.godot": allow
-    # Scene files: RETAINED as a fallback only. Since godot-mcp-runtime
-    # gained inline Resource construction (typed-dict {type: ClassName,
-    # ...props} in set_node_properties/add_node — fork branch
-    # released upstream in v3.2.5 (PR #32); see
-    # docs/upstream-backlog.md), Resource-typed properties and sub_resource
-    # injection go through the MCP tools, and the writes are validated (they
-    # error on type mismatches rather than dropping silently). Direct .tscn
-    # edit remains permitted for the narrow cases the tools still cannot
-    # express (ext_resource reordering, metadata tweaks, corruption repair);
-    # never edit a .tscn while a run/playtest is active.
-    "**/*.tscn": allow
+    # Scene files: DENIED. All scene mutations go through the engine MCP
+    # tools (add_node, set_node_properties, batch_scene_operations, …) —
+    # validated writes, inline Resource construction since godot-mcp-runtime
+    # v3.2.5 (PR #32). A scene operation the tools cannot express is a
+    # "⛔ BLOCKED: tool cannot express <operation>" report, never a
+    # hand-edit (sanctioned-paths-only; permission-exception policy in the
+    # lint registry).
+    "**/*.tscn": deny
     # Harness/skill files are protected from runtime edits (AGENTS.md file-access
     # rules). Must come AFTER the allows — last matching rule wins. Covers both
     # repo paths (skills/...) and runtime symlinks (.opencode/skills/...).

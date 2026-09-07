@@ -30,8 +30,11 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   `_prepare_property_value`; 6 integration tests + full suite green.
   **RELEASED in v3.2.5** (upstream PR #32 merged, commits 670c842/8baf79e).
   `opencode.jsonc` repointed to `godot-mcp-runtime@3.2.5` (2026-09-07);
-  fork-branch pin retired. Residual task: finalize retirement of the
-  direct-`.tscn`-edit fallback guidance.
+  fork-branch pin retired. Retirement COMPLETE (2026-09-07): poppy's
+  `.tscn` edit permission narrowed to `deny` — zero invocations across
+  run 8 + capability released; the sanctioned-paths rules tightened to
+  "no alternative paths, not even invented ones" (permission exceptions
+  require observed evidence + expiry).
 - **Lifecycle:** filed → implemented → pushed to fork → PR #32 (green) →
   **released v3.2.5 → configs repointed → workaround retired.**
 - **Retire:** error contract retires the "verify the write landed on disk"

@@ -53,9 +53,12 @@
   rule: >
     Never offer an improvised alternative where a skill defines one
     sanctioned path; the correct outcome is a BLOCKED report, not a detour.
+    There is no alternative path — not even an invented one.
   audience: both
   scope: agents/**, skills/**
-  enforcement: llm-review
+  enforcement: both
+  check: engine_file_permissions
+  check-tier: tripwire
   notes: >
     No self-launching processes, no shell-based stand-ins for engine tools,
     no attaching/bypassing where the skill says launch. An unblocking hack
@@ -63,7 +66,11 @@
     outside the sanctioned path is not done. If the sanctioned path is
     genuinely wrong, fix the skill (harness-build), not runtime
     improvisation. Wording red flags: "if X fails, you can alternatively…",
-    "or fall back to…", "as a last resort, manually…".
+    "or fall back to…", "as a last resort, manually…". Permission-level
+    exceptions (frontmatter allow/deny) are the only sanctioned divergence,
+    and they require OBSERVED benchmark evidence of the need, a stated
+    scope narrower than the rule they soften, and an expiry condition —
+    hypothetical or inherited exceptions must be denied.
 
 - id: no-test-writes
   rule: >
@@ -182,11 +189,16 @@
   check: alt_path_wording
   check-tier: tripwire
   notes: >
-    Scoped exceptions stated WITH their reason are legal. Prohibition lines
-    ("never fall back", "no fallback") are legal. Domain splits with stated
-    reasons (e.g. batch vs individual tools by node count) are legal. The
-    BLOCKED escape hatch is legal. A scoped degradation with stated reason
-    (e.g. "return report inline when no write path exists") is legal.
+    Prohibition lines ("never fall back", "no fallback") are legal. Domain
+    splits with stated reasons (e.g. batch vs individual tools by node
+    count) are legal. The BLOCKED escape hatch is legal. A scoped degradation
+    with stated reason (e.g. "return report inline when no write path
+    exists") is legal. Textual fallback exits beyond BLOCKED are NOT legal:
+    an operation the tools cannot express is reported as
+    "⛔ BLOCKED: tool cannot express <operation>" — it is never routed to a
+    hand-edit path. Engine-file write permissions (frontmatter) must be
+    deny unless benchmark evidence shows a recurring, tool-inexpressible
+    operation class.
 
 - id: agent-agnostic-skills
   rule: >
