@@ -5,11 +5,11 @@
       "type": "local",
       // History: v3.2.4 shipped our PRs #28 (relative-projectPath, v3.2.3),
       // #29 (property type-validation) and #30 (progress heartbeats);
-      // v3.2.5 shipped PR #32 (inline Resource construction) — the fork-pin
-      // workaround for that feature is retired (lifecycle:
-      // docs/upstream-backlog.md). Contribution roadmap lives at
-      // plans/roadmap-godot-mcp-contributions/.
-      "command": ["npx", "-y", "godot-mcp-runtime@3.2.5"],
+      // v3.2.5 shipped PR #32 (inline Resource construction); v3.3.0 shipped
+      // #33 error diagnostics, #34 scene instancing, #35 batch promoted-params
+      // plus maintainer follow-ups — all fork pins for those retired
+      // (lifecycle: docs/upstream-backlog.md).
+      "command": ["npx", "-y", "godot-mcp-runtime@3.3.0"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
       // server's stderr into ~/.local/share/opencode/log/opencode.log —
