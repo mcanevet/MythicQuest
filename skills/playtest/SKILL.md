@@ -66,7 +66,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 3. **Verify invariants:** Report contains `violations[]` array and `metrics` dict. If `violations.is_empty()`, pass. Otherwise, take spot screenshots for each violation type for debugging.
 
-4. **Generate formatted report:** Convert JSON report to human-readable format per mode requirements.
+4. **Generate formatted report:** pipe the JSON report file through `./.opencode/skills/playtest/scripts/render_report.py <report.json>` (exit 1 if violations present).
 
 5. **Finish — teardown, or KEEP-RUNNING across consecutive verifications:** Default is `godot-mcp-runtime:stop_project()` + `godot-mcp-runtime:remove_autoload(autoloadName="TestPlayer")` so test infrastructure never ships. **Exception (engine reuse):** when the SAME task/session continues with another verification of the same project — e.g. fast-verify followed by scene-verify, or back-to-back scenarios on one scene — KEEP the engine running instead of tearing down: skip step 5's `stop_project`, and on the next verification skip step 1's re-registration and step 2's `run_project` entirely (the autoload is already registered; `start_test` resets all scenario state itself). Engine reuse eliminates a full boot + bridge handshake per extra verification (~15-30s wall + one `get_debug_output` health cycle each; 09-06 run measured ~2 boots per task, 29 boots in one run). **Mandatory restart overrides — a kept engine MUST be stopped and relaunched when ANY of these hold:**
    - **Any `.gd`/`.tscn`/`.godot` project file changed since the engine started** (script-staleness rule: Godot caches compiled bytecode; the live process reports stale errors at phantom line numbers — see the warning below)

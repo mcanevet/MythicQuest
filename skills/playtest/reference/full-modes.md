@@ -61,23 +61,13 @@ var report = await tp.await_test_done(max_wait_s = scenario_duration + 30)
 
 ### Step 3: Generate verification table
 
-Convert the JSON report into a human-readable format:
+Run the report renderer (deterministic — the JSON-to-table transform is script territory, not prose):
 
 ```
-## Functional Verification Report
-
-| Invariant | Status | Evidence |
-|----------|--------|----------|
-| No crash during 60s | ✅ PASS | No fatal errors in debug output (process-wide, external check) |
-| Physics stability | ✅ PASS | No NaN/Inf in position values (`nodes_finite`) |
-| FPS stability | ✅ PASS | p99 frame time = XXms (< 33.3ms threshold) |
-| Min FPS floor | ✅ PASS | Average FPS stayed above 30 (`fps_floor`) |
-| Input responsiveness | ✅ PASS | ChaosBot fired XXX inputs without hang |
-
-**Overall: PASS / FAIL**
-
-**Violations Found:** N (if any, see report for details)
+./.opencode/skills/playtest/scripts/render_report.py <report.json>
 ```
+
+It emits the standard table (Invariant | Status | Evidence rows for crash, physics stability, FPS p99, FPS floor, input responsiveness, plus one row per violation), an **Overall: PASS/FAIL** line, and the violation count. Exit code 1 when any violation is present. Columns present in `metrics` but not listed here are ignored; missing metrics simply omit their row.
 
 ### Success Criteria
 - Full scenario runs for specified duration (no premature exit)

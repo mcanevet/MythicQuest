@@ -12,7 +12,9 @@ permission:
   edit:
     # Type-scoped grants (least-privilege per file kind): game logic and
     # project config are file-type-wide because implementation touches
-    # arbitrary scenes/scripts/*.gd. Markdown writes are PATH-scoped to
+    # arbitrary scenes/scripts/*.gd — exercised in every shipped run (e.g.
+    # benchmarks/results/2026-09-06-rallywall-lumo-lite-medium-shipped.md,
+    # task 7's probe scripts among them). Markdown writes are PATH-scoped to
     # poppy's documented duties (backlog-grooming/log-result/playtest):
     # GAME_STATE.md, plans/**, README.md, reports/**.
     "GAME_STATE.md": allow

@@ -201,6 +201,29 @@
   scope: skills/**, agents/**
   enforcement: llm-review
 
+- id: prose-earns-place
+  rule: >
+    Instruction prose must be load-bearing: every step, checklist entry,
+    or caution prevents an observed failure, encodes non-obvious engine or
+    tool behavior, or calibrates judgment. Drop what is self-evident,
+    derivable from the tooling, or already structurally enforced by
+    permissions, scripts, or lint — the enforcement is the evidence; the
+    rest is noise that costs context on every skill read.
+  audience: both
+  scope: skills/**, agents/**
+  enforcement: llm-review
+  notes: >
+    Tests to apply per item: (1) does removing it enable a plausible
+    failure a competent agent would walk into without it? (2) is the fact
+    discoverable from the tool schema/result alone? (3) does a permission
+    rule or deterministic check already make the violation impossible?
+    Any yes to (2)/(3) or no to (1) → candidate for deletion. Calibrate
+    conservatively: calibration knowledge that a NEW model would lack
+    (e.g. throttle-artifact diagnosis) is load-bearing even if the
+    current model handles it; purely stylistic reminders ("be careful",
+    restatements of the rule itself) are not. Deletion candidates get
+    reported, not silently dropped.
+
 - id: sanctioned-paths-only
   rule: >
     Skills define the ONE sanctioned path per workflow phase. No fallback,

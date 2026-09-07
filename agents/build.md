@@ -12,8 +12,9 @@ permission:
   question: allow
   edit:
     # Least privilege: build's documented writes are GAME_STATE.md task lines
-    # (decomposition/retry bookkeeping) and the final COMPLETION_REPORT.md —
-    # see "Error Recovery" and Phase 5. Everything else is delegated.
+    # (decomposition/retry bookkeeping — every run exercises this; e.g. the
+    # attempt-counter protocol, 2026-09-06-rallywall-lumo-lite-medium-shipped.md)
+    # and the final COMPLETION_REPORT.md (Phase 5). Everything else is delegated.
     "GAME_STATE.md": allow
     "COMPLETION_REPORT.md": allow
     "*": deny
