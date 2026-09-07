@@ -11,14 +11,16 @@ permission:
   todowrite: allow
   question: allow
   edit:
+    # Catch-all FIRST — opencode's evaluate() uses findLast (last matching
+    # rule wins), so specific allows below override this default-deny.
+    "*": deny
     # Least privilege: build's documented writes are GAME_STATE.md task lines
     # (decomposition/retry bookkeeping — every run exercises this; e.g. the
     # attempt-counter protocol, 2026-09-06-rallywall-lumo-lite-medium-shipped.md)
     # and the final COMPLETION_REPORT.md (Phase 5). Everything else is delegated.
     "GAME_STATE.md": allow
     "COMPLETION_REPORT.md": allow
-    "*": deny
-    # Harness files are protected from runtime edits — last matching rule wins.
+    # Harness files stay protected — last matching rule wins, same semantics.
     # Covers repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
     ".opencode/**": deny
     "**/.opencode/**": deny

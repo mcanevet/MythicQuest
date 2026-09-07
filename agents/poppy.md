@@ -10,6 +10,9 @@ permission:
   todowrite: allow
   question: allow
   edit:
+    # Catch-all FIRST — opencode's evaluate() uses findLast (last matching
+    # rule wins), so specific rules below override this default-deny.
+    "*": deny
     # Type-scoped grants (least-privilege per file kind): game logic and
     # project config are file-type-wide because implementation touches
     # arbitrary scenes/scripts/*.gd — exercised in every shipped run (e.g.
@@ -40,10 +43,8 @@ permission:
     # hand-edit (sanctioned-paths-only; permission-exception policy in the
     # lint registry).
     "**/*.tscn": deny
-    # Catch-all baseline (least-privilege-permissions)
-    "*": deny
     # Harness/skill files are protected from runtime edits (AGENTS.md file-access
-    # rules). Must come AFTER the allows — last matching rule wins. Covers both
+    # rules). Last matching rule wins — same semantics, after allows. Covers both
     # repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
     ".opencode/**": deny
     "**/.opencode/**": deny
