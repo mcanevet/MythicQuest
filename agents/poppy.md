@@ -26,14 +26,22 @@ permission:
     "reports/**": allow
     "**/*.gd": allow
     "**/*.gdshader": allow
+    # Root-level files need BOTH forms: patterns are matched against the
+    # worktree-relative path, and "**/foo" compiles to "^.*/foo$" which
+    # requires a parent directory — it never matches a root-level "foo".
+    "project.godot": allow
     "**/project.godot": allow
     # Data/art sidecars written by documented skill steps: scenario JSONs
     # (create-scene-with-script Step 5c), placeholder art (setup-project
     # icon.svg, assets/*.svg), Godot .import sidecars, and .gitignore
-    # (extension-less — no type-scoped pattern matches it).
+    # (extension-less — no type-scoped pattern matches it). Bare forms
+    # cover root-level files (see note above; "**/x" misses root "x").
     "**/*.json": allow
+    "*.svg": allow
     "**/*.svg": allow
+    "*.import": allow
     "**/*.import": allow
+    ".gitignore": allow
     "**/.gitignore": allow
     # Scene files: DENIED. All scene mutations go through the engine MCP
     # tools (add_node, set_node_properties, batch_scene_operations, …) —
