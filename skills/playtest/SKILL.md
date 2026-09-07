@@ -60,7 +60,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 **Scenario-Based Execution** (replaces old simulate_input loop):
 
-1. **Ensure harness autoload:** `godot-mcp-runtime:list_autoloads(projectPath=".")` → if `TestPlayer` is not registered, call `godot-mcp-runtime:add_autoload(projectPath=".", autoloadName="TestPlayer", autoloadPath="scripts/test_player.gd")`. The harness script is created by `setup-project` (Step 3b) but deliberately NOT registered there. This start is idempotent — every mode (re)registers it here, and every mode unregisters it at Finish (step 5), so the harness never survives a mode run.
+1. **Ensure harness autoload:** `godot-mcp-runtime:list_autoloads(projectPath=".")` → if `TestPlayer` is not registered, call `godot-mcp-runtime:add_autoload(projectPath=".", autoloadName="TestPlayer", autoloadPath="scripts/test_player.gd")`. The harness script is created by `setup-project` (Step 3b) but deliberately NOT registered there. This start is idempotent — a cold start (re)registers it here, and teardown unregisters it (step 5), so the harness never survives a session. A KEPT engine (step 5 reuse) keeps the registration — check with `list_autoloads` and skip straight to `run_script` when the engine is already up and files unchanged.
 
 2. **Launch with retry:** `godot-mcp-runtime:run_project(scene=scene, background=true)` → `start_test(scenario)` (Godot autoload) → Godot runs autonomously at 60Hz → final report via `await tp.await_test_done()` inside the SAME `run_script` call → structured JSON report (see _Waiting for a scenario_ under fast-verify: one awaited call, never sleep-poll). Exception: vision/critique modes deliberately use the running window for spot screenshots between calls.
 
@@ -68,7 +68,12 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 4. **Generate formatted report:** Convert JSON report to human-readable format per mode requirements.
 
-5. **Finish:** `godot-mcp-runtime:stop_project()` then `godot-mcp-runtime:remove_autoload(autoloadName="TestPlayer")` so test infrastructure never ships. The next mode (if any) re-registers it at its own start (step 1), so unregistering here is always safe — do not skip it.
+5. **Finish — teardown, or KEEP-RUNNING across consecutive verifications:** Default is `godot-mcp-runtime:stop_project()` + `godot-mcp-runtime:remove_autoload(autoloadName="TestPlayer")` so test infrastructure never ships. **Exception (engine reuse):** when the SAME task/session continues with another verification of the same project — e.g. fast-verify followed by scene-verify, or back-to-back scenarios on one scene — KEEP the engine running instead of tearing down: skip step 5's `stop_project`, and on the next verification skip step 1's re-registration and step 2's `run_project` entirely (the autoload is already registered; `start_test` resets all scenario state itself). Engine reuse eliminates a full boot + bridge handshake per extra verification (~15-30s wall + one `get_debug_output` health cycle each; 09-06 run measured ~2 boots per task, 29 boots in one run). **Mandatory restart overrides — a kept engine MUST be stopped and relaunched when ANY of these hold:**
+   - **Any `.gd`/`.tscn`/`.godot` project file changed since the engine started** (script-staleness rule: Godot caches compiled bytecode; the live process reports stale errors at phantom line numbers — see the warning below)
+   - A different `scene` parameter is needed
+   - The next step is a DIFFERENT task's verification (teardown always happens before returning to the orchestrator — the running engine must never leak across `task()` boundaries; the Finish-at-return rule stands)
+   - The engine has crashed or an unrecovered error occurred
+   When in doubt whether a file changed: diff mtimes or just restart — a rebooted engine costs seconds; a stale-bytecode false verdict costs a REWORK cycle.
 
 > **If `godot-mcp-runtime:run_project` fails** (bridge timeout, "did not respond", or "process exited"): **Do NOT retry immediately.** Follow the run-recovery procedure in `./.opencode/skills/create-scene-with-script/reference/mcp-patterns.md` (_Error Recovery Pattern_): read `godot-mcp-runtime:get_debug_output()` first, kill and recycle the port, fix the root cause, then retry once. If it fails again with the same error, **STOP** and report to the caller: `⛔ BLOCKED: runtime phase failed after sanctioned recovery` — do not infinite loop, and **do not improvise workarounds** (self-launched Godot, `attach_project`, custom test hooks, shell-based runners). Happy-path-only: if the sanctioned path cannot verify, the result is a BLOCKED report, not an invented alternative.
 
@@ -112,7 +117,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
    })
    ```
 4. `get_test_report()` → if `violations.is_empty()`, PASS
-5. Finish: `stop_project()` + `remove_autoload` (Common Workflow step 5)
+5. Finish per Common Workflow step 5 — teardown OR keep-running if another verification of the same unchanged project follows immediately
 
 ### Waiting for a scenario: ONE awaited run_script, never sleep-poll
 

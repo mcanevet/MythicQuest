@@ -17,7 +17,7 @@ permission:
     # Scene files: RETAINED as a fallback only. Since godot-mcp-runtime
     # gained inline Resource construction (typed-dict {type: ClassName,
     # ...props} in set_node_properties/add_node — fork branch
-    # feat/inline-resource-construction, pending upstream release; see
+    # released upstream in v3.2.5 (PR #32); see
     # docs/upstream-backlog.md), Resource-typed properties and sub_resource
     # injection go through the MCP tools, and the writes are validated (they
     # error on type mismatches rather than dropping silently). Direct .tscn

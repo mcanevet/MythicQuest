@@ -3,17 +3,13 @@
   "mcp": {
     "godot-mcp-runtime": {
       "type": "local",
-      // TEMPORARY: pinned to the fork branch feat/inline-resource-construction
-      // (commit 617963a) to test inline Resource construction before opening a
-      // PR. REVERT CONDITION: revert to the published release
-      // (godot-mcp-runtime@>=3.3) as soon as the PR is merged and released —
-      // fork branch MUST NOT become a long-term dependency (lifecycle:
-      // docs/upstream-backlog.md, "inline Resource construction").
       // History: v3.2.4 shipped our PRs #28 (relative-projectPath, v3.2.3),
       // #29 (property type-validation) and #30 (progress heartbeats);
-      // contribution roadmap lives at
+      // v3.2.5 shipped PR #32 (inline Resource construction) — the fork-pin
+      // workaround for that feature is retired (lifecycle:
+      // docs/upstream-backlog.md). Contribution roadmap lives at
       // plans/roadmap-godot-mcp-contributions/.
-      "command": ["npx", "-y", "github:mcanevet/godot-mcp-runtime#feat/inline-resource-construction"],
+      "command": ["npx", "-y", "godot-mcp-runtime@3.2.5"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
       // server's stderr into ~/.local/share/opencode/log/opencode.log —

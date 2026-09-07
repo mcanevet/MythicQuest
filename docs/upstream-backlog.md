@@ -28,15 +28,12 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   scrubbed of project references) — typed-dict `{type: ClassName, ...props}` →
   ClassDB.instantiate → recursive validated inner-property assignment via
   `_prepare_property_value`; 6 integration tests + full suite green.
-  **Phase: user testing before PR.** `opencode.jsonc` temporarily pins the
-  fork branch (TEMPORARY marker + revert condition in the file) — revert to
-  a published release (`godot-mcp-runtime@>=3.3`) once merged and released,
-  then finalize retirement of the direct-`.tscn`-edit fallback guidance.
-- **Lifecycle:** filed → implemented → pushed to fork (awaiting user test →
-  PR) → release-pin pending → workaround-retirement mostly applied
-  (poppy permission comment, AGENTS.md rationale, and create-scene-with-script
-  guidance all point at the MCP path; residual direct-edit fallback retained
-  intentionally — remove if benchmarks show it unused).
+  **RELEASED in v3.2.5** (upstream PR #32 merged, commits 670c842/8baf79e).
+  `opencode.jsonc` repointed to `godot-mcp-runtime@3.2.5` (2026-09-07);
+  fork-branch pin retired. Residual task: finalize retirement of the
+  direct-`.tscn`-edit fallback guidance.
+- **Lifecycle:** filed → implemented → pushed to fork → PR #32 (green) →
+  **released v3.2.5 → configs repointed → workaround retired.**
 - **Retire:** error contract retires the "verify the write landed on disk"
   footgun; full Resource support retires poppy's .tscn-edit exception.
 
