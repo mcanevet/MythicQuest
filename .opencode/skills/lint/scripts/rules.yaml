@@ -49,6 +49,29 @@
   scope: agents/**
   enforcement: llm-review
 
+- id: least-privilege-permissions
+  rule: >
+    Agent frontmatter permissions must be least-privilege: grants scoped
+    to the narrowest path/type the agent's documented duties require, an
+    explicit deny baseline for everything else, and every deviation from
+    the deny baseline justified by an inline comment citing observed
+    evidence (a benchmark run or incident) plus the reason the narrow
+    grant exists.
+  audience: agents
+  scope: agents/**
+  enforcement: both
+  check: permission_deny_baseline
+  check-tier: tripwire
+  notes: >
+    Model: pootie's write block (reports/** only, "*": deny, inline
+    incident citation). Anti-model: "**/*.md": allow for an agent whose
+    only documented write is a single reports/ path — narrow it to that
+    path. Grants without a cited justification are presumptively too
+    broad. Deny-exempting skill helper scripts ("*scripts/*.sh*": allow)
+    is acceptable configuration with a comment. Read-only tools (read,
+    glob, grep, todowrite, question) don't need narrowing — the principle
+    bites on mutating tools (edit, write, bash) and MCP write patterns.
+
 - id: no-improvised-alternatives
   rule: >
     Never offer an improvised alternative where a skill defines one

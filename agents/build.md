@@ -11,7 +11,12 @@ permission:
   todowrite: allow
   question: allow
   edit:
-    "**/*.md": allow
+    # Least privilege: build's documented writes are GAME_STATE.md task lines
+    # (decomposition/retry bookkeeping) and the final COMPLETION_REPORT.md —
+    # see "Error Recovery" and Phase 5. Everything else is delegated.
+    "GAME_STATE.md": allow
+    "COMPLETION_REPORT.md": allow
+    "*": deny
     # Harness files are protected from runtime edits — last matching rule wins.
     # Covers repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
     ".opencode/**": deny
@@ -259,7 +264,7 @@ If the count < 3, proceed with retry.
 
 **Attempt counter (single source of truth):** `(attempt: N)` in the GAME_STATE.md task line counts *retries*, not total attempts. The initial delegation has **no** marker. **Before each retry, increment it**: write `(attempt: 1)` before the 1st retry, `(attempt: 2)` before the 2nd, `(attempt: 3)` before the 3rd. N = 3 is the last allowed retry — do not retry past it (see check 4 above and "After 3 failed retries"). **This applies to EVERY retry, not just structured `⛔ BLOCKED:` failures** — timeout/empty-result/step-down retries (a subagent timing out mid-task counts as a retry) must also bump the counter. Observed 09-03 (nemotron run): two consecutive task-session timeouts triggered decomposed retries that never wrote markers, leaving the circuit breaker blind while a task consumed ~4 attempts.
 
-**Reuse partial work (mandatory on retry):** before re-delegating, glob the plan's expected file paths — a timed-out subagent often leaves valid artifacts (scenes, scripts, plan files). Include them in the retry brief: "Prior attempt created `scenes/paddle.tscn` (validated OK) — read it and build on it; do not recreate from scratch." Also glob `plans/` — if the plan file already exists, tell the new session it's already claimed (`[in progress]` + plan link present) and to skip backlog-grooming entirely. Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
+**Reuse partial work (mandatory on retry):** before re-delegating, glob the plan's expected file paths — a timed-out subagent often leaves valid artifacts (scenes, scripts, plan files). Include them in the retry brief: "Prior attempt created the scene file at `<path>` (validated OK) — read it and build on it; do not recreate from scratch." Also glob `plans/` — if the plan file already exists, tell the new session it's already claimed (`[in progress]` + plan link present) and to skip backlog-grooming entirely. Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
 
 **After each retry:**
 1. Check if the returned text contains `error` / `FATAL` / `ran into repeated errors` / `⛔ BLOCKED:`.

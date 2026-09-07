@@ -72,6 +72,31 @@ check_alt_path_wording() {
 }
 
 # ---------------------------------------------------------------------------
+# check_permission_deny_baseline — every agent's mutating tool sections must
+# contain an explicit catch-all deny ("*": deny) (registry:
+# least-privilege-permissions; scope/narrowing judged semantically)
+# ---------------------------------------------------------------------------
+check_permission_deny_baseline() {
+  hits=""
+  for agent_md in agents/*.md; do
+    [ -f "$agent_md" ] || continue
+    for sect in edit write bash; do
+      if grep -q "^  ${sect}:" "$agent_md"; then
+        # Section body: from "  sect:" until the next two-space-indented key
+        body=$(awk "/^  ${sect}:/{flag=1;next} /^  [a-zA-Z_\"*-]+:/{flag=0} flag" "$agent_md")
+        if ! printf '%s\n' "$body" | grep -qE '^    "\*": deny'; then
+          hits="${hits}${agent_md}: ${sect} section lacks a catch-all \"*\": deny baseline\n"
+        fi
+      fi
+    done
+  done
+  if [ -n "$hits" ]; then
+    printf '%b' "$hits"
+    warn 'mutating tool sections need an explicit "*": deny baseline (least-privilege-permissions)'
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # check_engine_file_permissions — engine-generated artifacts (.tscn and
 # friends) must be permission-denied; MCP tools are the only write path
 # (registry: sanctioned-paths-only, no-improvised-alternatives)
@@ -242,6 +267,7 @@ check_genre_keywords
 check_agent_names_in_skills
 check_pkill_ban
 check_alt_path_wording
+check_permission_deny_baseline
 check_engine_file_permissions
 check_actor_wording
 check_observed_citation_resolvable

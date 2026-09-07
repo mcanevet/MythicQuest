@@ -10,7 +10,10 @@ permission:
   todowrite: allow
   question: allow
   edit:
-    "**/*.md": allow
+    # Least privilege: Ian's only documented file edit is the vision-evaluation
+    # report (Creative Evaluation Framework below). Everything else denied.
+    "reports/**": allow
+    "*": deny
     # Harness files are protected from runtime edits — last matching rule wins.
     # Covers repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
     ".opencode/**": deny
@@ -27,8 +30,14 @@ permission:
   task: deny
   skill: allow
   # Engine-specific MCP permissions — update these patterns for your engine
-  # Ian only runs genesis (no MCP needed) and playtest in vision mode (read-only
-  # observation — bots drive input, Ian never simulates input or mutates scenes).
+  # Ian only runs genesis (no MCP needed) and playtest in vision mode. These
+  # grants are the playtest skill's exact toolset (observed in use across
+  # vision-mode runs: 2026-09-05-rallywall-glm-medium-shipped.md,
+  # 2026-09-06-rallywall-lumo-lite-medium-shipped.md). run_script +
+  # add/remove_autoload are required because the playtest harness registers
+  # its TestPlayer autoload and drives scenarios via awaited run_script
+  # bodies. Ian never edits scenes or scripts directly: engine file edits are
+  # denied above, and scene mutation tools stay denied below.
   "godot-mcp-runtime_*": deny
   "godot-mcp-runtime_get_project_info": allow
   "godot-mcp-runtime_run_project": allow

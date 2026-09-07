@@ -10,9 +10,17 @@ permission:
   todowrite: allow
   question: allow
   edit:
+    # Type-scoped grants (least-privilege per file kind): game logic and
+    # project config are file-type-wide because implementation touches
+    # arbitrary scenes/scripts/*.gd. Markdown writes are PATH-scoped to
+    # poppy's documented duties (backlog-grooming/log-result/playtest):
+    # GAME_STATE.md, plans/**, README.md, reports/**.
+    "GAME_STATE.md": allow
+    "README.md": allow
+    "plans/**": allow
+    "reports/**": allow
     "**/*.gd": allow
     "**/*.gdshader": allow
-    "**/*.md": allow
     "**/project.godot": allow
     # Scene files: DENIED. All scene mutations go through the engine MCP
     # tools (add_node, set_node_properties, batch_scene_operations, …) —
@@ -22,6 +30,8 @@ permission:
     # hand-edit (sanctioned-paths-only; permission-exception policy in the
     # lint registry).
     "**/*.tscn": deny
+    # Catch-all baseline (least-privilege-permissions)
+    "*": deny
     # Harness/skill files are protected from runtime edits (AGENTS.md file-access
     # rules). Must come AFTER the allows — last matching rule wins. Covers both
     # repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
