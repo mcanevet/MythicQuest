@@ -147,27 +147,13 @@ flowchart TB
 ```
 
 **Key orchestration patterns:**
-1. **Three loops, one queue** — dev loop (Poppy), QA loop (Rachel), consumer loop (Pootie) all append tagged tasks (`bug:`, `vision:`, `critique:`) to the same `GAME_STATE.md` backlog instead of doing ad-hoc rework in their own sessions.
+1. **Four loops, one queue** — dev loop (Poppy), QA loop (Rachel), vision loop (Ian), consumer loop (Pootie) all append tagged tasks (`bug:`, `vision:`, `critique:`) to the same `GAME_STATE.md` backlog instead of doing ad-hoc rework in their own sessions.
 2. **Sequential OR parallel delegation** — Build agent tasks one subagent per session, spawning parallel subagent sessions only when the next 2-3 tasks are independent (no shared files, no interdependencies).
 3. **State-driven loop** — Reads `GAME_STATE.md` to determine next action.
 4. **Automatic retry** — If validation fails, task remains unchecked and gets retried (bounded by the 3-attempt circuit breaker).
 5. **Layered quality gates** — Rachel's zero-violation gate → Ian's vision gate → Pootie's consumer verdict. Each FAIL routes new tasks back into the queue.
 6. **Bounded outer loop** — A Pootie REWORK triggers a fix-and-replay cycle capped at 2; a third REWORK verdict is taste divergence and escalates to the human. The whole cycle is also bounded by the `agent.build.steps` structural iteration cap (`opencode.jsonc`).
 7. **Consumer loop is skippable** — benchmark operators can set `SKIP_CONSUMER_LOOP=true` (recorded in GAME_STATE.md); Phase 3 then ends after the vision gate and the completion report notes the skip.
-
-### Manual Mode (for testing individual skills)
-
-Skills are invoked by agents through the `skill` tool — there is no direct skill-invocation syntax. To exercise a single skill, prompt the agent to use it:
-
-```bash
-# Step-by-step control (prompts are natural language; the agent invokes the named skill):
-opencode run --agent ian "Use the genesis skill to create GAME_STATE.md for a small arcade game"
-opencode run --agent poppy "Use the setup-project skill"
-opencode run --agent poppy "Use the backlog-grooming skill on the current GAME_STATE.md"
-opencode run --agent poppy "Use the create-scene-with-script skill to implement the next planned scene"
-opencode run --agent poppy "Use the playtest skill in scene-verify mode"
-opencode run --agent poppy "Use the log-result skill for the current task"
-```
 
 ## Validation
 
