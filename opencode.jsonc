@@ -9,7 +9,16 @@
       // #33 error diagnostics, #34 scene instancing, #35 batch promoted-params
       // plus maintainer follow-ups — all fork pins for those retired
       // (lifecycle: docs/upstream-backlog.md).
-      "command": ["npx", "-y", "godot-mcp-runtime@3.3.0"],
+      //
+      // TEMPORARY local checkout pin (start 2026-09-08): local disk path to
+      // Erodenn/godot-mcp-runtime branch repro/ext-resource-id-collision
+      // @ a787f89 (includes d388852 — fix for silent data loss:
+      // set_node_properties on nodes inside an instanced child reported
+      // success but pack() dropped the override; tests 75/75 green).
+      // Pre-PR testing only. REVERT condition: replace with the published
+      // package version once the PR is merged and released (>= v3.3.1),
+      // then retire the entry in docs/upstream-backlog.md.
+      "command": ["node", "/Users/mcanevet/src/github.com/Erodenn/godot-mcp-runtime/dist/index.js"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP
       // server's stderr into ~/.local/share/opencode/log/opencode.log —
