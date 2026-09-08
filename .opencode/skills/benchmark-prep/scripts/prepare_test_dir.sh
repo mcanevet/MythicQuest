@@ -8,7 +8,9 @@
 #   <sandbox>/                    <- its own git repo (git init)
 #   └── .opencode/                <- git SUBMODULE -> this harness repo
 #       ├── agents/ skills/ opencode.jsonc    (checked out, not symlinked)
-#       └── node_modules/ + package.json       (godot-mcp-runtime, pinned)
+#       └── (no node_modules — MCP runtime comes from wherever
+#           opencode.jsonc's command points; currently a direct `node`
+#           invocation of the local fork checkout)
 #
 # The submodule pins the harness at current HEAD: the consumer repo's
 # history records WHICH harness commit a benchmark ran against.
@@ -23,9 +25,9 @@
 # Guarantees (idempotent — safe to run repeatedly):
 #   1. Sandbox wiped completely (disposable by contract) then rebuilt.
 #   2. .opencode submodule pinned to the CURRENT COMMITTED harness HEAD.
-#   3. npm state: node_modules lives INSIDE the submodule worktree; it is
-#      not tracked by either repo (submodule .gitignore), so it survives
-#      re-checkouts; --full-npm forces reinstall.
+#   3. MCP runtime: resolved by opencode.jsonc's `command` (currently a
+#      direct node invocation of the local fork checkout — verified below;
+#      former npm-install step retired when the pin moved to local disk).
 #   4. Fresh consumer git repo with readable history pinning the harness SHA.
 #   5. Leftover engine processes killed via stop_engine.sh (never pkill —
 #      lint check 8).
@@ -85,19 +87,10 @@ git -C "$TEST_DIR" add .opencode
 git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
   commit -qm "chore: pin harness @ ${HEAD_SHA:0:8} (.opencode submodule)"
 
-EXCL_DONE=0
 GD=$(git -C "$OC" rev-parse --absolute-git-dir)
 if ! grep -qx 'node_modules' "$GD/info/exclude" 2>/dev/null; then
   mkdir -p "$GD/info"
   printf 'node_modules/\npackage-lock.json\npackage.json\n' > "$GD/info/exclude"
-  EXCL_DONE=1
-fi
-if [ "$EXCL_DONE" -eq 1 ] || [ ! -d "$OC/node_modules/godot-mcp-runtime" ]; then
-  if [ ! -f "$OC/package.json" ]; then
-    printf '{\n  "private": true,\n  "dependencies": {\n    "godot-mcp-runtime": "3.2.4"\n  }\n}\n' > "$OC/package.json"
-  fi
-  (cd "$OC" && npm install --no-audit --no-fund) ||
-    printf 'prepare_test_dir.sh: npm install failed — run: (cd %s && npm install)\n' "$OC" >&2
 fi
 
 # Verification — fail loudly rather than let a session start broken
@@ -105,8 +98,34 @@ fi
   fail "submodule checkout incomplete ($OC/agents|skills|opencode.jsonc missing)"
 [ "$(git -C "$OC" rev-parse HEAD)" = "$HEAD_SHA" ] ||
   fail "submodule HEAD drifted from harness HEAD"
-[ -d "$OC/node_modules/godot-mcp-runtime" ] ||
-  fail "godot-mcp-runtime missing — run: (cd $OC && npm install)"
+# MCP runtime verification: resolve the command from opencode.jsonc's
+# godot-mcp-runtime entry and prove the server entrypoint + the
+# instanced-child serialization fix are actually present on disk.
+MCP_CMD=$(python3 - "$OC/opencode.jsonc" << 'PYEOF'
+import json, re, sys
+raw = re.sub(r'^\s*//.*$', '', open(sys.argv[1]).read(), flags=re.M)
+raw = re.sub(r',\s*([\]}])', r'\1', raw)
+cfg = json.loads(raw)
+print(' '.join(cfg["mcp"]["godot-mcp-runtime"]["command"]))
+PYEOF
+) || fail "could not parse mcp command from opencode.jsonc"
+# shellcheck disable=SC2086
+read -r -a MCP_PARTS <<< "$MCP_CMD"
+N=${#MCP_PARTS[@]}
+[ "$N" -ge 2 ] || fail "mcp command too short: $MCP_CMD"
+ENTRY="${MCP_PARTS[$((N-1))]}"
+case "$ENTRY" in
+  /*) ;;                                  # absolute path — use as-is
+  *) ENTRY="$OC/$ENTRY" ;;                # relative — resolve against sandbox
+esac
+[ -f "$ENTRY" ] ||
+  fail "MCP entrypoint missing: $ENTRY (build the checkout it points at)"
+# Fix marker lives in the GDScript operation source, not the bundled JS
+# (node pin → dist/scripts sits beside dist/index.js).
+GD_SRC="$(dirname "$ENTRY")/scripts/godot_operations.gd"
+[ -f "$GD_SRC" ] || fail "godot_operations.gd missing beside entrypoint: $GD_SRC"
+grep -q '_claim_for_serialization' "$GD_SRC" ||
+  fail "MCP checkout lacks the instanced-child serialization fix (_claim_for_serialization not in $GD_SRC) — rebuild the MCP checkout"
 git -C "$TEST_DIR" status --porcelain | grep -q . &&
   fail "unexpected dirty files in $TEST_DIR (node_modules should be gitignored)"
 
