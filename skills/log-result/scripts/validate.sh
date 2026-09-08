@@ -5,6 +5,9 @@
 set -e
 
 TASK_ID="${1:-}"
+# Strip leading zeros (e.g. "06" -> "6"): GAME_STATE task numbering is unpadded,
+# and grep -E treats 06 literally (run 10: an agent burned a diagnostic cycle on this)
+TASK_ID=$(echo "$TASK_ID" | sed 's/^0*//' )
 errors=0
 
 echo "=== Log-Result Validation ==="

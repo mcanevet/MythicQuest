@@ -127,6 +127,58 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Status:** not filed; harness workaround codified in agents/build.md
   (silent-death respawn protocol, run-9-validated).
 
+### No subagent wall-clock cap or progress heartbeat
+- **Observed:** 09-07 run 10 (CoilUp): root blocked on one `task()` for 4h58m
+  while the child spun in a timeout ladder — zero visibility for the
+  orchestrator, and a 7h run where 70% was one wedged subagent.
+- **Proposed upstream fix:** per-task wall-clock budget (configurable) that
+  interrupts with a truncation signal the subagent can see, or a
+  progress-notification channel subagents can emit so an orchestrator can
+  distinguish "slow but progressing" from "spinning".
+- **Status:** not filed; harness workaround is the skill-level timeout budget
+  (mcp-patterns.md transport-wedge rules).
+
+### `edit * deny` also governs `write` (unnamed in denial payload)
+- **Observed:** run 10: root's `write` of a critique report denied by an
+  `edit`-scoped `*: deny`; error text says "a rule prevents this tool call"
+  without naming WHICH tool's scope matched, and the doc distinction between
+  `edit` (all file modifications, incl. write/patch) and the tool named
+  `edit` is implicit. Cost: one lost artifact (recovered manually).
+- **Proposed upstream fix:** permission denial messages should name the
+  resolved permission key (`edit`) and the triggering pattern; ideally map
+  write-tool denials to a "file write" category distinct from diff-edits.
+- **Status:** not filed; harness-side documented in agents' permission
+  comments + run-10 report (permission saga section).
+
+## godot-mcp-runtime (next: transport wedge)
+
+### run_script timeout conflates "game not running" with "engine unresponsive"
+- **Observed:** 09-07 run 10 (CoilUp): after a successful scenario call,
+  every subsequent `run_script` timed out — including trivial
+  `return {"ok": true}` probes — while `get_debug_output` kept succeeding on
+  the same process (engine alive, bridge listening, clean logs) across 18
+  stop_project/run_project cycles. The canned error "Is the game running?"
+  sent a capable agent into a 4h58m restart ladder (17× 600s waits).
+- **Root cause (confirmed post-run):** host memory pressure — the machine
+  ran critically low on RAM (user saw the "system ran out of memory" dialog;
+  jetsam diagnostics: godot ~900MB, multiple opencode processes ~3.2GB,
+  8GB compressed). macOS suspends processes under pressure; a suspended
+  engine keeps its bridge socket bound and stdio readable but never services
+  RPC — exactly the observed get_debug_output-works/run_script-hangs split.
+  Engine restarts can't fix a starved host.
+- **Proposed upstream fixes:**
+  1. Diagnostic split: when a probe times out but the engine process is alive
+     and the bridge port is bound, classify the error as
+     "engine unresponsive (possibly suspended by the OS — check host
+     resource pressure)" instead of "Is the game running?".
+  2. Health pre-check: before attributing a timeout to the game, the server
+     could check whether the engine process is in a suspended state
+     (`ps` state T / macOS appnap) and report that.
+- **Status:** not filed; agent-side bail-fast protocol deployed
+  (create-scene-with-script/reference/mcp-patterns.md _Engine/transport
+  unresponsive_, playtest SKILL.md gotcha, debug-harness failure-modes
+  entry).
+
 ## Providers
 
 ### Watchdog for verbose-generation brain-death

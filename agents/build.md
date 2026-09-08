@@ -20,6 +20,12 @@ permission:
     # and the final COMPLETION_REPORT.md (Phase 5). Everything else is delegated.
     "GAME_STATE.md": allow
     "COMPLETION_REPORT.md": allow
+    # QA-report persistence: subagents write their own reports, but a subagent
+    # whose session lacked a write path returns its critique inline only — the
+    # orchestrator must preserve it as a file rather than drop it (run 10:
+    # consumer critique lost as an artifact when the write was denied). Narrow
+    # grant: new report files only, never overwriting existing ones.
+    "reports/consumer-*.md": allow
     # Harness files stay protected — last matching rule wins, same semantics.
     # Covers repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
     ".opencode/**": deny
@@ -301,7 +307,7 @@ task({
 })
 ```
 
-**Report handling (token economy):** subagents' verification/QA outputs (playtest reports, QA pass/fail tables, critique blocks) can be long. Delegation prompts for QA-type tasks must instruct: write the full report to `reports/<description>.md` in the project, and return ONLY a verdict line (PASS/FAIL + violation count + one-sentence cause for any FAIL) plus the report path. Read the report file only when the verdict indicates failure or you need evidence for a decision. Returning full reports in the task result accumulates them in your context across the whole run — with 14+ tasks this compounds to a significant fraction of root-session tokens.
+**Report handling (token economy):** subagents' verification/QA outputs (playtest reports, QA pass/fail tables, critique blocks) can be long. Delegation prompts for QA-type tasks must instruct: write the full report to `reports/<description>.md` in the project, and return ONLY a verdict line (PASS/FAIL + violation count + one-sentence cause for any FAIL) plus the report path. Read the report file only when the verdict indicates failure or you need evidence for a decision. Returning full reports in the task result accumulates them in your context across the whole run — with 14+ tasks this compounds to a significant fraction of root-session tokens. **If a subagent returns a full report inline because it could not write the file** (missing write path), do not drop the artifact: persist it yourself to `reports/consumer-<name>.md` (your permission config grants exactly that pattern) before moving on — an unwritten QA report is lost institutional memory (run 10: the consumer critique survived only as quoted text inside COMPLETION_REPORT.md).
 
 **Evaluate the returned text:**
 - If it contains `CRITICAL_ERROR`, `BLANK_SCREEN`, or `FATAL` → Decompose the milestone into smaller foundational tasks. Write new entries to `GAME_STATE.md` prioritizing the root cause. Stop further development until the foundational issue is resolved. Do NOT proceed to the next task.

@@ -125,6 +125,18 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 4. Retry once. If same error → **STOP** and report to caller: `⛔ BLOCKED: runtime phase failed after sanctioned recovery (debug → stop_engine → fix → retry). Do not self-launch Godot or use attach_project.`
    - **DO NOT invent workarounds**: manual launch scripts, `attach_project`, custom validation hooks, shell-based test runners, or "background mode" hacks. These look equivalent but bypass the sanctioned verification path (no captured debug output, unsanctioned infra; mimo run 5, Task 11 subagent built tmp launch/kill scripts and attached-mode tested after 4 bridge timeouts instead of reporting BLOCKED).
 
+**⚠️ Engine/transport unresponsive — recognize it and bail FAST (run 10, 09-07 CoilUp: cost 4h58m).**
+
+Signature: `get_debug_output()` **succeeds** (engine process alive, logs clean, McpBridge listening) while `run_script` **times out on a trivial probe** (`return {"ok": true}`) — and keeps timing out across engine restarts. This is NOT "is the game running?" (the tool error says that; it is lying) and NOT a game bug (the game code is irrelevant to a probe that never reaches the engine). The likely root cause observed in run 10: **host memory pressure** — macOS suspends/throttles the engine process under RAM exhaustion (a 900MB Godot + multiple opencode processes + browser will do it); a suspended process keeps its socket bound and its stdio readable but never services RPC. Engine restarts cannot fix a starved host, so every cycle is pure waste.
+
+Hard rules:
+1. Probe ONCE with a trivial script (small timeout, ≤30s). If it times out while `get_debug_output` works → declare the wedge.
+2. **Escalation ladder is capped at ONE restart cycle**: stop_engine → run_project → one more trivial probe. Still wedged → `⛔ BLOCKED: MCP bridge/engine unresponsive (get_debug_output OK, run_script probes time out across restart). Likely host resource exhaustion — a fresh subagent or engine restart will inherit the same condition. Do not retry; do not restart the engine again.`
+3. **Cumulative timeout budget: 5 minutes per verification phase.** Sum your `timeout` parameters. Past budget → BLOCKED per (2). Escalating timeout sizes (60s → 120s → 600s …) is sunk-cost spiral, not diagnosis: observed 17× 600s waits = 2.8h of pure waiting in run 10.
+4. One documented recovery worth a single try before BLOCKED: `remove_autoload` TestPlayer → stop_engine → run_project → probe (run 10 tasks 12–13 escaped in minutes this way — though this may reflect eased host pressure rather than the unload itself).
+
+Why this must be mechanical, not judgment: the per-call error message ("Is the game running? Check get_debug_output…") always suggests an actionable next step, so every retry feels justified individually. Prose stopping conditions fail exactly when errors look recoverable but aren't. Count restarts, not reasons.
+
 > ⚠️ **Critical — never invoke pkill directly:** `npx godot-mcp-runtime` (the
 > MCP server) contains "godot" in its command line, so any pattern broader than
 > the exact engine invocation kills it — permanently, since no auto-reconnect
