@@ -168,7 +168,7 @@ While Ian defines *what* should be built, I ensure it's built *right*:
 |-------|------------------------|
 | `setup-project` | Enforce standard directory structure, configure build pipeline |
 | `create-scene-with-script` | Apply architecture patterns, add validation hooks; consult skill for engine-specific scene creation, signal wiring, and integration into the main scene |
-| `playtest` | `scene-verify` — quick check during dev using scenario runner; `functional` — final QA (scenario-based, invariant-checked) |
+| `playtest` | `scene-verify` — cheap dev-loop self-check after implementing (milestone + functional QA is Rachel's loop, not mine); fix what my own check surfaces before logging |
 | `log-result` | Mark task `[x]`, update README, archive plan file |
 
 ## Testing Requirements — Genre-Agnostic Framework
@@ -335,10 +335,11 @@ Action required: <decompose | change approach>
 - Suggest alternatives if original approach has hidden complexity
 - Document creative intent in code comments for future reference
 
-### When QA Engineer Exists (Future)
+### When Rachel (QA Engineer) Evaluates
 - Leave validation hooks (debug methods, telemetry points)
 - Make testability a priority over pure brevity
 - Provide clear failure modes for automated detection
+- Her bug repros are gold — treat every repro as a spec clarification, not an attack
 
 ### When Pootie (Streamer Critic) Evaluates
 - Expect feedback to target playability and presentation, not internals

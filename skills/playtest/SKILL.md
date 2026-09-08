@@ -42,7 +42,7 @@ If this returns an error or times out → **FAIL IMMEDIATELY**. Report "MCP brid
 |------|------|---------|----------------|
 | **functional** | After all tasks complete | Verify every mechanic works per spec | Scenario runner + invariant checker (automated, no screenshots needed unless violation) |
 | **vision** | After functional passes | Does it match the creative vision? | Long-form scenario with pursuit/replay bot, 6-8 evenly spaced screenshots across the run |
-| **critique** | After vision passes | Is it fun? Would players care? | 120s replay/chaos playback, 8-10 evenly spaced screenshots grounding the narration |
+| **critique** | After functional QA + vision gates pass | Is it fun? Would players care? | Agent-driven free play: the executing agent controls inputs themselves via `simulate_input` at their own pace; screenshots at moments of their choosing |
 
 For quick dev checks during implementation, use `scene-verify` (launches single scene, runs chaos scenario, returns invariant report).
 
@@ -62,7 +62,7 @@ The framework uses genre-agnostic bots (chaos, pursuit, replay, nav_agent) and i
 
 1. **Ensure harness autoload:** `godot-mcp-runtime:list_autoloads(projectPath=".")` → if `TestPlayer` is not registered, call `godot-mcp-runtime:add_autoload(projectPath=".", autoloadName="TestPlayer", autoloadPath="scripts/test_player.gd")`. The harness script is created by `setup-project` (Step 3b) but deliberately NOT registered there. This start is idempotent — a cold start (re)registers it here, and teardown unregisters it (step 5), so the harness never survives a session. A KEPT engine (step 5 reuse) keeps the registration — check with `list_autoloads` and skip straight to `run_script` when the engine is already up and files unchanged.
 
-2. **Launch with retry:** `godot-mcp-runtime:run_project(scene=scene, background=true)` → `start_test(scenario)` (Godot autoload) → Godot runs autonomously at 60Hz → final report via `await tp.await_test_done()` inside the SAME `run_script` call → structured JSON report (see _Waiting for a scenario_ under fast-verify: one awaited call, never sleep-poll). Exception: vision/critique modes deliberately use the running window for spot screenshots between calls.
+2. **Launch with retry:** `godot-mcp-runtime:run_project(scene=scene, background=true)` → `start_test(scenario)` (Godot autoload) → Godot runs autonomously at 60Hz → final report via `await tp.await_test_done()` inside the SAME `run_script` call → structured JSON report (see _Waiting for a scenario_ under fast-verify: one awaited call, never sleep-poll). Exception: vision mode deliberately uses the running window for spot screenshots between calls; critique mode additionally drives input interactively (the critic plays).
 
 3. **Verify invariants:** Report contains `violations[]` array and `metrics` dict. If `violations.is_empty()`, pass. Otherwise, take spot screenshots for each violation type for debugging.
 
@@ -203,7 +203,7 @@ These run **once per game** (after all tasks complete), not per task — not bef
 
 - **functional** — exhaustive mechanic verification: collect per-entity invariants via `glob("tests/scenarios/*.json")` + `read()`, apply the counter sanity gate (every game-economy counter needs a `max_delta_per_sec` rate invariant — a counter without a rate invariant is an unverified counter), then run a 60s chaos scenario with merged invariants. `start_test` returns immediately; the simulation runs autonomously between MCP calls.
 - **vision** — creative-alignment check: 90s pursuit-bot observation, 6-8 evenly spaced screenshots (`responseMode: "preview"`) analyzed with the template above, rate each vision element ✅/⚠️/❌.
-- **critique** — player-experience evaluation: 120s replay/chaos session, 8-10 evenly spaced screenshots, first-person present-tense narration grounded in captures; read README.md only, never sources.
+- **critique** — player-experience evaluation: the executing agent launches the game and drives it with **their own simulated inputs** (no scenario harness, no bots — `Input.is_action_pressed`-style polled controls are the reliably drivable pattern; see gotcha below), playing at a natural consumer pace for roughly 2-3 minutes; screenshots at moments of the agent's choosing; first-person present-tense narration grounded in captures; per the executing agent's role, README.md may be the only context consulted — never sources.
 
 Full workflows, scenario configs, and report templates: [reference/full-modes.md](reference/full-modes.md).
 

@@ -148,39 +148,47 @@ Analyze the returned data:
 
 ## Mode: critique
 
-**When:** After vision mode passes
-**Precondition:** TestPlayer autoload registered (see Common Workflow)
+**When:** After the functional-QA and vision gates both pass
+**Precondition:** none beyond a launchable project — the critic needs no TestPlayer harness (playing it yourself IS the test)
 **Purpose:** Consumer evaluation — is it beautiful, is it fun, would a real player care?
 
 ### Step 1: Read README.md only (controls, rules, scoring, game flow, art style)
 
 Never read source files, scene files, or GAME_STATE.md.
 
-### Step 2: Launch with extended play scenario
+### Step 2: Launch the game and play it yourself
 
-```gdscript
-start_test(scenario={
-    "scenario_id": "critique_playthrough",
-    "duration_s": 120,
-    "bot": {
-        "type": "replay",  # use only when a recorded input session exists; otherwise use "chaos"
-        "inputs": []  # Optional: array of {frame, action, pressed} entries
-    },
-    "invariants": [
-        { "name": "no_crash", "rule": "no_fatal_errors" }
-    ]
-})
-```
+No scenario harness, no bot, no invariants — launch the project and drive it
+with your own simulated inputs at a natural consumer pace for roughly 2-3
+minutes. This is the entire point of the mode: the executing agent's hands
+on the controls, not a harness replaying canned inputs.
 
-### Step 3: Play session (120 seconds) — two parts
+Reliable input-driving patterns (the synthetic-input gotcha applies — see
+SKILL.md Common Workflow):
+- `simulate_input` key/action events for `Input.is_action_pressed`-polled
+  controls (press + wait ~2 frames + release, in sequence, at your own pace)
+- `Input.parse_input_event` probes for menu/restart handlers
+- Pause between inputs and take screenshots at moments YOU choose —
+  significant or suspicious — grounded in what you actually observe
 
-Critique has two distinct jobs, done in order. **Part A observes the game as a consumer; Part B gates failure claims before they reach the verdict.** A critique that skips Part B risks REWORK-ing a working game (observed 09-04, qwen run: three consecutive REWORK verdicts, all harness-path artifacts); a critique that skips Part A loses the consumer lens and reduces to functional testing.
+If controls genuinely don't respond to either input path, that's an
+observation for the report — see Part B before calling it a bug.
 
-#### Part A: Observation run (sampled screenshots)
+### Step 3: Play session — two parts
 
-`start_test` returns immediately and playback runs at 60Hz. **Capture 8-10 screenshots evenly spaced (~one every 12-15s)** — don't wait for "noteworthy moments" (you can't know what's noteworthy without seeing it first; with sparse sampling you'll miss the moment anyway). Use `responseMode: "preview"` to keep token cost down. Ground your narration in what you actually see from these captures; if a screenshot shows something interesting, mention it in first-person present tense. Extra captures without full analysis are acceptable and available for debugging.
+Critique has two distinct jobs, done in order. **Part A plays the game as a consumer; Part B gates failure claims before they reach the verdict.** A critique that skips Part B risks REWORK-ing a working game (observed 09-04, qwen run: three consecutive REWORK verdicts, all harness-path artifacts); a critique that skips Part A loses the consumer lens and reduces to functional testing.
 
-Narrate what you see — pacing, feel, readability, "would I keep playing". Screenshots here may show symptoms (stuck screens, dead overlays) — record them as *observations*, not verdicts.
+#### Part A: Your own playthrough (chosen-moment screenshots)
+
+You ARE the player — hands on, natural pace, narrating live. Screenshots at
+moments you choose (roughly 6-10 over the session; trust your judgment for
+what's significant). Use `responseMode: "preview"` to keep token cost down.
+Ground your narration in what you actually saw and did; first-person present
+tense.
+
+Narrate what you see — pacing, feel, readability, "would I keep playing".
+Screenshots here may show symptoms (stuck screens, dead overlays) — record
+them as *observations*, not verdicts.
 
 #### Part B: Probe gate for failure claims (mandatory)
 
@@ -194,7 +202,7 @@ If the probe confirms the behavior (game state genuinely doesn't respond), it is
 
 Failure claims that appear in a verdict without a Part B probe are invalid on review.
 
-At each significant moment, note how a player experiences it (first-person, present tense), grounded in what actually happened:
+At each significant moment, note how you experienced it while playing (first-person, present tense), grounded in what actually happened:
 
 ```
 **Player reactions:** [reaction keyed to events, present tense]
@@ -224,8 +232,8 @@ At each significant moment, note how a player experiences it (first-person, pres
 If game crashes: stop immediately, hand off with abort reason and violation details.
 
 ### Success Criteria
-- 120-second play session completes (or game over/crash)
-- 8-10 screenshots taken across the session, narration grounded in what they show
+- 2-3 minute self-driven play session (or game over/crash) — inputs issued by the critic, not a bot
+- 6-10 screenshots at the critic's chosen moments, narration grounded in what they show
 - All six critique sections produced (incl. Probe results)
 - Every failure claim in the verdict backed by a Part B probe
 - Verdict reported in task result

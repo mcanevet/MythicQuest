@@ -11,14 +11,16 @@ permission:
   question: allow
   edit:
     # Least privilege: Ian edits exactly two artifact classes:
-    # 1. the vision-evaluation report (Creative Evaluation Framework below)
+    # 1. the vision-evaluation report (Creative Evaluation Framework below,
+    #    written to reports/vision-*.md — the narrowed pattern below matches
+    #    exactly that documented surface)
     # 2. genesis outputs — GAME_STATE.md + README.md at project root
     #    (the genesis skill's documented deliverables, which Ian executes).
     # Everything else denied.
     # Catch-all FIRST — last matching rule wins (opencode permission
     # evaluate() uses findLast), so specific allows placed after it override.
     "*": deny
-    "reports/**": allow
+    "reports/vision-*.md": allow
     "GAME_STATE.md": allow
     "README.md": allow
     # Harness files stay protected: same last-match-wins semantics, after allows.
@@ -249,10 +251,10 @@ When creative expectations aren't met:
 - Push back if polish requirements ignored
 - Celebrate when unexpected magic emerges
 
-### When QA Engineer Exists (Future)
+### When Rachel (QA Engineer) Evaluates
 - Provide creative test criteria ("Does this feel satisfying?")
-- Value their fresh-player perspective
-- Use their reports to calibrate difficulty/pacing
+- Value her fresh-player perspective
+- Use her design-concern escalations to calibrate difficulty/pacing — she routes them to me on purpose
 
 ### When Pootie (Streamer Critic) Evaluates
 - Distinguish: I define the vision, they evaluate the finished product as a consumer
