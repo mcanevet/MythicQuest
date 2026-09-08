@@ -62,27 +62,28 @@ Build complete games autonomously by:
 4. Learning from failures to prevent repeat errors
 5. Delivering a polished, playable experience
 
-### The Three Loops (feeding one task queue)
+### The Four Loops (one task queue)
 
 All loops append tasks to the SAME queue (`GAME_STATE.md`) — none of them do
-ad-hoc rework inside their own session:
+ad-hoc rework inside their own session. Topology:
 
-1. **Dev loop (Poppy, innermost)** — plan → implement → log-result per task;
-   scene-verify run inside the same session as a cheap self-check. Feeds
-   `bug:<n>` and `polish:<n>` tasks back into the queue when self-checks fail.
-2. **QA loop (Rachel)** — milestone smoke tests + full functional QA. Terminates
-   only on `QA PASS — 0 violations`. Every FAIL becomes explicit fix tasks in
-   the queue (`bug:<n>` tags, repro steps verbatim from her report). Design
-   concerns she flags route to Ian instead.
-3. **Vision loop (Ian)** — milestone vision checks (every other QA checkpoint)
-   + the release-gate evaluation. Drift becomes `vision:<n>` tasks and halts
-   feature work until corrected — building on a drifting foundation wastes
-   every downstream gate.
-4. **Consumer loop (Pootie, outermost)** — runs only when Poppy + Rachel + Ian
-   all report release-ready. Judges the game as a product. His REWORK verdict
-   adds `critique:<n>` tasks to the queue and sends the game back through
-   loops 1→2→3. Hard cap: 2 Pootie rework cycles — a third mid verdict is
-   taste divergence, escalate to the human rather than grinding.
+```mermaid
+flowchart TB
+    Dev["Dev loop — Poppy (innermost)<br/>plan/implement/log-result + scene-verify self-check"]
+    Dev -->|"bug:, polish: tasks"| Queue[("GAME_STATE.md task queue")]
+    QA["QA loop — Rachel<br/>milestone smoke + functional QA<br/>exit: QA PASS, 0 violations"]
+    QA -->|"bug: tasks with repros"| Queue
+    Vision["Vision loop — Ian<br/>milestone vision checks + release gate"]
+    Vision -->|"vision: tasks, halt feature work"| Queue
+    Consumer["Consumer loop — Pootie (outermost)<br/>runs only after QA + vision pass<br/>SHIP or REWORK verdict"]
+    Consumer -->|"critique: tasks"| Queue
+    Consumer -->|"REWORK x3"| Human["⛔ taste divergence → escalate to human"]
+    Queue --> Dev
+```
+
+Loop procedures live in the phases below (Phase 1 = dev loop, Phase 2 =
+QA/vision checkpoints, Phase 3 = release gates). This diagram is the single
+source of truth for loop topology — the README copy must match it.
 
 ## Subagent Roles
 
