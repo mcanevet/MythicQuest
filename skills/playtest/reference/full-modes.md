@@ -72,6 +72,10 @@ Run the report renderer (deterministic — the JSON-to-table transform is script
 
 It emits the standard table (Invariant | Status | Evidence rows for crash, physics stability, FPS p99, FPS floor, input responsiveness, plus one row per violation), an **Overall: PASS/FAIL** line, and the violation count. Exit code 1 when any violation is present. Columns present in `metrics` but not listed here are ignored; missing metrics simply omit their row.
 
+### Post-report diagnostics: batch your probes
+
+When violations appear and you need follow-up probes (`run_script` state queries, targeted restarts, input tests), **plan them as one batch before touching the engine**, then execute each probe as a single self-contained `run_script` (reset/reload state inside the script body before sampling — see the background-throttle gotcha). Serial one-question-per-call probing is the known cost sink: run 11's functional QA spent 14 `run_script` + engine round-trips across 36 turns for ~21 minutes (benchmarks/results/2026-09-08-rallywall-lumo-max-medium-shipped-run11.md) — equivalent batched probes complete in a fraction of the wall time. Each `run_script` body can gather arbitrary state (query multiple nodes, sample multiple properties, drive input and then sample) and return it as one dictionary; only script-size judgment limits the batch. Probe-budget rules from SKILL.md still apply per violation group.
+
 ### Success Criteria
 - Full scenario runs for specified duration (no premature exit)
 - Invariant checker evaluates all declared properties
@@ -189,6 +193,16 @@ tense.
 Narrate what you see — pacing, feel, readability, "would I keep playing".
 Screenshots here may show symptoms (stuck screens, dead overlays) — record
 them as *observations*, not verdicts.
+
+**Observation honesty (mandatory):** every fact you narrate or flag — scores,
+rally counts, on-screen text, colors — must come from a screenshot or probe
+output you actually inspected in this session. NEVER infer state ("the score
+probably incremented", "rally 12 by now") from elapsed time or expected game
+behavior and present it as observed. If a fact matters to your critique but
+you didn't capture it, say so explicitly ("score display not captured —
+couldn't verify") rather than filling the gap. Fabricated observations poison
+the REWORK gate downstream: an inferred "bug" can trigger a rebuild of working
+code. Signature (run 11, benchmarks/results/2026-09-08-rallywall-lumo-max-medium-shipped-run11.md): background-mode idle advance to GAME_OVER between MCP calls meant every screenshot showed the post-game default — seeding a false "HUD stuck at 0" verdict claim; the functional-QA probe evidence contradicted it, caught only by root cross-check. An honest "HUD unverified — captures all post-game" note would have cost nothing.
 
 #### Part B: Probe gate for failure claims (mandatory)
 
