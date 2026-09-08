@@ -377,3 +377,34 @@
   enforcement: lint
   check: embedded_gdscript_parse
   check-tier: exact
+
+- id: incident-narrative-minimalism
+  rule: >
+    Harness documents record incident failure knowledge as protocol, not
+    as narrative. When documenting a run incident (stall, wedge, crash,
+    permission denial), write only: (a) the failure SIGNATURE an agent or
+    monitor can recognize, (b) the deployed PROTOCOL/response, (c) verified
+    root cause in one sentence, (d) evidence citations for any claim.
+    Permissible: one sentence of observed-incident grounding. NOT relevant
+    and must not appear: timeline reconstructions, hour-by-hour
+    archaeology, event narration of who did what when, incidental host
+    forensics (jetsam reports, RAM dialogs, user anecdotes) beyond the
+    one-line root-cause statement, and speculation about process internals
+    presented as cause. If narrative detail would help a future reader
+    diagnose, put the pointer in the debug-harness skill (whose JOB is
+    diagnosis), not in protocol documents.
+  audience: both
+  scope: skills/**, agents/**, benchmarks/results/**
+  enforcement: both
+  check: incident_narrative
+  check-tier: tripwire
+  notes: >
+    Scope: skills/, agents/, and benchmark result reports — not the raw
+    trace dumps themselves. It is legal to state observed metrics (durations,
+    error counts, token totals) as evidence rows in tables; illegal is
+    narrating the sequence of events (timelines, "first X then Y then Z"
+    chains) or second-person/system-level host stories beyond the single
+    verified root-cause sentence. Run-10 style postmortem sections
+    reconstructing an incident chronologically are the anti-pattern this
+    rule retires; the failure-modes-table row + deployed protocol text is
+    the surviving form.

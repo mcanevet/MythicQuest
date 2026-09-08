@@ -159,11 +159,9 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   the same process (engine alive, bridge listening, clean logs) across 18
   stop_project/run_project cycles. The canned error "Is the game running?"
   sent a capable agent into a 4h58m restart ladder (17× 600s waits).
-- **Root cause (confirmed post-run):** host memory pressure — the machine
-  ran critically low on RAM (user saw the "system ran out of memory" dialog;
-  jetsam diagnostics: godot ~900MB, multiple opencode processes ~3.2GB,
-  8GB compressed). macOS suspends processes under pressure; a suspended
-  engine keeps its bridge socket bound and stdio readable but never services
+- **Root cause (confirmed post-run):** host memory pressure — the OS
+  suspended the engine process under RAM exhaustion; a suspended engine
+  keeps its bridge socket bound and stdio readable but never services
   RPC — exactly the observed get_debug_output-works/run_script-hangs split.
   Engine restarts can't fix a starved host.
 - **Proposed upstream fixes:**

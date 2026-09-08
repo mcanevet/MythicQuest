@@ -73,17 +73,15 @@ Attempt 4 (the shipped run) cleared all gates. Also removed en route: the dead `
 
 **Net: the harness's permission model assumed "ordered specific-over-default" semantics that are the opposite of opencode's actual findLast behavior, and path patterns that don't cover root-level files. Both now verified empirically against opencode source and fixed in all three agents.**
 
-## Incident: the Bridge Wedge (ses_f822ede7)
+## Incident: engine-unresponsive under host memory exhaustion (ses_f822ede7)
 
-**Signature:** `get_debug_output` succeeds (engine alive, clean logs, bridge listening) while every `run_script` times out — including `return {"ok": true}` probes — **persisting across 18 stop_project/run_project cycles.** The engine restarts do not recreate the transport.
+**Signature:** `get_debug_output` succeeds (engine alive, clean logs, bridge listening) while every `run_script` times out — including `return {"ok": true}` probes — **persisting across 18 stop_project/run_project cycles.**
 
-**Timeline:** 23:44 first scene-verify PASS (15s chaos scenario, wall death confirmed empirically) → 23:46 first directed self-collision run_script times out → correct diagnosis by 23:53 ("transport wedged session-wide; the engine is running fine") → **then 4h35m of restart ladder anyway** (17× 600s timeouts, 14× 120s, 18 engine cycles) → 04:33 "This exceeds my bounded-work budget (max 3 per fix type; I'm far past it)" → clean shutdown, honest log-result with the risk disclosed.
+**Root cause:** host memory exhaustion — macOS suspended the engine process under RAM pressure; a suspended engine keeps its bridge socket bound and stdio readable (so `get_debug_output` succeeds) while never servicing RPC (`run_script` hangs). Engine restarts can't fix a starved host, which is why all 18 cycles failed.
 
-**Timeline:** 23:44 first scene-verify PASS (15s chaos scenario, wall death confirmed empirically) → 23:46 first directed self-collision run_script times out → correct diagnosis by 23:53 ("transport wedged session-wide; the engine is running fine") → **then 4h35m of restart ladder anyway** (17× 600s timeouts, 14× 120s, 18 engine cycles) → 04:33 "This exceeds my bounded-work budget (max 3 per fix type; I'm far past it)" → clean shutdown, honest log-result with the risk disclosed.
+**Cost:** 4h58m wall / 5.6M input tokens on one task; ~3.5h of that was the agent waiting out escalating timeouts (17× 600s) instead of applying its own bounded-work budget. Escalated to a ⛔ BLOCKED protocol (deployed, see Follow-Ups 1–2, 7).
 
-**Root cause (identified post-run): host memory exhaustion, not an MCP bug.** The user observed macOS's "system ran out of memory" dialog during the incident window; jetsam diagnostics for the same condition (later recurrence at 17:36) show `godot` at ~900MB resident plus 4 opencode processes totaling ~3.2GB and 8GB in the compression pool. Under that pressure macOS suspends processes; a suspended engine keeps its bridge socket bound and stdio readable (so `get_debug_output` succeeds) while never servicing RPC (`run_script` hangs) — exactly the observed signature. Engine restarts can't fix a starved host, which is why all 18 cycles failed. The tasks 12–13 session's quick escape via TestPlayer removal was likely eased host pressure coinciding with the retry, not the unload mechanism itself. **Correction to the in-run agent diagnosis ("transport wedged session-wide"): correct observation, wrong mechanism — the observable signature is identical.**
-
-**Failure-mode classification:** infrastructure, not game. The recovery-cost asymmetry is the harness finding: a rule that exists in prose ("max 3 attempts, then ⛔ BLOCKED") was violated 20× when each individual error message ("Is the game running?") suggested an actionable-looking next step. **Prose stopping conditions fail exactly when errors look recoverable but aren't.**
+**Failure-mode classification:** infrastructure/host, not game. The recovery-cost asymmetry is the harness finding: a rule that exists in prose ("max 3 attempts, then ⛔ BLOCKED") was violated 20× when each individual error message ("Is the game running?") suggested an actionable-looking next step. **Prose stopping conditions fail exactly when errors look recoverable but aren't.**
 
 ## What Worked (keep)
 

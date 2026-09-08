@@ -69,7 +69,12 @@ permission:
   skill: allow
   webfetch: allow
   websearch: allow
-  # Engine-specific MCP permissions — update these patterns for your engine
+  # Engine-specific MCP permissions — update these patterns for your engine.
+  # Broad by design: poppy is the sole implementer and runs the full engine
+  # toolset (scene mutation, validation, runtime, screenshots) across every
+  # skill; the 09-06 lumo-lite run alone dispatched 11 poppy sessions against
+  # this grant with zero unauthorized mutations. Deny carve-outs follow for
+  # tools outside poppy's role.
   "godot-mcp-runtime_*": allow
   "godot-mcp-runtime_launch_editor": deny
 ---
@@ -105,7 +110,7 @@ When a skill is loaded or task assigned, I follow this decision flow:
    ──────────────────────────────────────
    Static Object   →  Syntax check only
    Interactive     →  Background run + input test
-   System/Autoload →  Runtime query + state verification
+   System-level     →  Runtime query + state verification
    UI Element      →  Visual inspection via screenshot
    Full Level      →  Complete playtest suite
    ```

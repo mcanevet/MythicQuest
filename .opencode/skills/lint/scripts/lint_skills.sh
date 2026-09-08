@@ -248,6 +248,30 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# check_incident_narrative — incident-narrative-minimalism tripwire
+# (registry entry: incident-narrative-minimalism). Scans protocol documents
+# (skills/, agents/) for incident-narrative markers: chronology-reconstruction
+# phrases ("Timeline:", "-> then", hour-by-hour markers) attached to an
+# incident context, and host-forensics vocabulary (jetsam, RAM dialog, out of
+# RAM, memory-pressure anecdotes). LLM judge covers the semantics (what
+# counts as narration vs. protocol) — this tripwire catches the obvious hits.
+# ---------------------------------------------------------------------------
+check_incident_narrative() {
+  local hits
+  hits=$(grep -rniE \
+    -e 'timeline:.*(fail|timeout|stall|wedge|hang|incident)' \
+    -e 'hour-by-hour' \
+    -e 'jetsam' \
+    -e 'out of ram" dialog|"system (ran|ran out) of memory" dialog' \
+    -e '(first X then Y|then 4[hH])[0-9]*m? of.*anyway' \
+    --include='*.md' skills agents 2>/dev/null | grep -v 'failure-modes.md' || true)
+  if [ -n "$hits" ]; then
+    warn "Incident-narrative markers in protocol documents (incident-narrative-minimalism: protocol, not narrative — see registry):"
+    printf '%s\n' "$hits" | head -8 | sed 's/^/    /'
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # check_skill_md_size / check_frontmatter_hygiene / check_inline_code_cap —
 # SKILL.md doc hygiene (registry: progressive-disclosure, trigger-quality,
 # deterministic-logic-in-scripts)
@@ -344,6 +368,7 @@ check_observed_citation_resolvable
 check_gdscript_parse
 check_embedded_gdscript_parse
 check_doc_hygiene
+check_incident_narrative
 
 if [ "$issues" -eq 0 ]; then
   echo "✅ lint clean"

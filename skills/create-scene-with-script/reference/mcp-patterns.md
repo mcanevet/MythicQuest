@@ -18,12 +18,10 @@ Use **batch operations first**, individual tools for simple cases:
 
 | Pair | Which to use | Why |
 |------|--------------|-----|
-| `run_project` vs `attach_project` | `run_project`, **always** | Happy-path-only policy: never launch Godot yourself and never use `attach_project`. Manual-launch + attach looks equivalent but bypasses the sanctioned verification path (no captured debug output, unsanctioned infra, observed: a subagent built tmp launch/kill scripts and attached-mode tested Task 11 after 4 bridge timeouts instead of reporting BLOCKED). If `run_project` fails after the recovery procedure below, report BLOCKED — do not manufacture attachability |
-| `get_debug_output` | requires a **spawned** session | In attached mode there is nothing captured — it returns empty. Do not call it to "check" an attached run |
+| `run_project` vs `attach_project` | `run_project`, **always** | Happy-path-only policy: never launch Godot yourself and never use `attach_project`. Manual-launch + attach looks equivalent but bypasses the sanctioned verification path (no captured debug output, unsanctioned infra, observed: a subagent built tmp launch/kill scripts and attached-mode tested after 4 bridge timeouts instead of reporting BLOCKED — benchmarks/results/2026-09-06-rallywall-lumo-lite-medium-shipped.md). If `run_project` fails after the recovery procedure below, report BLOCKED — do not manufacture attachability |
 | `validate` vs `run_script` | `validate` for static checks | `validate` parses files headlessly; `run_script` executes in the live process and requires an active runtime session |
-| `save_scene` | only for `newPath` save-as or re-canonicalization | All mutations (`add_node`, `set_node_properties`, `delete_nodes`, …) auto-save — calling it in place is redundant |
 | `get_node_signals` vs `get_scene_tree` | `get_node_signals` for wiring; `get_scene_tree` for hierarchy | Signals ops need the signal+method names; the tree gives structure only |
-| `simulate_input` | `click_element` resolves by node path/name, **not visible text** | Discover valid elements via `get_ui_elements` first; wrong identifier silently no-ops |
+
 
 ## Path Conventions
 
@@ -70,7 +68,7 @@ godot-mcp-runtime:batch_scene_operations(
 Before the first engine tool call in a session, call `godot-mcp-runtime:get_project_info()`.
 
 - **It succeeds** → proceed normally.
-- **The tool is absent from your toolset** (no `godot-mcp-runtime_*` tools available) → **STOP IMMEDIATELY.** Return `⛔ BLOCKED: engine tools missing from toolset. Only the human can fix this by restarting the entire opencode process; re-delegating or spawning a new subagent inherits the same dead toolset (subagents share the parent's MCP connections). Do not retry, do not re-delegate, do not build shell-based workarounds` (custom validators, headless drivers, screenshot scripts) — that masks a broken harness and silently degrades verification quality (observed: 11+ subagents ran for hours with no engine tools, building parallel test infra nobody sanctioned). The MCP server is a child of the primary opencode process; no agent action can restart it.
+- **The tool is absent from your toolset** (no `godot-mcp-runtime_*` tools available) → **STOP IMMEDIATELY.** Return `⛔ BLOCKED: engine tools missing from toolset. Only the human can fix this by restarting the entire opencode process; re-delegating or spawning a new subagent inherits the same dead toolset (subagents share the parent's MCP connections). Do not retry, do not re-delegate, do not build shell-based workarounds` (custom validators, headless drivers, screenshot scripts) — that masks a broken harness and silently degrades verification quality (observed, 09-06 run: subagents ran for extended spans with no engine tools, building parallel test infra nobody sanctioned — see the Task-7/8 sleep-poll account in benchmarks/results/2026-09-06-rallywall-lumo-lite-medium-shipped.md). The MCP server is a child of the primary opencode process; no agent action can restart it.
   - **Report the likely cause, not just the symptom** (two causes share this symptom):
     - *Server death* — opencode logged `MCP connection closed`, earlier sessions had the tools. Wording: `MCP server down`.
     - *Toolset-snapshot race* — this session started within ~seconds of opencode boot; the async MCP handshake (npx cold-start → connect → listTools) hadn't finished when the toolset was snapshotted. Server process is alive; LATER sessions have the tools. Wording: `likely toolset-snapshot race at opencode boot`. Same fix (restart), but this tells the human the server itself is fine and they should not debug the MCP server config.
@@ -127,7 +125,7 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 
 **⚠️ Engine/transport unresponsive — recognize it and bail FAST (run 10, 09-07 CoilUp: cost 4h58m).**
 
-Signature: `get_debug_output()` **succeeds** (engine process alive, logs clean, McpBridge listening) while `run_script` **times out on a trivial probe** (`return {"ok": true}`) — and keeps timing out across engine restarts. This is NOT "is the game running?" (the tool error says that; it is lying) and NOT a game bug (the game code is irrelevant to a probe that never reaches the engine). The likely root cause observed in run 10: **host memory pressure** — macOS suspends/throttles the engine process under RAM exhaustion (a 900MB Godot + multiple opencode processes + browser will do it); a suspended process keeps its socket bound and its stdio readable but never services RPC. Engine restarts cannot fix a starved host, so every cycle is pure waste.
+Signature: `get_debug_output()` **succeeds** (engine process alive, logs clean, McpBridge listening) while `run_script` **times out on a trivial probe** (`return {"ok": true}`) — and keeps timing out across engine restarts. This is NOT "is the game running?" (the tool error says that; it is lying) and NOT a game bug (the game code is irrelevant to a probe that never reaches the engine). Root cause observed in run 10: **host memory pressure** — the OS suspends the engine process under RAM exhaustion; a suspended process keeps its socket bound and its stdio readable but never services RPC. Engine restarts cannot fix a starved host, so every cycle is pure waste.
 
 Hard rules:
 1. Probe ONCE with a trivial script (small timeout, ≤30s). If it times out while `get_debug_output` works → declare the wedge.
