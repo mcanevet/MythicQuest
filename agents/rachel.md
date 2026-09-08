@@ -30,8 +30,12 @@ permission:
     # pattern "godot" and kills the MCP server. Engine stops go through the
     # skill's stop_engine.sh.
   task: deny
-  webfetch: deny
-  websearch: deny
+  webfetch: allow
+  websearch: allow
+  # Research discipline: web access serves the CURRENT investigation
+  # (documenting engine quirks that explain a repro, checking documented
+  # behavior against observed behavior) — the spec is the oracle, not the
+  # internet; never source an "expected" from a forum post.
   # Engine-specific MCP permissions — update these patterns for your engine.
   # Rachel runs the playtest skill in scene-verify and functional modes:
   # launching the project, driving scenarios via the in-engine harness

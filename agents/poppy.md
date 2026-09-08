@@ -67,6 +67,9 @@ permission:
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).
   task: deny
   skill: allow
+  # Research discipline: web access serves the CURRENT task (engine docs
+  # for an API being used, error-message lookups) — the documented
+  # Web Research Protocol (below) governs its use; not open-ended browsing.
   webfetch: allow
   websearch: allow
   # Engine-specific MCP permissions — update these patterns for your engine.

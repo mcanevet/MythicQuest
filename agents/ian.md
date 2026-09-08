@@ -60,8 +60,12 @@ permission:
   "godot-mcp-runtime_add_autoload": allow
   "godot-mcp-runtime_remove_autoload": allow
   "godot-mcp-runtime_validate": allow
-  webfetch: deny
-  websearch: deny
+  webfetch: allow
+  websearch: allow
+  # Research discipline: web access serves the CURRENT task (genesis
+  # inspiration, pattern references) — not open-ended browsing. If a
+  # fetch doesn't answer the question that prompted it, return to the task
+  # rather than following links.
 ---
 
 ## Who I am

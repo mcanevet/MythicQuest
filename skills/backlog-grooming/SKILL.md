@@ -16,7 +16,7 @@ Creates persistent plan for the next unchecked task by:
 
 ### Step 1: Find Next Task
 
-Read `GAME_STATE.md` and locate the next task to plan. If the caller tells you a specific `Task N: <title>` to own (as it does for parallel runs that pre-claim tasks with `[in progress]`), target that exact line. Otherwise, find the **first unchecked task** (format: `- [ ] Task N: description [tag]`).
+Read `GAME_STATE.md` and locate the next task to plan. If the caller tells you a specific `Task N: <title>` to own (as it does for parallel runs that pre-claim tasks with `[in progress]`), target that exact line. Otherwise, find the **first unchecked task** (format: `- [ ] Task N: description [tag]` — full grammar: [reference/task-grammar.md](reference/task-grammar.md)).
 
 Use `grep("^- \\[ \\]", "GAME_STATE.md")` to find the first unchecked task, or `grep("^- \\[in progress\\] .*Task N", "GAME_STATE.md")` when targeting a claimed task.
 
@@ -83,46 +83,11 @@ Input (from GAME_STATE.md):
 - [ ] Task 1: Create Player entity with movement and collision [core]
 ```
 
-Output (plan file excerpt):
-```
-## Files to Create
-### `scenes/entities/player.tscn`
-- Root: CharacterBody2D named "Player"
-- Children: Sprite2D, CollisionShape2D (RectangleShape2D 32x48)
-
-### `scripts/player.gd`
-extends CharacterBody2D
-@export var speed = 400
-func _physics_process(delta):
-    var input_dir = Vector2(
-        Input.get_axis("<left_action>", "<right_action>"),
-        Input.get_axis("<up_action>", "<down_action>")
-    )
-    velocity = input_dir * speed
-    move_and_slide()
-```
-
-**Example 2: Score UI task**
-
-Input (from GAME_STATE.md):
-```
-- [ ] Task 2: Add score display with increment on goal [core]
-```
-
-Output (plan file excerpt):
-```
-## Files to Create
-### `scenes/ui/score_display.tscn`
-- Root: Control named "ScoreUI"
-- Children: Label named "ScoreLabel" (text: "0", anchor: top-center)
-
-### `scripts/score_ui.gd`
-extends Control
-var score = 0
-func update_score(new_score):
-    score = new_score
-    $ScoreLabel.text = str(score)
-```
+Output: a plan file at `plans/01-create-player-entity-with-movement-and-collision.md`
+whose Files-to-Create section pins the exact scene root, children, and script
+shape — following the template's implementation plan sections (full body
+templates live in [reference/plan-template.md](reference/plan-template.md);
+do not duplicate its code here).
 
 ---
 *Planning skill. Translates backlog item into actionable implementation plan.*

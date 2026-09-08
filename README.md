@@ -11,9 +11,9 @@ opencode run "Build a pong-like game"
 
 That's it. The build agent handles everything automatically:
 - ✅ Checks prerequisites (GAME_STATE.md, project.godot) → creates them if missing
-- ✅ Loops through all tasks in the backlog
-- ✅ Plans, implements, validates each task
-- ✅ Runs final playtest + vision + critique evaluation when complete
+- ✅ Runs the dev loop (Poppy), QA loop (Rachel), and release gates (Ian → Pootie)
+- ✅ Plans, implements, self-checks each task; Rachel smoke-tests at milestones
+- ✅ Runs final QA → vision → consumer critique when complete
 
 ## Core Philosophy
 
@@ -39,7 +39,8 @@ MythicQuest/                    # Reusable agent library
 │   ├── build.md               # Primary agent (game builder)
 │   ├── ian.md                 # Creative Director / Vision QA
 │   ├── poppy.md               # Lead Engineer + Planner
-│   └── pootie.md              # Streamer Critic
+│   ├── rachel.md              # QA Engineer (invariant gate)
+│   └── pootie.md              # Streamer Critic (consumer gate)
 ├── skills/                     # Skill implementations
 │   ├── genesis/
 │   ├── setup-project/
@@ -59,7 +60,8 @@ MythicQuest/                    # Reusable agent library
 | **build** | Game builder, delegates to subagents |
 | **ian** | Creative Director, planning & evaluation |
 | **poppy** | Lead Engineer, MCP-based implementation |
-| **pootie** | Streamer Critic, code-blind final playtest gate |
+| **rachel** | QA Engineer, invariant gate — reports bugs, never fixes |
+| **pootie** | Streamer Critic, code-blind consumer gate |
 
 ### MCP + LSP Integration
 
@@ -96,27 +98,39 @@ flowchart TB
     Genesis --> Setup
     Setup --> ReadBacklog
     
-    ReadBacklog --> FindTask[Find next unchecked task]
-    FindTask --> Plan[Poppy: Backlog-Grooming<br/>Creates plan file]
+    subgraph DevLoop["Dev Loop — Poppy (innermost)"]
+        FindTask[Find next unchecked task]
+        FindTask --> Plan[Poppy: Backlog-Grooming<br/>Creates plan file]
+        Plan --> Implement[Poppy: Create-Scene-With-Script<br/>Implements task]
+        Implement --> SelfCheck[Poppy: Playtest scene-verify<br/>cheap self-check]
+        SelfCheck --> Log[Poppy: Log-Result<br/>Records outcome]
+    end
     
-    Plan --> Implement[Poppy: Create-Scene-With-Script<br/>Implements task]
-    Implement --> Playtest[Poppy: Playtest<br/>Functional validation]
-    
-    Playtest --> Log[Poppy: Log-Result<br/>Records outcome]
+    ReadBacklog --> FindTask
     Log --> Complete{All tasks done?}
-    
     Complete -->|No| FindTask
-    Complete -->|Yes| QA[Final QA Phase]
     
-    QA --> FunctPlaytest[Poppy: Functional Playtest<br/>Custom invariants]
-    FunctPlaytest --> Vision[Ian: Vision Evaluation<br/>Creative alignment]
-    Vision --> Critique[Pootie: Streamer Critique<br/>Player experience gate]
+    Complete -->|Yes| QA[QA Loop — Rachel]
+    QA --> FunctPlaytest[Rachel: Functional QA<br/>Zero-violation gate]
+    FunctPlaytest -->|FAIL| BugTasks[bug:N tasks with repros]
+    BugTasks --> FindTask
     
-    Critique -->|Pass| End["Game Complete!"]
-    Critique -->|Fail| NewTasks[Ian: Creates new tasks]
-    NewTasks --> FindTask
+    subgraph ReleaseGates["Release Gates — Rachel → Ian → Pootie (outermost)"]
+        VisionGate[Ian: Vision Evaluation<br/>Creative alignment]
+        VisionGate --> Critique[Pootie: Consumer Critique<br/>Plays it himself — B-hole verdict]
+    end
+    
+    FunctPlaytest -->|QA PASS| VisionGate
+    VisionGate -->|Drifted| VisionTasks[vision:N tasks]
+    VisionTasks --> FindTask
+    
+    Critique -->|SHIP| End["Game Complete!"]
+    Critique -->|REWORK ×2 max| CritiqueTasks[critique:N tasks]
+    CritiqueTasks --> FindTask
+    Critique -->|REWORK ×3| Human["⛔ Taste divergence<br/>escalate to human"]
 
-    %% Feedback loop is bounded by agent.build.steps cap (default 300 in opencode.jsonc).
+    %% Feedback loops are bounded by agent.build.steps cap (default 300 in opencode.jsonc)
+    %% and the pootie rework-cycle cap (2) in agents/build.md.
     
     style Start fill:#e1f5ff
     style End fill:#d4edda
@@ -124,20 +138,22 @@ flowchart TB
     style Setup fill:#fff3cd
     style Plan fill:#f8f9fa
     style Implement fill:#f8f9fa
-    style Playtest fill:#f8f9fa
+    style SelfCheck fill:#f8f9fa
     style Log fill:#f8f9fa
-    style FunctPlaytest fill:#e2e3e5
-    style Vision fill:#e2e3e5
+    style FunctPlaytest fill:#d6eaf8
+    style VisionGate fill:#e2e3e5
     style Critique fill:#f5c6cb
-    style NewTasks fill:#f5c6cb
+    style Human fill:#f5c6cb
 ```
 
 **Key orchestration patterns:**
-1. **Sequential OR parallel delegation** — Build agent tasks one subagent per session, spawning parallel subagent sessions only when the next 2-3 tasks are independent (no shared files, no interdependencies).
-2. **State-driven loop** — Reads `GAME_STATE.md` to determine next action
-3. **Automatic retry** — If validation fails, task remains unchecked and gets retried
-4. **Quality gates** — Three-stage final QA (functional → vision → critique) before completion
-5. **Feedback loop** — Failed critique creates new tasks, loop resumes. This cycle is bounded by the `agent.build.steps` structural iteration cap (`opencode.jsonc`) — when reached, opencode forces a text-only summary instead of letting the loop spin indefinitely.
+1. **Three loops, one queue** — dev loop (Poppy), QA loop (Rachel), consumer loop (Pootie) all append tagged tasks (`bug:`, `vision:`, `critique:`) to the same `GAME_STATE.md` backlog instead of doing ad-hoc rework in their own sessions.
+2. **Sequential OR parallel delegation** — Build agent tasks one subagent per session, spawning parallel subagent sessions only when the next 2-3 tasks are independent (no shared files, no interdependencies).
+3. **State-driven loop** — Reads `GAME_STATE.md` to determine next action.
+4. **Automatic retry** — If validation fails, task remains unchecked and gets retried (bounded by the 3-attempt circuit breaker).
+5. **Layered quality gates** — Rachel's zero-violation gate → Ian's vision gate → Pootie's consumer verdict. Each FAIL routes new tasks back into the queue.
+6. **Bounded outer loop** — A Pootie REWORK triggers a fix-and-replay cycle capped at 2; a third REWORK verdict is taste divergence and escalates to the human. The whole cycle is also bounded by the `agent.build.steps` structural iteration cap (`opencode.jsonc`).
+7. **Consumer loop is skippable** — benchmark operators can set `SKIP_CONSUMER_LOOP=true` (recorded in GAME_STATE.md); Phase 3 then ends after the vision gate and the completion report notes the skip.
 
 ### Manual Mode (for testing individual skills)
 

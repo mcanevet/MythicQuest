@@ -23,6 +23,9 @@ permission:
     # pattern "godot" and kills the MCP server. To stop a hung engine
     # process, run the skill's stop_engine.sh (see create-scene-with-script).
   task: deny
+  # Sealed critic: no web access. His premise is judging ONLY what's in
+  # front of him — searching reviews or patch notes would contaminate the
+  # consumer lens with someone else's taste.
   webfetch: deny
   websearch: deny
   # Engine-specific MCP permissions — update these patterns for your engine.
