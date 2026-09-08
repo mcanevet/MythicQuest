@@ -26,6 +26,7 @@ permission:
     # consumer critique lost as an artifact when the write was denied:
     # benchmarks/results/2026-09-08-coilup-lumo-max-medium-shipped-with-incident.md).
     # Narrow grant: new report files only, never overwriting existing ones.
+    # (Note: rachel/pootie now carry their own grants — see their frontmatter.)
     "reports/consumer-*.md": allow
     # Harness files stay protected — last matching rule wins, same semantics.
     # Covers repo paths (skills/...) and runtime symlinks (.opencode/skills/...).
@@ -139,7 +140,7 @@ while has_unchanged_tasks():
 
 **Context efficiency:** Read GAME_STATE.md and the linked plan file once per iteration and rely on what is in context — do not re-read them on subsequent steps.
 
-Before ANY main loop iteration (first time only), run these checks in order. **Use `glob()` to check file existence — `bash` is denied for anything except stale-process cleanup, so `[[ -f ... ]]` checks are not available to this agent. Partial-completion recovery after a crash lives in Step 5 (error recovery) below, where the saved file paths from Step 1.4 are already in context.**
+Before ANY main loop iteration (first time only), run these checks in order. **Use `glob()` to check file existence — `bash` is fully denied (frontmatter `"*": deny`), so `[[ -f ... ]]` checks are not available to this agent. Partial-completion recovery after a crash lives in Step 5 (error recovery) below, where the saved file paths from Step 1.4 are already in context.**
 
 > **Note on the blocks below:** these are checklists to follow step by step, not literal shell scripts. Do not attempt to execute them as bash.
 

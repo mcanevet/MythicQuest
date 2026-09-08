@@ -8,15 +8,15 @@ permission:
   glob: allow
   grep: allow
   skill: allow
-  write:
-    # Critique reports are pootie's sanctioned deliverable. Without this he
-    # has no write path at all and improvises file writes through the engine
-    # runtime (an evaded elicitation gate via engine file primitives;
-    # see docs/upstream-backlog.md) — worse than granting the narrow write.
-    "reports/**": allow
-    "*": deny
   edit:
+    # opencode's `edit` permission governs ALL file modifications (edit,
+    # write, patch — there is no separate `write` key). Critique reports are
+    # pootie's sanctioned deliverable: without this he has no write path at
+    # all and improvises file writes through the engine runtime (an evaded
+    # elicitation gate via engine file primitives; see docs/upstream-backlog.md)
+    # — worse than granting the narrow write.
     "*": deny
+    "reports/**": allow
   bash:
     "*": deny
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds

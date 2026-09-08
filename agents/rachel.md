@@ -10,17 +10,14 @@ permission:
   todowrite: allow
   question: allow
   skill: allow
-  write:
-    # QA reports are Rachel's sanctioned deliverable (same narrow grant
-    # pattern as pootie's critique reports). Without a write path she has
-    # no way to persist bug logs, and her findings die with the session.
-    "reports/**": allow
-    "*": deny
   edit:
-    # Rachel tests, she does not fix — code changes are Poppy's job. Her
-    # only lever is the bug report and the escalation. (Least privilege:
-    # observed QA-style sessions exercise no other write surface.)
+    # opencode's `edit` permission governs ALL file modifications (edit,
+    # write, patch — there is no separate `write` key). Rachel's sanctioned
+    # deliverable is the QA report: without this grant her findings die with
+    # the session. Everything else denied — she tests, she does not fix.
+    # (Least privilege: observed QA-style sessions exercise no other write surface.)
     "*": deny
+    "reports/**": allow
   bash:
     "*": deny
     # Deterministic skill helper scripts (validate.sh, stop_engine.sh, ...)
