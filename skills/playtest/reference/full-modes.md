@@ -76,6 +76,13 @@ It emits the standard table (Invariant | Status | Evidence rows for crash, physi
 
 When violations appear and you need follow-up probes (`run_script` state queries, targeted restarts, input tests), **plan them as one batch before touching the engine**, then execute each probe as a single self-contained `run_script` (reset/reload state inside the script body before sampling — see the background-throttle gotcha). Serial one-question-per-call probing is the known cost sink: run 11's functional QA spent 14 `run_script` + engine round-trips across 36 turns for ~21 minutes (benchmarks/results/2026-09-08-rallywall-lumo-max-medium-shipped-run11.md) — equivalent batched probes complete in a fraction of the wall time. Each `run_script` body can gather arbitrary state (query multiple nodes, sample multiple properties, drive input and then sample) and return it as one dictionary; only script-size judgment limits the batch. Probe-budget rules from SKILL.md still apply per violation group.
 
+### Probe-authoring rules (learned the hard way)
+
+- **Probe step 0: reset, then assert not paused.** Every probe begins with `scene_tree.paused = false` (if a lose/win handler pauses the tree) plus `reload_current_scene()` — a paused tree freezes physics while `await physics_frame` still resolves, so a probe run against a paused tree returns all-zero displacement readings that look like a broken game (observed run 13, 2026-09-09 OrbField: a QA probe chain diagnosed "steering broken" for multiple rounds; the tree had been paused by an accidental lose since the previous call). Assert your precondition (`paused == false`, score == 0, ball on floor) in the returned dict so a bad reset is visible, not silent.
+- **Hold node PATHS, not node refs, across gameplay events.** A stored node variable dies with `queue_free()` — collecting/pickup handlers commonly free the entity, and reading `.visible` on a freed ref errors mid-probe (run 13: orb-collection verification failed twice on exactly this). Resolve `get_node_or_null(path)` fresh after each event, and guard with `is_instance_valid()` where an event may have freed the node.
+- **Batch the whole mechanic suite into ONE awaited script.** The mature pattern (validated run 13): one script that reloads the scene, then sequentially verifies steering → collection → win → restart → lose → restart, reloading/re-centering between segments and sampling state after each input burst inside the same call. Inter-call gaps are where background throttle and idle-state drift corrupt results; inside one awaited call the engine ticks at full rate.
+- **Long nested-dict scripts can arrive corrupted.** Multi-line nested dictionaries in inline `run_script` source have arrived at the engine with structural errors (`closing } with no opening`) that the author's copy did not contain (run 13, suspected transport mangling; upstream status: unconfirmed, repro pending). If a script errors at a line that looks syntactically fine in your source, do not debug your logic first — simplify the formatting (flatten nested dicts to single lines, split into multiple statements) and resend before concluding anything about the game.
+
 ### Success Criteria
 - Full scenario runs for specified duration (no premature exit)
 - Invariant checker evaluates all declared properties
@@ -121,6 +128,8 @@ Analyze the returned data:
 - **Pacing:** Does gameplay tempo match vision? (check interaction lengths from report)
 - **Visual feedback:** Are impacts, scores, wins visually clear? (review spot screenshots)
 - **Tension curve:** Does difficulty ramp appropriately? (analyze success/failure rates)
+
+**Evidence channels — programmatic text beats pixel reading.** Screenshots lead the verdict only for what is inherently visual (composition, lighting, motion trails). For anything textual or numeric — HUD counters, score displays, end-screen messages — sample the value programmatically (`get_ui_elements`, or a read-only `run_script` returning `label.text` / `get_test_state()` fields) instead of reading it off the image. Small HUD text at camera distance is routinely illegible or misread even in `responseMode: "full"` (observed run 13, 2026-09-09 OrbField: a vision check narrated "'Orbs: 1 / 8'? … I believe (can't fully read)" and had to hedge its verdict). A vision rating grounded in "I think it says" is a downgrade of the whole gate — query the text, cite the query. Also beware idle-frame aliasing: in background mode the engine may idle between calls, so consecutive screenshots can land on the same rest state — a static capture series is NOT evidence of a frozen or unresponsive game (verify with a probe before claiming it).
 
 ### Step 4: Stop and evaluate
 
@@ -203,6 +212,8 @@ you didn't capture it, say so explicitly ("score display not captured —
 couldn't verify") rather than filling the gap. Fabricated observations poison
 the REWORK gate downstream: an inferred "bug" can trigger a rebuild of working
 code. Signature (run 11, benchmarks/results/2026-09-08-rallywall-lumo-max-medium-shipped-run11.md): background-mode idle advance to GAME_OVER between MCP calls meant every screenshot showed the post-game default — seeding a false "HUD stuck at 0" verdict claim; the functional-QA probe evidence contradicted it, caught only by root cross-check. An honest "HUD unverified — captures all post-game" note would have cost nothing.
+
+**Narration-screenshot correspondence (mandatory):** your narration timeline and your screenshot timeline must correspond one-to-one. Anything you describe as having happened SINCE your last capture must be visible in the NEXT capture, or you retract the description before continuing (observed run 13, 2026-09-09 OrbField: narrated score counts contradicted by the captures themselves — every frame since a first fall showed the frozen Game Over screen, caught only when the counter appeared to go DOWN; several narrated events retracted mid-report). The practical habit: never describe an event you have not yet captured; if you acted since the last capture and haven't re-captured, say "took action, result not yet on screen" instead of narrating an outcome.
 
 #### Part B: Probe gate for failure claims (mandatory)
 
