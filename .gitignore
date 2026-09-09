@@ -16,3 +16,5 @@ Thumbs.db
 
 # Benchmark sandbox (disposable, prepared by benchmark-prep skill)
 test/
+deepdive3d/
+orbfield3d/

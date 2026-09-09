@@ -250,6 +250,21 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Status:** branch ready (`fix/stdout-noise-masking`, test-only, pinning
   the gap), folded into `feat/import-assets-plus-noise-masking`; not filed.
 
+### stop_project success result re-dumps the full engine banner every call
+- **Observed:** 09-09 run 14 (DeepDive, 23 sessions): 31 `stop_project` calls
+  each returned the near-identical `{"message":"Godot project stopped",...}`
+  payload including `finalOutput` — full engine version banner, Metal
+  renderer init lines, and recycled autoload warnings — into agent context
+  on every routine engine-cycle teardown (~23 KB across the run). The
+  teardown is a periodic housekeeping call; its result carries no diagnostic
+  value beyond exit code and (rarely) the output tail.
+- **Proposed upstream fix:** truncate `finalOutput`/`finalErrors` in
+  `stop_project` success results (e.g. last 3–5 lines, or only lines matching
+  ERROR/SCRIPT ERROR), with a pointer to `get_debug_output` for the full log.
+  Consumers needing full output already have that path.
+- **Status:** not filed. Evidence quantified from run-14 traces; candidate
+  flagged 2026-09-09.
+
 ### Sub-property paths rejected (theme_override_font_sizes/font_size)
 - **Observed:** 09-07 run 9 (task 8): add_node/set_node_properties with
   slash-path theme overrides failed; agent fell back to bare adds + separate

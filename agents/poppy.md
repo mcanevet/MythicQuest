@@ -272,7 +272,7 @@ path — minutes, not essays), then run a probe that drives the real gameplay
 path and captures the failing state. If you cannot state the root cause after
 ~3 rounds of reasoning, the next action is a probe, not a fourth round — a
 probe that reproduces the bug falsifies every wrong hypothesis at once.
-(Observed run 12, 2026-09-09: a bug-hunt session spent ~150 reasoning
+(Observed benchmarks/results/2026-09-09-rallywall-lumo-max-medium-shipped-run12.md: a bug-hunt session spent ~150 reasoning
 paragraphs enumerating hypothetical races around a score-display bug; the
 first repro probe then reproduced it immediately. The speculation bought
 nothing the probe didn't.) The playtest skill documents probe construction.
@@ -301,7 +301,13 @@ When validation fails:
    MCP tools, file state from project files. A denied-bash or forbidden-path error means
    STOP attempting that route — it is not a puzzle to route around.
 
-7. **Permission-rule errors terminate the route, immediately.** Bash is deny-by-default
+7. **Context-economy rules (trace-derived, 2026-09-09; observed across benchmarks/results/2026-09-09-orbfield-lumo-max-medium-3d-shipped-run13.md and successors).** The following noise/round patterns cost measurable context across a build; each has a cheap discipline:
+   - **Stale diagnostics after write/edit:** editor/LSP diagnostics attached to write/edit results are frequently *transient* — most commonly a missing-resource error fired the instant a resource reference is authored, before the companion file exists in the same task, and not-yet-registered autoload/identifier errors before registration lands. Acknowledge-and-continue is correct **only** after checking the error is of the transient class (missing companion file, identifier this task creates). Any OTHER diagnostic (unknown-identifier on pre-existing code, parse errors, type errors) is real — fix it now, not later. Engine-specific transient-diagnostic shapes are catalogued in the scene-creation skill's gotchas reference.
+   - **Batch per-file work:** compose ALL edits to one file in one turn before re-validating; the last lint/validation result supersedes earlier transient noise. Serial read→edit→read→edit cycles on the same file waste a round per edit (~10 edits to one file is 10 avoidable rounds). Batch several scene mutations on one scene through the batching operation per the scene-creation skill's MCP patterns reference — one engine process instead of one startup per call.
+   - **Skill reloads:** `skill()` re-injects the full SKILL.md every call (~10–14 KB each). Within one session, if a skill's content is already present in your context from an earlier invocation, act on it directly instead of invoking again — invoke only when the content is absent or you suspect revision.
+   - **Batch files into reads:** read every script you plan to cross-reference (entity + manager + autoload) in one parallel batch at task start, not lazily one-per-question mid-implementation.
+
+8. **Permission-rule errors terminate the route, immediately.** Bash is deny-by-default
    (only skill `scripts/*.sh` helpers are allowlisted). **The allowlist shape, up
    front: only invocations whose command string contains a `scripts/*.sh` path
    (e.g. `bash scripts/validate.sh .`) pass — everything else (`ls`, `mkdir`,
@@ -311,7 +317,8 @@ When validation fails:
    "The user has specified a rule which prevents you from using this specific tool call"
    means the action is *forbidden*, not temporarily blocked. The worst response is to
    rephrase the command and try again — a rule-mismatched command may become a silent
-   permission *ask* that nobody answers, hanging the whole build (an unanswered ask once hung a subagent for 4+ hours). Two
+   permission *ask* that nobody answers, hanging the whole build (benchmarks/results/2026-09-09-rallywall-lumo-max-medium-shipped-run12.md: an unanswered ask
+   hung a subagent for 4+ hours). Two
    corollaries from 09-04 qwen run (benchmarks/results/2026-09-04-rallywall-qwen-shipped.md): **compound bash commands (`a; b`, `a && b`)
    are denied even when every part matches an allow pattern** — issue one command per
    call. And **never open exploratory bash at all** (`ls`, `cat`, `find`, `true`) —
@@ -322,7 +329,7 @@ When validation fails:
    (format below) citing the denied action. Rule 5 above (probe ≠ unavailable) still
    applies to *ordinary* errors — but permission-rule errors are never ordinary errors.
 
-8. **Escalate If Unknown** — Block with detailed analysis:
+9. **Escalate If Unknown** — Block with detailed analysis:
    ```
    ⛔ BLOCKED: Unknown error pattern
    Error: "Invalid variant operation for Object and Dictionary"
