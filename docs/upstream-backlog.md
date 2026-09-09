@@ -177,6 +177,31 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   unresponsive_, playtest SKILL.md gotcha, debug-harness failure-modes
   entry).
 
+### Background-mode visual-verification cluster (repro before filing)
+- **Observed:** run 12 + run 13 (2026-09-09, three independent sessions):
+  (a) `simulate_input` `wait(ms)` actions appear not to advance the sim
+  deterministically under background throttle — input + 600–1500ms waits,
+  world unchanged between captures; (b) `take_screenshot` returned
+  identical-content frames at differing timestamps (idle-frame aliasing vs
+  stale render output — unresolved which); (c) one `run_script` inline
+  source arrived with a structural brace error the authored source did not
+  contain (single observation, could be one-off).
+- **In-harness mitigation deployed (run 13, playtest skill):** programmatic
+  text sampling as primary evidence channel; static-capture-series caveat;
+  reformat-before-debugging on suspected mangling; whole-suite probes in
+  one awaited script (engine ticks at full rate while the call is open).
+  Mitigations hold regardless of upstream action — no urgency.
+- **Repro plan (next dedicated session):** (1) wait semantics — scripted
+  input + wait bursts, sample a motion-counter before/after in the same
+  body, N trials with/without background; (2) transport corruption — send a
+  known 80-line nested-dict `run_script` 20×, hash what the engine
+  receives; (3) screenshot freshness — mutate a labeled UI value, capture
+  immediately, diff bytes. Stall telemetry (TestPlayer) makes (1)
+  measurable. File upstream only what reproduces; otherwise document as
+  caveats.
+- **Status:** not filed; hypotheses logged 2026-09-09 (run-13 record).
+
+
 ## Providers
 
 ### Watchdog for verbose-generation brain-death
