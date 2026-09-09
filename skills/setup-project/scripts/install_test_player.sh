@@ -12,8 +12,10 @@
 #   test_player.gd that differs from canonical (prevents drift both ways).
 # Exit codes: 0 = installed/already identical, 1 = error (root missing, drift)
 set -euo pipefail
+UPGRADE=0
+if [ "${1:-}" = "--upgrade" ]; then UPGRADE=1; shift; fi
 CANON="$(cd "$(dirname "$0")" && pwd)/test_player.gd"
-DEST_DIR="${1:?usage: install_test_player.sh <game-project-root>}/scripts"
+DEST_DIR="${1:?usage: install_test_player.sh [--upgrade] <game-project-root>}/scripts"
 DEST="$DEST_DIR/test_player.gd"
 
 [ -f "$CANON" ] || { echo "canonical test_player.gd missing next to installer" >&2; exit 1; }
@@ -24,8 +26,13 @@ if [ -f "$DEST" ]; then
     echo "OK: $DEST already identical to canonical (no action)"
     exit 0
   fi
-  echo "ERROR: $DEST exists and DIFFERS from canonical — inspect before replacing" >&2
-  exit 1
+  if [ "$UPGRADE" -ne 1 ]; then
+    echo "ERROR: $DEST exists and DIFFERS from canonical — inspect before replacing" >&2
+    echo "       If the canonical copy advanced (skill upgrade), re-run with:" >&2
+    echo "         install_test_player.sh --upgrade <game-project-root>" >&2
+    exit 1
+  fi
+  echo "NOTE: --upgrade given — replacing drifted $DEST with canonical"
 fi
 
 cp "$CANON" "$DEST"

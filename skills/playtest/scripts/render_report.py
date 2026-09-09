@@ -35,6 +35,21 @@ def render(report: dict) -> str:
     if p99 is not None:
         fmt("FPS stability", p99 < 33.3, f"p99 frame time = {p99:.1f}ms (< 33.3ms threshold)")
 
+    stalls = metrics.get("stall_ticks_over_100ms")
+    worst = metrics.get("worst_frame_ms")
+    if stalls is not None:
+        note = f"{stalls} physics tick(s) exceeded 100ms (`stall_ticks_over_100ms`)"
+        if worst is not None:
+            note += f", worst {worst:.0f}ms"
+        if stalls > 0:
+            note += (" — host stall (background throttle/display sleep/memory pressure); "
+                     "exclude large sim jumps from gameplay verdicts, see background-throttle gotcha")
+            # Informational row, not a FAIL: stalls are environmental telemetry;
+            # the fps_stable invariant handles actual performance verdicts.
+            lines.append(f"| Engine stalls (>100ms ticks) | ⚠️ INFO | {note} |")
+        else:
+            fmt("Engine stalls (>100ms ticks)", True, "none observed")
+
     fps_floor = metrics.get("fps_floor_violations")
     if fps_floor is not None:
         fmt("Min FPS floor", fps_floor == 0,

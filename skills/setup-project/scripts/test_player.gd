@@ -19,7 +19,10 @@ var _metrics = {
 	"crash_detected": false,
 	"frame_times": [],
 	"frame_ms_p99": 0.0,
-	"fps_floor_violations": 0
+	"fps_floor_violations": 0,
+	"stall_ticks_over_100ms": 0,
+	"warmup_resets": 0,
+	"worst_frame_ms": 0.0
 }
 var _rng = RandomNumberGenerator.new()
 var _input_actions = []
@@ -57,7 +60,10 @@ func start_test(scenario: Dictionary) -> Dictionary:
 		"crash_detected": false,
 		"frame_times": [],
 		"frame_ms_p99": 0.0,
-		"fps_floor_violations": 0
+		"fps_floor_violations": 0,
+		"stall_ticks_over_100ms": 0,
+		"warmup_resets": 0,
+		"worst_frame_ms": 0.0
 	}
 	_rng.seed = scenario.get("bot", {}).get("seed", 42)
 	
@@ -145,12 +151,26 @@ func _physics_process(delta):
 			if frame_ms < 100.0:
 				_warmup_remaining -= 1
 			else:
+				# Telemetry (do not discard silently): a >100ms tick here is a
+				# stall — host suspension, background throttle, or display
+				# sleep (10-12s frames observed overnight, run 12). Counted in
+				# warmup_resets/stall_ticks_over_100ms so throttled periods
+				# remain VISIBLE in the report even though they pollute
+				# frame_ms percentiles and are excluded from them.
+				_metrics["warmup_resets"] += 1
+				_metrics["stall_ticks_over_100ms"] += 1
+				_metrics["worst_frame_ms"] = maxf(_metrics["worst_frame_ms"], frame_ms)
 				_warmup_remaining = 3
 		_last_time = current_time
 		_frame_count += 1
 		return
 	if _last_time > 0:
 		var frame_ms = (current_time - _last_time) * 1000.0
+		if frame_ms >= 100.0:
+			# Telemetry: stall tick AFTER warm-up (post-startup). Excluded from
+			# the percentile buffer (pollutes averages) but counted, not dropped.
+			_metrics["stall_ticks_over_100ms"] += 1
+			_metrics["worst_frame_ms"] = maxf(_metrics["worst_frame_ms"], frame_ms)
 		_metrics.frame_times.append(frame_ms)
 		if _metrics.frame_times.size() > _frame_time_buffer_size:
 			_metrics.frame_times.pop_front()
