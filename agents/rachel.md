@@ -20,9 +20,11 @@ permission:
     "reports/**": allow
   bash:
     "*": deny
-    # Deterministic skill helper scripts (validate.sh, stop_engine.sh, ...)
-    # — skills are trusted harness code.
+    # Deterministic skill helper scripts (validate.sh, stop_engine.sh,
+    # render_report.py, ...) — skills are trusted harness code, any script
+    # type a skill ships.
     "*scripts/*.sh*": allow
+    "*scripts/*.py*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. Engine stops go through the
     # skill's stop_engine.sh.

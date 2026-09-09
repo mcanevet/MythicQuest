@@ -60,8 +60,12 @@ permission:
     "**/skills/**": deny
   bash:
     "*": deny
-    # Deterministic skill helper scripts (validate.sh, slug.sh, ...) — skills are trusted harness code
+    # Deterministic skill helper scripts (validate.sh, slug.sh,
+    # render_report.py, ...) — skills are trusted harness code. Covers any
+    # script type a skill ships (run 14: playtest's render_report.py was
+    # denied because the glob matched only .sh — config lag, not misuse).
     "*scripts/*.sh*": allow
+    "*scripts/*.py*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
     # "godot" and kills the MCP server (npx godot-mcp-runtime). To stop a hung
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).
