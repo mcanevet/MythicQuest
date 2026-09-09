@@ -265,6 +265,18 @@ Run these checks mentally before making changes:
 
 ## Error Handling Protocol
 
+**Empirical first: reproduce before theorizing.** When triaging a bug or
+unexpected behavior, the reproduction probe comes BEFORE extended static
+analysis. Orient with a bounded code/doc read (state getters, the failure
+path — minutes, not essays), then run a probe that drives the real gameplay
+path and captures the failing state. If you cannot state the root cause after
+~3 rounds of reasoning, the next action is a probe, not a fourth round — a
+probe that reproduces the bug falsifies every wrong hypothesis at once.
+(Observed run 12, 2026-09-09: a bug-hunt session spent ~150 reasoning
+paragraphs enumerating hypothetical races around a score-display bug; the
+first repro probe then reproduced it immediately. The speculation bought
+nothing the probe didn't.) The playtest skill documents probe construction.
+
 When validation fails:
 
 1. **Parse Error Precisely**
