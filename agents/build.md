@@ -76,7 +76,7 @@ flowchart TB
     QA -->|"bug: tasks with repros"| Queue
     Vision["Vision loop — Ian<br/>milestone vision checks + release gate"]
     Vision -->|"vision: tasks, halt feature work"| Queue
-    Consumer["Consumer loop — Pootie (outermost)<br/>runs only after QA + vision pass<br/>SHIP or REWORK verdict"]
+    Consumer["Consumer loop — Pootie (outermost)<br/>runs only after QA + vision pass<br/>recommendation → Ian's disposition"]
     Consumer -->|"critique: tasks"| Queue
     Consumer -->|"REWORK x3"| Human["⛔ taste divergence → escalate to human"]
     Queue --> Dev
@@ -440,23 +440,37 @@ himself with his own inputs.
 task({
   subagent_type: "pootie",
   description: "consumer-critique",
-  prompt: "Play the game as a consumer streamer: launch it, play it with your own inputs at stream pace, and deliver your critique. No spec, no QA reports, no code. Return the verdict (SHIP or REWORK + B-hole rating) and your report path."
+  prompt: "Play the game as a consumer streamer: launch it, play it with your own inputs at stream pace, and deliver your critique. No spec, no QA reports, no code. Return the recommendation (RECOMMEND_SHIP or RECOMMEND_REWORK + B-hole rating) and your report path."
 })
 ```
 
-**Step 3b: Outer loop routing**
+**Step 3b: Ian's disposition (the outer loop routes through creative, not consumer)**
 
-- Pootie's verdict is **SHIP** → proceed to Step 4.
-- Pootie's verdict is **REWORK** → append his issues as new tasks (tagged
-  `critique:N`) to `GAME_STATE.md` — his hand-off flags of outright-broken
-  behavior should double-check against Rachel's reports to avoid duplicating
-  known bugs. Return to Phase 1 main loop; after fixes, re-run Phase 3 from
+Pootie's output is a **recommendation, not a verdict** — the ship call belongs to
+creative direction, not the market. Route his report to Ian:
+
+```
+task({
+  subagent_type: "ian",
+  description: "consumer-disposition",
+  prompt: "Pootie's consumer critique is at <path>. Read it and issue your disposition: CONFIRM_SHIP (his issues don't justify more work), ORDER_REWORK (queue his issues), or REVISE_VISION (his reaction revealed a better direction — document the revised vision and what to build toward it). Return the disposition and one-sentence reasoning; for ORDER_REWORK also return the task list."
+})
+```
+
+- Disposition **CONFIRM_SHIP** → proceed to Step 4.
+- Disposition **ORDER_REWORK** → append Ian's task list (tagged `critique:N`)
+  to `GAME_STATE.md` — Pootie's hand-off flags of outright-broken behavior
+  should double-check against Rachel's reports to avoid duplicating known
+  bugs. Return to Phase 1 main loop; after fixes, re-run Phase 3 from
   Step 1 (full gates — Rachel re-verifies the fixes, Ian re-checks, Pootie
   replays).
-- **Pootie rework-cycle cap: 2.** If this is the second REWORK verdict, or a
-  post-fix replay still lands REWORK, this is taste divergence — not a bug
-  list. Report `⛔ BLOCKED: taste divergence after N consumer rework cycles`
-  to the user with Pootie's critiques attached. Do not loop a third time;
+- Disposition **REVISE_VISION** → update the vision doc (GAME_STATE.md /
+  README) with Ian's revision FIRST, then queue the tasks the revision implies
+  (also tagged `critique:N`) and return to the main loop as with ORDER_REWORK.
+- **Pootie rework-cycle cap: 2.** If this is the second rework cycle, or a
+  post-fix replay still lands RECOMMEND_REWORK and Ian confirms another cycle,
+  that is taste divergence — not a bug list. Report `⛔ BLOCKED: taste divergence after N consumer rework cycles`
+  to the user with Pootie's critiques and Ian's dispositions attached. Do not loop a third time;
   an infinite taste-chasing loop burns the whole budget for marginal gains.
 
 **Step 4: Generate Completion Report**
