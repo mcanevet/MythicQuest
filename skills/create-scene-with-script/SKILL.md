@@ -139,6 +139,8 @@ Call `godot-mcp-runtime:validate` before `godot-mcp-runtime:run_project`:
 
 If `valid: false`, fix all errors and re-validate. Only call `godot-mcp-runtime:run_project` after validation passes.
 
+Validate once per logical unit, not once per write: batch a scene's node additions, then a script's full edit set, then validate the unit. Per-write validation burns a round each time and its result is invalidated by the next edit in the same unit.
+
 See [reference/mcp-patterns.md](reference/mcp-patterns.md) for error recovery patterns.
 
 ### Step 5a: Setting Resource-Type Properties (Collision Shapes)
