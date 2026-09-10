@@ -262,5 +262,5 @@ If game crashes: stop immediately, hand off with abort reason and violation deta
 - All six critique sections produced (incl. Probe results)
 - Every failure claim in the verdict backed by a Part B probe
 - **Recommendation** (not verdict) reported in task result: `RECOMMEND_SHIP` or `RECOMMEND_REWORK` + B-hole rating. The ship/rework/vision-revision decision belongs to the orchestrating roles per their own instructions, not to the critic — the critique is one input to that disposition, never the disposition itself.
-- **Audio blindness disclosed:** the critic experiences the game via screenshots and state readback and cannot hear. The report must not narrate sound effects or music as lived experience; audio observations (if any) go in a clearly-marked NOTE based only on README promises or their conspicuous strategic absence ("no audio at all will be noticed by chat"), never on invented listening.
+- **Audio blindness disclosed:** the critic experiences the game via screenshots and state readback and cannot hear. The report must not narrate sound effects or music as lived experience; audio observations (if any) go in a clearly-marked NOTE based only on README promises or code/configuration evidence, never on invented listening.
 

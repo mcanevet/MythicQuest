@@ -36,6 +36,11 @@ permission:
     # icon.svg, assets/*.svg), Godot .import sidecars, and .gitignore
     # (extension-less — no type-scoped pattern matches it). Bare forms
     # cover root-level files (see note above; "**/x" misses root "x").
+    # JSON is file-type-wide, not path-narrowed, because run 14 wrote JSON
+    # under three roots in one run (tests/scenarios/*.json QA suites,
+    # reports/*.json intermediate probe outputs, and plan/task sidecars) —
+    # benchmark results 2026-09-10-deepdive run 14, 12 distinct JSON paths;
+    # narrowing per-root would have denied sanctioned skill steps.
     "**/*.json": allow
     "*.svg": allow
     "**/*.svg": allow
