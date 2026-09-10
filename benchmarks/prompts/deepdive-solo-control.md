@@ -34,6 +34,17 @@ go through `task()`):
 - Use a dedicated agent file (not build/poppy) with `mode: primary`,
   `task: deny` in its frontmatter — the denial enforces "no fanout"
   mechanically, same trick as poppy's bash deny.
+- **Engine identity lives in the agent file, not the prompt.** The game
+  prompt is genre-agnostic by design (never names Godot or tools), and
+  the swarm derives engine binding from agent files + skills + the
+  sandbox's `opencode.jsonc` (mounted godot-mcp-runtime MCP + LSP). The
+  solo agent must do the same, explicitly: its instruction text states
+  "implementation targets Godot 4.x via the mounted godot-mcp-runtime
+  tools; all scene mutation goes through those tools; validation follows
+  the skills' engine-specific scripts" and its permission block grants
+  `godot-mcp-runtime_*`. Without this, engine choice becomes a soft
+  variable — a solo agent that hand-rolls files instead of using the
+  mounted tools would corrupt the arms comparison.
 - Grant it the union of poppy+rachel permissions (implementation +
   QA/report paths), including `.tscn: deny` (MCP-only scene mutation,
   unchanged) and `skill: allow` for all five skills.
