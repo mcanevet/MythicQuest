@@ -120,9 +120,16 @@ control, directional only.
 ## Running it
 
 After run 14 completes and its record grades the 8 predictions:
-1. Prepare a fresh sandbox (benchmark-prep skill) pinned to commit
-   aeee2be (the run-14 starting commit) so both arms see identical
-   harness content.
+1. Prepare a fresh sandbox (benchmark-prep skill, name `deepdive-solo`)
+   pinned to the solo agent file's landing commit. Pin decision
+   (resolved 2026-09-10): use the CURRENT main at solo-agent-file
+   commit, NOT run-14's starting commit `aeee2be` — the intervening
+   commits (b8b93e3, c49849f) are permission/economy BUG fixes, not
+   capability changes, and running solo against the known-broken
+   `.py` deny would manufacture a wedge the swarm arm never had.
+   Disclose in the record: solo ran with 2 config bug-fixes the swarm
+   lacked; expected effect on comparison is nil-to-solo's-favor
+   (fewer wasted denials), noted under fairness caveats.
 2. Create the solo agent file (design above) in the HARNESS repo,
    commit, and mount it in the sandbox via the submodule pin.
 3. Launch with the deepdive.md prompt text verbatim plus the protocol
