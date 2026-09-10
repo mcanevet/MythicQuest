@@ -35,6 +35,19 @@ permission:
     # type a skill ships (see poppy/rachel for the run-14 .py-deny incident).
     "*scripts/*.sh*": allow
     "*scripts/*.py*": allow
+    # Tracker (Beads backend) — ian: milestones, any-type issues, assign,
+    # label, comment, list. Own-issues-only close is a norm (adapter.md),
+    # not allowlist-expressible.
+    "bd create *": allow
+    "bd assign *": allow
+    "bd tag *": allow
+    "bd comment *": allow
+    "bd close *": allow
+    "bd list*": allow
+    "bd show*": allow
+    "bd export*": allow
+    "bd dep *": allow
+    "bd types*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
     # "godot" and kills the MCP server (npx godot-mcp-runtime). To stop a hung
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).

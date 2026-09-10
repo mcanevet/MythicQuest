@@ -19,6 +19,14 @@ permission:
     "reports/**": allow
   bash:
     "*": deny
+    # Tracker (Beads backend) — pootie: critique-type issues only, comment
+    # on own filings only (norm, adapter.md), list.
+    "bd create * -t critique *": allow
+    "bd create *-t critique*": allow
+    "bd comment *": allow
+    "bd list*": allow
+    "bd show*": allow
+    "bd export*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. To stop a hung engine
     # process, run the skill's stop_engine.sh (see create-scene-with-script).

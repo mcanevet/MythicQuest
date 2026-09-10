@@ -71,6 +71,17 @@ permission:
     # denied because the glob matched only .sh — config lag, not misuse).
     "*scripts/*.sh*": allow
     "*scripts/*.py*": allow
+    # Tracker (Beads backend) — poppy: any-type issues, status updates,
+    # label, comment, list. Assigned-to-self-only close is a norm
+    # (adapter.md), not allowlist-expressible.
+    "bd create *": allow
+    "bd update *": allow
+    "bd tag *": allow
+    "bd comment *": allow
+    "bd close *": allow
+    "bd list*": allow
+    "bd show*": allow
+    "bd export*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
     # "godot" and kills the MCP server (npx godot-mcp-runtime). To stop a hung
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).

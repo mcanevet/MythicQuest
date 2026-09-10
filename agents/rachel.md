@@ -25,6 +25,14 @@ permission:
     # type a skill ships.
     "*scripts/*.sh*": allow
     "*scripts/*.py*": allow
+    # Tracker (Beads backend) — rachel: bug-type issues only, comment
+    # anywhere, list. Reports, never fixes: no update/close/assign.
+    "bd create * -t bug *": allow
+    "bd create *-t bug*": allow
+    "bd comment *": allow
+    "bd list*": allow
+    "bd show*": allow
+    "bd export*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. Engine stops go through the
     # skill's stop_engine.sh.
