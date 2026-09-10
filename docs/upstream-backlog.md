@@ -277,6 +277,28 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   contract (no success text + file unchanged) instead of exit code.
 - **Status:** upstream Godot issue candidate, not filed.
 
+### Environment.set("fog_mode", ...) resets fog_density to 1.0 (property-order data loss)
+- **Observed:** 09-10 solo control run: persisted fog_density values
+  (0.015/0.02) silently became 1.0 on disk; root-caused post-run.
+  Godot engine quirk — setting `fog_mode` reinitializes its dependent
+  fog parameters to defaults. `_construct_inline_resource`
+  (godot_operations.gd) applies dict keys in insertion order, so
+  `{"fog_density": 0.015, "fog_mode": 1}` loses the density while the
+  tool reports success. Deterministic (3/3 repros, /tmp/opencode/attach_repro
+  probe10/probe11.gd). Not fixed by pinning branches; repros on main.
+- **Fix candidates:** apply enum/dependency-parent properties before
+  independent ones (order-independent application), or a second
+  application pass; alternatively validate + error on the ordering.
+- **Status:** repro in hand, PR not yet opened. Highest-severity open
+  find — silent data loss, success-reported.
+
+### Possibly stale Environment sub_resource reuse across scene saves
+- **Observed:** 09-10 during fog repro: a newly constructed Environment
+  resource appeared to share a stale `Environment_sgp6g` sub_resource id
+  when saved into a scene that already carried an Environment. Low
+  confidence — needs a dedicated repro before filing.
+- **Status:** investigation, not filed.
+
 ### No import step in headless resource loading (SVG/textures fail on fresh projects)
 - **Observed:** 09-07 run 9 (task 3): `res://assets/paddle.svg` and even
   `icon.svg` failed to load in headless MCP operations on a fresh project —
