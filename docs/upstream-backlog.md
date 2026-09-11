@@ -322,6 +322,22 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Lifecycle:** patched → pending PR → release retires the temp pin
   (test/.opencode/opencode.jsonc revert condition).
 
+## Open: batch_scene_operations uninformative error for missing 'operation' key
+- **Observed:** 09-11 rallywall run (lumo-max, test/ sandbox, kind-island
+  session): an operations[] item missing its `operation` key returned the
+  bare error `Unknown batch operation: ` — empty name, no item index, no
+  hint. The agent retried the same malformed batch twice before noticing
+  the omission: 3 tool calls on an undiagnosable message.
+- **Proposed upstream fix:** when `operation` is omitted/empty, name the
+  item index (`operations[N]`) and infer the intended op from sibling keys
+  (nodeName/nodeType → add_node, updates → set_node_properties,
+  texturePath → load_sprite); check camelCase and snake_case spellings.
+- **Status:** FIXED UPSTREAM. Filed as PR #42 (2026-09-11,
+  `batch-operation-error-context`): index + inference hint, 3
+  integration tests, suite 1235 green. Same agent-observable-ACI class as
+  #39–#41. Lifecycle: filed → awaiting merge → release > v3.5.0 retires
+  the opencode.jsonc local-main pin (shared revert condition).
+
 ## Resolved: godot-mcp-runtime v3.3.0 (2026-09-07)
 
 All three fork-pinned contributions merged and released — PR #33 (error
