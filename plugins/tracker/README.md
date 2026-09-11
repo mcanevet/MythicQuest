@@ -84,7 +84,7 @@ backend's adapter — `beads/adapter.md`):
 
 ## Authoring a new backend
 
-1. Implement the eleven operations above with identical observable
+1. Implement the ten operations above with identical observable
    semantics, documented as your tool's command mappings in your adapter.
 2. Frontmatter your adapter skill `name: tracker` (stable name; see above).
 3. Split enforcement into what your medium can machine-check vs norms, and

@@ -51,18 +51,24 @@ vision alignment; all task state lives in the tracker.
 
 ### Step 3: Seed the tracker
 
-Invoke the **tracker** skill (`skill({ name: "tracker" })`) for every
-tracker operation below. One issue per create — no batching:
+Invoke the **tracker** skill (`skill({ name: "tracker" })`) for every tracker
+operation below. One issue per create — no batching:
 
-1. `init` (if `.beads/` absent) — `bd init --prefix dd` + custom types.
-2. Create one milestone for the playable-loop arc, e.g.
+**Prerequisite (fail loudly, never bootstrap):** the tracker must already be
+initialized (`setup-project` owns init — platform bootstrapping is
+implementation work, not creative). If the tracker is missing or empty of
+configuration (Beads: no `.beads/`), report
+`⛔ BLOCKED: tracker not initialized — run setup-project first` and stop.
+Do not run init commands yourself.
+
+1. Create one milestone for the playable-loop arc, e.g.
    `create_milestone "Playable Loop" --description "<from concept>"`.
-3. `create_issue` for each drafted task, in dependency order:
+2. `create_issue` for each drafted task, in dependency order:
    `-t core|polish|vision`, `-d "<implementation-relevant summary>"`,
    `-l reporter:ian --actor ian`, `--parent <milestone-id>` for
    playable-loop tasks.
-Record the milestone id and issue ids from command output — plan files
-will be named from them (`plans/<id>-<slug>.md`).
+3. Record the milestone id and issue ids from command output — plan files
+   will be named from them (`plans/<id>-<slug>.md`).
 
 ### Step 4: Create README.md
 

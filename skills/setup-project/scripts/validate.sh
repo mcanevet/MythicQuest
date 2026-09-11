@@ -24,6 +24,17 @@ fi
 
 echo "✓ OK: project.godot (Godot 4.x format, main_scene configured)"
 
+# Check 1b: tracker initialized (bd via mise)
+if ! command -v bd >/dev/null 2>&1; then
+    echo "❌ FAIL: bd not on PATH — run via mise (project mise.toml)" >&2
+    exit 1
+fi
+if [ ! -d ".beads" ]; then
+    echo "❌ FAIL: tracker not initialized (no .beads/) — run tracker init (bd init)" >&2
+    exit 1
+fi
+echo "✓ OK: tracker initialized (.beads present)"
+
 # Check 2: icon.svg exists
 if [ ! -f "icon.svg" ]; then
     echo "⚠️  WARN: icon.svg missing (optional)" >&2

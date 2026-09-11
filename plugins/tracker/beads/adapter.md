@@ -12,7 +12,13 @@ invocations per contract operation, and the role-permission rules that constrain
 
 ## Execution steps
 
-### Step 0: One-time setup (per project)
+### Step 0: One-time setup (per project — owned by setup-project)
+
+Init is owned by the **setup-project** skill (executed by poppy or solo) —
+it runs these commands as part of platform bootstrap, BEFORE genesis seeds
+the queue. Creative/QA agents (ian, rachel, pootie) never run them; if they
+find the tracker uninitialized they report
+`⛔ BLOCKED: tracker not initialized — run setup-project first`.
 
 The `bd` binary is provided by mise (repo root `mise.toml` pins
 `aqua:gastownhall/beads`) — run through `mise exec -- bd ...` or after
@@ -21,7 +27,6 @@ The `bd` binary is provided by mise (repo root `mise.toml` pins
 ```bash
 bd init --prefix dd
 bd config set types.custom "vision,critique,material,animation,audio,refactor,core"
-mkdir tracker
 ```
 
 Custom types registration prints a warning; it works — verify with
@@ -99,6 +104,12 @@ makes other backends a data export, not a redesign):
 | comments | append-only; author embedded in text (`[<agent>] <body>`) |
 
 ## Critical rules
+
+0. **Run bd from the project root** — the tracker database is project-local
+   (`.beads/` under the cwd). A `bd` command issued from any other workdir
+   silently reads or writes the WRONG project's tracker (observed 09-11: a
+   genesis session ran `bd list` from the harness repo root). Always confirm
+   cwd is the game project before any bd call.
 
 1. **Permission table is deny-first** — never run a bd command outside
    your role's rows; norm-enforced rows additionally require the scope

@@ -73,7 +73,11 @@ permission:
     "*scripts/*.py*": allow
     # Tracker (Beads backend) — poppy: any-type issues, status updates,
     # label, comment, list. Assigned-to-self-only close is a norm
-    # (adapter.md), not allowlist-expressible.
+    # (adapter.md), not allowlist-expressible. init/config live here because
+    # setup-project (this agent's bootstrap skill) owns platform
+    # initialization — creative agents never touch platform bootstrapping.
+    "bd init*": allow
+    "bd config*": allow
     "bd create *": allow
     "bd update *": allow
     "bd tag *": allow

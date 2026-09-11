@@ -129,12 +129,13 @@ task({
 
 ✅ CORRECT:
 ```
-# Step 1: Prerequisites
+# Step 1: Prerequisites (ORDER MATTERS: setup-project initializes the
+# tracker platform bootstrap BEFORE genesis needs it to seed the queue)
 if !exists(GAME_STATE.md):
+  # setup-project FIRST — it initializes the tracker (bd init) that genesis
+  # seeds. Platform bootstrapping is poppy's job, never ian's.
+  task(poppy, "setup-project", "skill({ name: \"setup-project\" }) — includes tracker init. DO NOT create scenes yet.")
   task(ian, "game-genesis", "User request: '<paste user's original prompt verbatim>'. skill({ name: \"genesis\" }) — DO NOT implement anything. Create the GAME_STATE.md charter, seed the tracker queue, and create the README skeleton. Honor all constraints from the user request above: genre, scope, mechanics, art style, and any explicit limits (e.g. 'minimal', 'MVP', 'no polish').")
-
-if !exists(project-config-file):
-  task(poppy, "setup-project", "skill({ name: \"setup-project\" }) — DO NOT create scenes yet.")
 
 # Step 2: Iterative Loop
 while tracker_has_open_issues():   # bd list -s open
@@ -157,9 +158,21 @@ Before ANY main loop iteration (first time only), run these checks in order. **U
 
 > **Note on the blocks below:** these are checklists to follow step by step, not literal shell scripts. Do not attempt to execute them as bash.
 
-**Step 1: Check GAME_STATE.md**
-1. `glob("GAME_STATE.md")` — if it exists, skip to Phase 1.
-2. If missing:
+**Step 1: Check prerequisites (setup-project BEFORE genesis)**
+1. `glob("project.godot")` AND `glob(".beads/")` — if both exist, the platform
+   is initialized; go to 2. If either is missing:
+   ```
+   task({
+     subagent_type: "poppy",
+     description: "setup-project",
+     prompt: "skill({ name: \"setup-project\" }) — full bootstrap INCLUDING tracker init (bd init). DO NOT create scenes yet."
+   })
+   ```
+   (setup-project is idempotent — safe to re-run on partial state. It must
+   precede genesis: genesis seeds the tracker, so the tracker must exist
+   first. Platform bootstrapping is poppy's job — ian never touches it.)
+2. `glob("GAME_STATE.md")` — if it exists, skip to Phase 1.
+3. If missing:
    // CRITICAL: Extract the user's original request from session context (the first user message). Forward it to Ian verbatim so genesis respects constraints like "minimal", "MVP", "{GENRE}-style", etc.
    ```
    task({
@@ -168,8 +181,8 @@ Before ANY main loop iteration (first time only), run these checks in order. **U
      prompt: "User request: '<paste user's original prompt verbatim>'. skill({ name: \"genesis\" }) — DO NOT implement anything. Create the GAME_STATE.md charter, seed the tracker queue, and create the README skeleton. Honor all constraints from the user request above: genre, scope, mechanics, art style, and any explicit limits (e.g. 'minimal', 'MVP', 'no polish')."
    })
    ```
-3. `glob("GAME_STATE.md")` again. If **still missing**, this is unrecoverable — report the failure to the user and stop. Do not retry silently.
-4. `glob("README.md")`. If missing, this is a non-fatal warning only — README gets filled in during `log-result`. Note it and continue.
+4. `glob("GAME_STATE.md")` again. If **still missing**, this is unrecoverable — report the failure to the user and stop. Do not retry silently.
+5. `glob("README.md")`. If missing, this is a non-fatal warning only — README gets filled in during `log-result`. Note it and continue.
 ---
 
 ### Phase 1: Main Task Loop

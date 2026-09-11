@@ -46,6 +46,8 @@ permission:
     # bookkeeping subset it needs: queue reads, seed/claim/status, retry
     # counters, dependency edges. No comment-only scopes beyond the norms
     # (comments allowed; append-only convention per tracker contract).
+    "bd init*": allow
+    "bd config*": allow
     "bd list*": allow
     "bd show*": allow
     "bd types*": allow

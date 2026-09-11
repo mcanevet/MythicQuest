@@ -14,6 +14,21 @@ Creates bare-minimum Godot 4.x project infrastructure by:
 
 ## Execution
 
+### Step 0: Initialize the Tracker
+
+Platform bootstrapping starts here (before any file writes): the project's
+task queue must exist before genesis seeds it. If the tracker backend is not
+initialized (Beads: no `.beads/` directory at the project root), invoke the
+**tracker** skill (`skill({ name: "tracker" })`) and run its `init` —
+Beads: `bd init --prefix dd` + custom-types registration (adapter.md Step 0).
+Idempotent: skip silently if already initialized. If `bd` is not on PATH,
+report `⛔ BLOCKED: bd unavailable — mise-provided prerequisite missing`
+(do not improvise install workarounds; mise is project-configured).
+
+All tracker commands run **from the project root** — the tracker database is
+project-local; a wrong workdir silently reads/writes the wrong project's
+tracker.
+
 ### Step 1: Write project.godot
 
 **Before writing:** check if `GAME_STATE.md` exists. If it does, read its first line — it has the format `# Game Title`. Use that title as `config/name`. If `GAME_STATE.md` doesn't exist yet, use `"Untitled Game"` as a placeholder.
