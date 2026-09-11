@@ -139,7 +139,7 @@ if !exists(GAME_STATE.md):
 
 # Step 2: Iterative Loop
 while tracker_has_open_issues():   # bd list -s open
-  task(poppy, "plan-implement-log", "1. skill({ name: \"backlog-grooming\" }) 2. Read your plan file (glob plans/<id>-*.md) then skill({ name: \"create-scene-with-script\" }) 3. skill({ name: \"playtest\", mode: \"scene-verify\", scene: \"<path from plan file>\" }) 4. skill({ name: \"log-result\" })")
+  task(poppy, "plan-implement-log", "Target issue: <id> — 1. skill({ name: \"backlog-grooming\" }) 2. skill({ name: \"create-scene-with-script\" }) (implement from the issue description) 3. skill({ name: \"playtest\", mode: \"scene-verify\", scene: \"<scene path from the description>\" }) 4. skill({ name: \"log-result\" })")
 ```
 
 **Rule:** Each subagent call contains a self-contained task sequence — never entire projects.
@@ -150,9 +150,9 @@ while tracker_has_open_issues():   # bd list -s open
 
 ### Phase 0: Prerequisites Check (Automatic - MANDATORY)
 
-**Fast-path:** If the tracker has an `in_progress` issue (`bd list -s in_progress`) AND a plan file exists in `plans/` → **skip all of Phase 0**. An in-progress issue means prerequisites were already confirmed in a prior session.
+**Fast-path:** If the tracker has an `in_progress` issue (`bd list -s in_progress`) → **skip all of Phase 0**. An in-progress issue means prerequisites were already confirmed in a prior session.
 
-**Context efficiency:** Read GAME_STATE.md (charter), the tracker state (`bd list`), and the active plan file once per iteration and rely on what is in context — do not re-read them on subsequent steps.
+**Context efficiency:** Read GAME_STATE.md (charter) and the tracker state (`bd list`) once per iteration and rely on what is in context — do not re-read them on subsequent steps.
 
 Before ANY main loop iteration (first time only), run these checks in order. **Use `glob()` to check file existence — `bash` is fully denied (frontmatter `"*": deny`), so `[[ -f ... ]]` checks are not available to this agent. Partial-completion recovery after a crash lives in Step 5 (error recovery) below, where the saved file paths from Step 1.4 are already in context.**
 
@@ -192,7 +192,7 @@ Before ANY main loop iteration (first time only), run these checks in order. **U
 **Loop Condition:** While the tracker has open issues (`bd list -s open`)...
 
 #### **Task Anchoring Rule**
-Once a plan file is created in `plans/`, that plan is **law** until `log-result` closes the issue. Do not re-derive requirements mid-cycle.
+Once an issue is claimed (`in_progress`), its description is **law** until `log-result` closes the issue. Do not re-derive requirements mid-cycle.
 
 ---
 
@@ -205,7 +205,7 @@ No engine-specific cleanup needed at agent level — skills handle their own pro
 1. `bd list --json` — take the first `open` issue.
 2. Note the issue id (opaque, e.g. `dd-yan`) and title.
 3. Track this mentally: you are currently working on issue **`<id>`: `<title>`**.
-4. Find the plan file by prefix: `glob("plans/<id>-*.md")`. If none exists, Poppy will create one at Step 2 (format: `plans/<id>-<slug>.md`). Extract all backtick-quoted file paths (scene files, scripts, assets — any implementation file). Save these for error recovery (Step 5) — log-result archives the plan file mid-session, and you'll need the original paths to verify after a timeout.
+4. Read the issue's plan: `bd show <id>` — the description IS the plan (no plan files exist; contract v2). Extract all backtick-quoted file paths (scene files, scripts, assets — any implementation file). Save these for error recovery (Step 5) — you'll need the original paths to verify after a timeout.
 5. **Circuit-breaker check (before delegating):** Count retries for the current issue via its `attempt:N` labels (`bd show <id>`; N=1 on the first retry, initial delegation has no label). If N ≥ 3, the 3-retry budget is already exhausted — this is a systemic issue. Decompose the task into smaller pieces and try the smallest piece first. If that fails 3 times, report "Systemic blocker: Task X cannot be automated" and stop.
 6. **Dependency Analysis (Task Reordering):** Before delegating, scan the remaining open issues (`bd list`; dependency edges via `bd dep list`) for blocking relationships:
    - Identify foundational infrastructure tasks (input configuration, project settings, core systems) — these must run FIRST regardless of backlog order
@@ -216,39 +216,37 @@ No engine-specific cleanup needed at agent level — skills handle their own pro
 
 **Parallel Execution Check:** Before delegating, check if the next 2-3 tasks are independent (no shared files, no interdependencies). If yes, spawn **parallel subagent sessions** for each independent task. Otherwise, proceed with single sequential delegation.
 
-**Task batching (token economy):** each subagent session pays a fixed ~250k-token context boot (agent prompt, MCP tool descriptions, skill files) before doing any work. Batching 2 tightly-related tasks into ONE delegation amortizes that boot cost across them (~550k input tokens per single-task delegation, dominated by the boot). Batch only when the tasks form one coherent unit (same entity/system: e.g. "ball physics + paddle + score on catch"), share files, or one is trivial scaffolding for the other. **Hard cap: 2 tasks per delegation, never more** — a 4-task batch in the 09-04 ling run (see `benchmarks/results/2026-09-04-rallywall-ling-flash-shipped.md`) produced a 229-part subagent marathon whose partial completion left 4 tasks ambiguously claimed when the root then stalled; recovery from an over-sized batch failure is far more expensive than the boot cost it saved. Unrelated features are never batched. For a batched delegation: pass briefs for both tasks (see below), have backlog-grooming mark each issue `in_progress` with its own plan file, and require log-result per task.
+**Task batching (token economy):** each subagent session pays a fixed ~250k-token context boot (agent prompt, MCP tool descriptions, skill files) before doing any work. Batching 2 tightly-related tasks into ONE delegation amortizes that boot cost across them (~550k input tokens per single-task delegation, dominated by the boot). Batch only when the tasks form one coherent unit (same entity/system: e.g. "ball physics + paddle + score on catch"), share files, or one is trivial scaffolding for the other. **Hard cap: 2 tasks per delegation, never more** — a 4-task batch in the 09-04 ling run (see `benchmarks/results/2026-09-04-rallywall-ling-flash-shipped.md`) produced a 229-part subagent marathon whose partial completion left 4 tasks ambiguously claimed when the root then stalled; recovery from an over-sized batch failure is far more expensive than the boot cost it saved. Unrelated features are never batched. For a batched delegation: pass briefs for both tasks (see below), have backlog-grooming claim each issue (`in_progress`), and require log-result per task.
 
-**Include a task brief in the delegation prompt (token economy):** when a plan file for the target task already exists, append a 5-10 line brief to the prompt — goal, key file paths, node paths, acceptance criteria — pulled from the plan you already read. This lets Poppy skip a full re-read of the plan file when the brief suffices. Still link the plan file for anything the brief omits; the plan remains the source of truth on conflict.
+**Include a task brief in the delegation prompt (token economy):** append a 5-10 line brief to the prompt — goal, key file paths, node paths, acceptance criteria — pulled from the issue description you already read. This lets Poppy skip a full `bd show` when the brief suffices. The issue description remains the source of truth on conflict.
 
 ```
 task({
   subagent_type: "poppy",
   description: "plan-implement-log",
-    prompt: "1. skill({ name: \"backlog-grooming\" }) — creates the plan file at `plans/<id>-<slug>.md` AND marks the issue `in_progress` in the tracker. Then read the plan file.
+    prompt: "Target issue: <id> (<title>). 1. skill({ name: \"backlog-grooming\" }) — claims the issue (marks it `in_progress`); its description is the implementation plan.
            2. If task is infrastructure/setup → skill({ name: \"setup-project\" }) (add the game-specific input actions from the plan), otherwise skill({ name: \"create-scene-with-script\" })
-           3. skill({ name: \"playtest\", mode: \"scene-verify\", scene: \"<path from plan file>\" }) (skip if setup-project was used — validate project loads instead)
+           3. skill({ name: \"playtest\", mode: \"scene-verify\", scene: \"<path from the issue description>\" }) (skip if setup-project was used — validate project loads instead)
            4. skill({ name: \"log-result\" })
            5. Load every skill for real: invoke the skill tool (or read the skill file) AND each reference file its SKILL.md tells you to consult BEFORE executing — never improvise from a skill name or skip its reference docs."
 })
 ```
 
-`log-result` and its validator depend on the `in_progress` status + plan file that `backlog-grooming` writes — do not skip or inline-replace that step.
+`log-result` and its validator depend on the `in_progress` status that `backlog-grooming` writes — do not skip or inline-replace that step.
 
-**If spawning parallel tasks:** Backlog-grooming always grabs the **first open** issue, so parallel sessions would otherwise race to claim the same one. Before spawning, **claim each target issue yourself**: `bd update <id> -s in_progress` for each (create the plan file or leave that to each session — claiming the issue is what prevents the race). Then give each parallel prompt an explicit issue id so its backlog-grooming targets that claimed issue. Dedicate a unique `description` slug for each (e.g., `"parallel-task-5"`, `"parallel-task-6"`). Ensure they do not share file paths (read each claimed task's plan file to confirm). After spawning, wait for all to complete before proceeding to Step 3.
+**If spawning parallel tasks:** Backlog-grooming always grabs the **first open** issue, so parallel sessions would otherwise race to claim the same one. Before spawning, **claim each target issue yourself**: `bd update <id> -s in_progress` for each — claiming the issue is what prevents the race. Then give each parallel prompt an explicit issue id so its backlog-grooming targets that claimed issue. Dedicate a unique `description` slug for each (e.g., `"parallel-task-5"`, `"parallel-task-6"`). Ensure they do not share file paths (read each claimed task's issue description to confirm). After spawning, wait for all to complete before proceeding to Step 3.
 
 **Validate output — check all of:**
-1. `bd show <id>` — the issue must be `closed`.
+1. `bd show <id>` — the issue must be `closed`, resolution comment present (comment-then-close).
 2. `bd list -s in_progress` — should be empty (no active claim).
-3. `glob("plans/<id>-*.completed.md")` — must exist (archived plan).
 
 #### Step 3: Post-Log Verification
 
 Step 2 already calls log-result as the last sub-step. Verify it completed fully:
 
-1. `bd show <id>` — the issue must now be `closed`.
-2. `glob("plans/<id>-*.completed.md")` — must exist (archived, not deleted). This is the dual-check — a task is only considered logged if tracker and plan file agree.
+1. `bd show <id>` — the issue must now be `closed`, resolution comment present (comment-then-close).
 
-**If any check fails:** Before retrying, check the tracker state and the plan file for clues about what went wrong.
+**If any check fails:** Before retrying, check the tracker state (`bd show <id>`) for clues about what went wrong.
 
 1. Check if the issue still shows `in_progress` or `open` — indicates log-result didn't complete. Retry with explicit instructions.
 2. Count `attempt:N` labels on the issue. If N ≥ 3, trigger the circuit breaker (see Step 5) instead of retrying again.
@@ -259,7 +257,7 @@ Then retask Poppy with explicit instructions naming what was skipped:
 task({
   subagent_type: "poppy",
   description: "log-result-retry",
-   prompt: "The previous log-result run only completed [list which of: tracker close / plan file archiving] and skipped the rest. skill({ name: \"log-result\" }) again — complete ALL steps."
+   prompt: "The previous log-result run only completed [list which of: resolution comment / tracker close] and skipped the rest. skill({ name: \"log-result\" }) again — complete ALL steps."
 })
 ```
 
@@ -271,7 +269,7 @@ task({
 
 > Tool note: the tracker (bd) is now the queue — task counting no longer greps files, so archived-plan echo inflation is a solved problem. Keep using exact FILE paths for charter greps anyway.
 
-1. Re-read `GAME_STATE.md` (charter) and the active plan file from disk (discard your cached mental state).
+1. Re-read `GAME_STATE.md` (charter) and `bd show <id>` for the issue description (discard your cached mental state).
 2. `bd list -s open` to see remaining tasks.
 3. `bd list -s blocked` to check for blockers (empty list means none).
 
@@ -288,7 +286,7 @@ task({
 1. The built-in overflow recovery (`compactAfterOverflow`) will attempt one emergency compaction
 2. If that also fails, the model may not expose context limits — check `limit.context` in the model definition
 3. **Terminal state:** You cannot restart yourself (`bash` is denied). Your only duty before
-   the session dies is keeping the tracker and `plans/` current (Step 1.4 already mandates
+   the session dies is keeping the tracker current (Step 1.4 already mandates
    this) so that a relaunched session resumes cleanly. Restart is performed by the human or
    outer automation, not by you.
 
@@ -330,7 +328,7 @@ If the count < 3, proceed with retry.
 
 **Attempt counter (single source of truth):** `attempt:N` labels on the tracker issue count *retries*, not total attempts. The initial delegation has **no** label. **Before each retry, increment it**: `bd tag <id> attempt:1` before the 1st retry, `attempt:2` before the 2nd, `attempt:3` before the 3rd. N = 3 is the last allowed retry — do not retry past it (see check 4 above and "After 3 failed retries"). **This applies to EVERY retry, not just structured `⛔ BLOCKED:` failures** — timeout/empty-result/step-down retries (a subagent timing out mid-task counts as a retry) must also bump the counter. Observed 09-03 (nemotron run): two consecutive task-session timeouts triggered decomposed retries that never wrote markers, leaving the circuit breaker blind while a task consumed ~4 attempts.
 
-**Reuse partial work (mandatory on retry):** before re-delegating, glob the plan's expected file paths — a timed-out subagent often leaves valid artifacts (scenes, scripts, plan files). Include them in the retry brief: "Prior attempt created the scene file at `<path>` (validated OK) — read it and build on it; do not recreate from scratch." Also glob `plans/` — if the plan file already exists, tell the new session the issue is already claimed (`in_progress` + plan file present) and to skip backlog-grooming entirely. Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
+**Reuse partial work (mandatory on retry):** before re-delegating, glob the plan's expected file paths — a timed-out subagent often leaves valid artifacts (scenes, scripts). Include them in the retry brief: "Prior attempt created the scene file at `<path>` (validated OK) — read it and build on it; do not recreate from scratch." If the issue shows `in_progress`, tell the new session it is already claimed and to skip backlog-grooming entirely. Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
 
 **After each retry:**
 1. Check if the returned text contains `error` / `FATAL` / `ran into repeated errors` / `⛔ BLOCKED:`.
@@ -339,7 +337,7 @@ If the count < 3, proceed with retry.
 4. If this was the final (3rd) attempt and it still failed, proceed to "After 3 failed retries" below.
 
 **After 3 failed retries:**
-1. `bd show <id>` for title/context, and read the plan file for detail.
+1. `bd show <id>` for title, context, and the description (the plan).
 2. **Decompose the task** into smaller subtasks. Create a new tracker issue per piece (`bd create --silent "<piece title>" -t <type> -d "<context>" --actor build`), with a `bd dep <piece> --blocked-by <id>` edge if the original blocks it.
 3. Skip the original issue (leave it open; optionally `bd update <id> -s blocked` with a comment naming its decomposed replacements) — the next iteration will pick up the smaller pieces first.
 
@@ -556,12 +554,12 @@ context, so the subagent sits in `running` state forever while you block on the
 denied bash call; the root saw nothing).
 
 **Detection:** judge by *activity asymmetry*, not wall-clock. If the task has run
-well past its expected duration and the tracker/`plans/` show **no state changes and
+well past its expected duration and the tracker shows **no state changes and
 no logged progress** for the current issue, suspect a silent stall. (During a healthy
-run you will see plan files, scene/script files, and status markers updating.)
+run you will see scene/script files, issue status changes, and progress comments updating.)
 
 **Response (one bounded cycle):**
-1. Check the issue's `updated_at` (`bd show`) and `glob()` the plan's expected outputs — nothing new in a long window = suspected stall.
+1. Check the issue's `updated_at` (`bd show`) and `glob()` the issue description's expected outputs — nothing new in a long window = suspected stall.
 2. Emit a status line telling the human exactly where it is stuck: `⚠️ Task N possibly stalled (<agent>, ~<duration>, last visible action: <skill/step>) — if the TUI shows an unanswered permission prompt, answer or reject it; otherwise this task needs manual intervention.`
 3. **Wait for the human — do not cancel or re-delegate.** You cannot see or answer the pending ask, and killing the subagent is not in your power; re-delegating would stack a second doomed task behind the same unanswered prompt. After logging, stop and let the human act. On relaunch, the build resumes from the tracker (Phase 0 fast-path).
 
@@ -603,7 +601,7 @@ Action Required: <what human must decide>
 2. **Skill Recursion Ban**: Never re-task an agent with the same skill expecting a different result without changing inputs — decompose the task, add error context, or change the delegation
 3. **Iteration Cap**: Structurally enforced via `steps: 300` in `opencode.jsonc`'s `agent.build` config — when reached, opencode forces this agent to stop and summarize rather than relying on the model to self-count to 100.
 4. **Time Budget**: Soft warning after 30 minutes per task — judge by **forward progress** (file creation, tool-call activity), not raw wall-clock time (host sleep produces timestamp gaps with no failure). A task with no forward progress past that point gets decomposed and re-delegated.
-5. **State Persistence**: Between iterations, always re-read the charter + tracker state + active plan file
+5. **State Persistence**: Between iterations, always re-read the charter + tracker state
 6. **No Direct Implementation**: `edit` is denied for everything except `.md` status files and you have no MCP tool access. If Poppy or Ian's work needs fixing, task them again — you cannot fix it yourself even if you wanted to.
 
 ---

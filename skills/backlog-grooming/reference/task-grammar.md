@@ -11,7 +11,7 @@ understanding prose.
 |---|---|
 | Game charter (title, vision, mechanics, art style) | `GAME_STATE.md` — read-only after genesis, no task lines |
 | Task queue | tracker issues (the backend store, e.g. bd) |
-| Plan per task | `plans/<id>-<slug>.md` — associated by filename prefix only |
+| Plan per task | the issue's `description` field — seeded at creation, never mirrored to files |
 | Resolution / discussion | append-only comments on the issue |
 
 ## Field mapping
@@ -20,6 +20,7 @@ understanding prose.
 |---|---|---|
 | task id | `id` | opaque, backend-defined (bd `<prefix>-<hash>`, GitHub `#42`, Jira `PROJ-123`); never parsed or reformatted |
 | title | `title` | imperative sentence ("Create Player entity with movement") |
+| implementation plan | `description` | the structured plan body (Task Type / Goal / Files to Create / DoD / Visual Verification / Hints / Dependencies) — must be seeded at issue creation; a thin description is a genesis defect, not the implementer's problem |
 | origin loop | `labels` (`reporter:<agent>`) plus issue `type` | genesis `core`, QA `bug`, vision `vision`, consumer `critique`, dev self-check `polish` |
 | status | `status` | `open` \| `in_progress` \| `blocked` \| `closed` — grooming sets `in_progress`, log-result sets `closed` |
 | retry counter | `attempt:N` label + comments | circuit breaker: ≥3 attempts on one issue ⇒ decompose or escalate (build agent tracks this) |

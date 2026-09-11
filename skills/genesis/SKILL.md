@@ -64,11 +64,20 @@ Do not run init commands yourself.
 1. Create one milestone for the playable-loop arc, e.g.
    `create_milestone "Playable Loop" --description "<from concept>"`.
 2. `create_issue` for each drafted task, in dependency order:
-   `-t core|polish|vision`, `-d "<implementation-relevant summary>"`,
-   `-l reporter:ian --actor ian`, `--parent <milestone-id>` for
+   `-t core|polish|vision`, `-l reporter:ian --actor ian`, `--parent <milestone-id>` for
    playable-loop tasks.
-3. Record the milestone id and issue ids from command output — plan files
-   will be named from them (`plans/<id>-<slug>.md`).
+   **The `-d "<description>"` is the implementation plan** — there are no
+   plan files; the description IS what poppy implements from and what
+   log-result validates against. Follow the structure in
+   [reference/plan-template.md](reference/plan-template.md)
+   (Task Type / Goal / Files to Create / Definition of Done /
+   Visual Verification Needed / Implementation Hints / Dependencies) —
+   compressed to the essentials per task, not copied wholesale: pin exact
+   file paths, concrete pass/fail DoD items (5-7), and named input actions.
+   A thin one-liner description blocks the implementer (they must fail
+   loudly rather than invent requirements).
+3. Record the milestone id and issue ids from command output — the caller
+   cites them in delegation prompts (`bd show <id>` retrieves the plan).
 
 ### Step 4: Create README.md
 

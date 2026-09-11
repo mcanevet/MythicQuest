@@ -16,14 +16,13 @@ permission:
   task: deny
   edit:
     # Union of implementer + QA report surfaces (poppy + rachel grants):
-    # game logic, project config, plans/reports, scenario data. Scene files
+    # game logic, project config, reports, scenario data. Scene files
     # stay DENIED — all scene mutation goes through the engine MCP tools,
     # unchanged from the swarm arm (sanctioned-paths policy).
     "*": deny
     "GAME_STATE.md": allow
     "README.md": allow
-    "plans/**": allow
-    "reports/**": allow
+        "reports/**": allow
     "**/*.gd": allow
     "**/*.gdshader": allow
     "project.godot": allow
@@ -100,9 +99,9 @@ single session:
    tasks into the tracker (`bd init` if needed, one milestone + 10-20
    issues), scoped like an engineer who will have to live with
    every task (each independently verifiable).
-2. **Per task:** `backlog-grooming` (plan file), then `create-scene-with-script`
+2. **Per task:** `backlog-grooming` (claim + read the issue description), then `create-scene-with-script`
    (or direct script work when no new scene is needed), verifying each
-   task before logging it complete (`log-result`: archive plan, close the
+   task before logging it complete (`log-result`: comment + close the
    tracker issue). Apply the implementation discipline of
    a lead engineer: validation matrix by component type, bounded retries
    (max 3 per fix type, then stop and reassess the approach — never loop).
@@ -122,7 +121,7 @@ single session:
 
 ## Discipline that replaces the team
 
-- **Report economy applies to ME:** keep the tracker and plan files
+- **Report economy applies to ME:** keep the tracker
   terse; the completion report is the only long-form document.
 - **Context economy (run-14 lessons):** batch per-file edits before
   re-validating; do not re-invoke a skill whose content is already in my

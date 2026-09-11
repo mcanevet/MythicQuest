@@ -21,7 +21,7 @@ single source of truth.
 |---|---|
 | `GAME_STATE.md` | **Charter, read-only after genesis**: title, vision, core mechanics, art style. No task lines. |
 | Tracker (backend store) | **The queue**: all issues/milestones — the sole source of task state. |
-| `plans/<id>-<slug>.md` | Plan per task; `id` is the tracker's opaque issue id, verbatim. Plan association is by filename prefix — no stored link. |
+| issue `description` field | Plan per task (structured body seeded at creation: Task Type / Goal / Files to Create / DoD / Verification / Hints / Dependencies). Lives in the tracker, never mirrored to files. |
 
 ## Backend mount & the stable skill name
 
@@ -56,12 +56,15 @@ representation mapping table lives in each adapter (Beads:
 `critique`, `material`, `animation`, `audio`, `refactor`, `core` (extended
 as agents join). Statuses: `open | in_progress | blocked | closed`.
 
-## Ids and plan files
+## Ids and plans
 
 Tracker issue ids are **opaque strings** owned by the backend (Beads
 `<prefix>-<hash>`, GitHub `#42`, Jira `PROJ-123`). Skills never parse or
-reformat them — they pass them verbatim and build plan filenames from them:
-`plans/<id>-<slug>.md`. Finding a task's plan = `glob("plans/<id>-*.md")`.
+reformat them — they pass them verbatim. The implementation plan for each
+task lives in the issue's `description` field (seeded at creation); result
+records live in comments. No plan files exist on disk — the tracker is the
+single durable task artifact, which is what keeps the contract portable
+across backends (GitHub/Jira have no filesystem equivalent to mirror to).
 
 ## Permission model
 

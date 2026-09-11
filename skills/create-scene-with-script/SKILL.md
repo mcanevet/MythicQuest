@@ -36,7 +36,7 @@ If this returns an error or times out → **FAIL IMMEDIATELY**. Report "MCP brid
 
 Read files in this order — stop once you have what you need:
 
-1. Plan file (`plans/<id>-*.md` for the current issue) → Task requirements (always read first)
+1. Issue description (`bd show <id>` for the current issue) → Task requirements, the plan (always read first)
 2. `CONVENTIONS.md` → Project-specific collision layers (if present, only if you need collision layer assignments)
 3. `GAME_STATE.md` charter → Vision context (only if the plan references visual style or feel)
 4. `./.opencode/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)

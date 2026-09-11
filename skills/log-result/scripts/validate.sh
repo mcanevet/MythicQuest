@@ -17,12 +17,12 @@ if ! command -v bd >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check 2: The logged issue must be closed; no OTHER issue may still be
-# in_progress (batched delegations legitimately groom the next task before
-# the current one validates — but the groomed issue is open-for-planning,
-# and if it was set in_progress the NEXT log-result will cover it; here we
-# only fail when the issue being logged is not closed, or — without an id —
-# when any issue is in_progress).
+# Check 2: The logged issue must be closed with a resolution comment; no
+# OTHER issue may still be in_progress (batched delegations legitimately
+# groom the next task before the current one validates — but the groomed
+# issue is open-for-claiming, and if it was set in_progress the NEXT
+# log-result will cover it; here we only fail when the issue being logged
+# is not closed, or — without an id — when any issue is in_progress).
 open_json=$(bd list --json 2>/dev/null || echo "[]")
 in_prog_count=$(printf '%s' "$open_json" | grep -c '"status": *"in_progress"' || true)
 
@@ -36,6 +36,13 @@ if [ -n "$ISSUE_ID" ]; then
             echo "ℹ️  INFO: $in_prog_count other issue(s) in_progress (batched delegation) — not an '$ISSUE_ID' failure" >&2
         fi
         echo "✓ OK: issue '$ISSUE_ID' closed"
+        # Check 2b: the resolution comment must exist (comment-then-close)
+        if bd show "$ISSUE_ID" 2>/dev/null | grep -qi "CLOSED:"; then
+            echo "✓ OK: resolution comment present on '$ISSUE_ID'"
+        else
+            echo "❌ FAIL: issue '$ISSUE_ID' closed without a resolution comment (comment-then-close required)" >&2
+            errors=$((errors+1))
+        fi
     else
         echo "❌ FAIL: issue '$ISSUE_ID' is not closed — log-result did not complete its tracker close" >&2
         errors=$((errors+1))
@@ -49,51 +56,16 @@ else
     fi
 fi
 
-# Check 3: If ISSUE_ID provided, its plan must be archived (.completed.md exists)
-if [ -n "$ISSUE_ID" ]; then
-    if ls plans/"$ISSUE_ID"-*.completed.md >/dev/null 2>&1; then
-        echo "✓ OK: plan for '$ISSUE_ID' archived to .completed.md"
-    else
-        echo "❌ FAIL: no plans/$ISSUE_ID-*.completed.md — archive step did not run" >&2
-        errors=$((errors+1))
-    fi
-fi
-
-# Check 4: No orphaned active plan files for closed issues
-# (An issue closed by log-result must not still have a live .md plan.)
-closed_ids=$(printf '%s' "$open_json" >/dev/null 2>&1 && bd list --json --all 2>/dev/null \
-    | python3 -c '
-import json,sys
-try:
-    rows=json.load(sys.stdin)
-except Exception:
-    rows=[]
-for r in rows:
-    if isinstance(r,dict) and r.get("status")=="closed":
-        print(r.get("id",""))
-' 2>/dev/null || true)
-for cid in $closed_ids; do
-    if ls plans/"$cid"-*.md >/dev/null 2>&1 && ! ls plans/"$cid"-*.completed.md >/dev/null 2>&1; then
-        echo "❌ FAIL: closed issue '$cid' still has an active (non-.completed) plan file" >&2
-        errors=$((errors+1))
-    fi
-done
-if [ -n "$closed_ids" ]; then
-    echo "✓ OK: no orphaned active plans for closed issues"
-fi
-
-# Check 5: At least one archived (.completed.md) plan file must exist if plans/ was ever used
-if [ -d "plans" ]; then
-    completed_count=$(find plans -maxdepth 1 -name "*.completed.md" | wc -l | tr -d ' ')
-    active_count=$(find plans -maxdepth 1 -name "*.md" ! -name "*.completed.md" | wc -l | tr -d ' ')
-    if [ "$completed_count" -eq 0 ] && [ "$active_count" -gt 0 ]; then
-        echo "❌ FAIL: plans/ has active plan file(s) but none archived to .completed.md — archive step did not run" >&2
-        errors=$((errors+1))
-    else
-        echo "✓ OK: plan archiving state consistent ($completed_count archived, $active_count active)"
-    fi
+# Check 3: No orphaned plan files — the tracker is the single durable task
+# artifact; a plans/ directory with content means the old file-based plan
+# path leaked into this run.
+if [ -d "plans" ] && [ -n "$(find plans -maxdepth 1 -name '*.md' -print -quit)" ]; then
+    echo "❌ FAIL: plans/ contains plan file(s) — plans live in the tracker issue description (contract v2), not on disk" >&2
+    errors=$((errors+1))
+elif [ -d "plans" ]; then
+    echo "✓ OK: plans/ empty (plan-in-tracker respected)"
 else
-    echo "ℹ️  INFO: No plans/ directory yet (expected for very first task)" >&2
+    echo "✓ OK: no plans/ directory (expected)"
 fi
 
 echo ""
