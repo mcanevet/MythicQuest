@@ -5,12 +5,12 @@ Referenced back as the full workflows behind the SKILL.md one-time-modes summary
 
 ## Mode: functional
 
-**When:** After all tasks are marked `[x]` in GAME_STATE.md
+**When:** After all tracker issues are closed (`bd list -s open` is empty)
 **Purpose:** Verify every mechanic works per spec — exhaustive, evidence-based, systematic
 
 ### Preamble: Read the spec
 
-Read **GAME_STATE.md** (completed tasks) and **README.md** (controls, rules, scoring, win conditions, game flow). This is your verification matrix.
+Read **README.md** (controls, rules, scoring, win conditions, game flow) and the charter. This is your verification matrix; completed work is confirmed via the tracker (`bd list -s closed`).
 
 ### Step 0b: Collect per-entity invariants
 
@@ -100,7 +100,7 @@ Note: Screenshots taken only if violations detected — not as primary verificat
 **Precondition:** TestPlayer autoload registered (see Common Workflow)
 **Purpose:** Evaluate whether the game matches the original creative vision — art direction, pacing, game feel, emotional core
 
-### Step 1: Read GAME_STATE.md (vision statement, art direction) and README.md (intended player experience)
+### Step 1: Read GAME_STATE.md charter (vision statement, art direction) and README.md (intended player experience)
 
 ### Step 2: Launch with extended observation scenario
 
@@ -136,7 +136,7 @@ Analyze the returned data:
 ```
 ## Vision Achievement Report
 
-**Vision:** [from GAME_STATE.md]
+**Vision:** [from GAME_STATE.md charter]
 
 **Rating per element** (✅/⚠️/❌):
 - Emotional core: [assessment]
@@ -167,7 +167,7 @@ Analyze the returned data:
 
 ### Step 1: Read README.md only (controls, rules, scoring, game flow, art style)
 
-Never read source files, scene files, or GAME_STATE.md.
+Never read source files, scene files, or the charter.
 
 ### Step 2: Launch the game and play it yourself
 

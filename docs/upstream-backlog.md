@@ -247,8 +247,12 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Proposed upstream fix:** in `executeSceneOp`'s `parseStdoutAsJson` branch,
   surface the non-JSON stdout content and/or stderr diagnostics instead of
   "invalid JSON"; ideally emit the payload on a marker-delimited channel.
-- **Status:** branch ready (`fix/stdout-noise-masking`, test-only, pinning
-  the gap), folded into `feat/import-assets-plus-noise-masking`; not filed.
+- **Status:** FIXED UPSTREAM. Filed as PR #39 (2026-09-09,
+  `fix/json-absent-stdout-diagnosis`): JSON-absent stdout classified as early
+  exit (not "invalid JSON"), with file+line preserved from early-exit stderr
+  (follow-up b6ea2b8). MERGED 2026-09-09; unreleased beyond v3.5.0 — tracked
+  by the opencode.jsonc local-main pin. Lifecycle: filed → merged →
+  awaiting release → retire pin on publish.
 
 ### stop_project success result re-dumps the full engine banner every call
 - **Observed:** 09-09 run 14 (DeepDive, 23 sessions): 31 `stop_project` calls
@@ -262,8 +266,11 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   `stop_project` success results (e.g. last 3–5 lines, or only lines matching
   ERROR/SCRIPT ERROR), with a pointer to `get_debug_output` for the full log.
   Consumers needing full output already have that path.
-- **Status:** not filed. Evidence quantified from run-14 traces; candidate
-  flagged 2026-09-09.
+- **Status:** FIXED UPSTREAM. Filed as PR #40 (2026-09-09,
+  `fix/truncate-stop-project-banner`): success payload condensed to
+  diagnostic lines (88063dc; maintainer follow-up 0bca2d4 restored the
+  200-line cap with a narrower noise filter). MERGED 2026-09-10; unreleased
+  beyond v3.5.0 — tracked by the opencode.jsonc local-main pin.
 
 ### Sub-property paths rejected (theme_override_font_sizes/font_size)
 - **Observed:** 09-07 run 9 (task 8): add_node/set_node_properties with

@@ -42,6 +42,20 @@ permission:
     "**/skills/**": deny
   bash:
     "*": deny
+    # Tracker (Beads backend) — solo owns the full loop, so it gets the
+    # bookkeeping subset it needs: queue reads, seed/claim/status, retry
+    # counters, dependency edges. No comment-only scopes beyond the norms
+    # (comments allowed; append-only convention per tracker contract).
+    "bd list*": allow
+    "bd show*": allow
+    "bd types*": allow
+    "bd create *": allow
+    "bd update *": allow
+    "bd assign *": allow
+    "bd tag *": allow
+    "bd comment *": allow
+    "bd close *": allow
+    "bd dep *": allow
     # Deterministic skill helper scripts — skills are trusted harness code,
     # any script type a skill ships (run-14 .py-deny incident, commit c49849f).
     "*scripts/*.sh*": allow
@@ -80,12 +94,14 @@ I work the skills in their natural order, one game task at a time, in this
 single session:
 
 1. **Bootstrap:** `setup-project` (bare project + test harness), then write
-   the game vision myself — README + GAME_STATE.md task list decomposed
-   from the prompt, scoped like an engineer who will have to live with
-   every task (10-20 tasks, each independently verifiable).
+   the game vision myself — README + charter — and decompose the prompt's
+   tasks into the tracker (`bd init` if needed, one milestone + 10-20
+   issues), scoped like an engineer who will have to live with
+   every task (each independently verifiable).
 2. **Per task:** `backlog-grooming` (plan file), then `create-scene-with-script`
    (or direct script work when no new scene is needed), verifying each
-   task before logging it complete. Apply the implementation discipline of
+   task before logging it complete (`log-result`: archive plan, close the
+   tracker issue). Apply the implementation discipline of
    a lead engineer: validation matrix by component type, bounded retries
    (max 3 per fix type, then stop and reassess the approach — never loop).
 3. **Continuously QA my own work:** every few tasks, run the playtest
@@ -104,7 +120,7 @@ single session:
 
 ## Discipline that replaces the team
 
-- **Report economy applies to ME:** keep GAME_STATE.md and plan files
+- **Report economy applies to ME:** keep the tracker and plan files
   terse; the completion report is the only long-form document.
 - **Context economy (run-14 lessons):** batch per-file edits before
   re-validating; do not re-invoke a skill whose content is already in my

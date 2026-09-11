@@ -1,59 +1,51 @@
-# Task-Line Grammar (GAME_STATE.md)
+# Task State Mapping (tracker)
 
-The task queue is a flat markdown checklist. Every mutating line follows one
-grammar, so tooling (and a future importer to Jira/Trello/GitHub Projects)
-can parse it mechanically without understanding prose.
+The tracker is the task queue. This document maps the concepts the swarm
+uses onto tracker fields so tooling (and future backend migrations to
+GitHub Projects/Trello/Jira) can translate mechanically without
+understanding prose.
 
-## Grammar
+## Where things live
 
-```
-- [<status>] Task <N>: <description> [<origin-tag>[:<detail>]] [(attempt: <K>)] [(see: plans/<NN>-<slug>.md)]
-```
+| Concept | Location |
+|---|---|
+| Game charter (title, vision, mechanics, art style) | `GAME_STATE.md` — read-only after genesis, no task lines |
+| Task queue | tracker issues (the backend store, e.g. bd) |
+| Plan per task | `plans/<id>-<slug>.md` — associated by filename prefix only |
+| Resolution / discussion | append-only comments on the issue |
 
-| Field | Values | Notes |
-|-------|--------|-------|
-| `<status>` | `[ ]` \| `[in progress]` \| `[x]` | `[x]` lines are history, never rewritten |
-| `<N>` | integer, unique | Line order within the file is priority order; `N` never reused |
-| `<description>` | imperative sentence | subject + verb + artifact ("Create Player entity with movement") |
-| `<origin-tag>` | `core` \| `bug` \| `vision` \| `critique` \| `polish` | who fed the queue: genesis (core), QA loop (bug), vision loop (vision), consumer loop (critique), dev-loop self-check (polish) |
-| `[<origin-tag>:<detail>]` | e.g. `bug:qa-func`, `vision:drift` | optional qualifier — which loop/gate produced it |
-| `(attempt: <K>)` | 1..3 | retry counter; K=3 exhausts the circuit breaker |
-| `(see: ...)` | plan-file path | written by backlog-grooming; `.completed.md` suffix after log-result |
+## Field mapping
 
-## Operator flags (file scope, not task scope)
+| Swarm concept | Tracker field | Values / notes |
+|---|---|---|
+| task id | `id` | opaque, backend-defined (bd `<prefix>-<hash>`, GitHub `#42`, Jira `PROJ-123`); never parsed or reformatted |
+| title | `title` | imperative sentence ("Create Player entity with movement") |
+| origin loop | `labels` (`reporter:<agent>`) plus issue `type` | genesis `core`, QA `bug`, vision `vision`, consumer `critique`, dev self-check `polish` |
+| status | `status` | `open` \| `in_progress` \| `blocked` \| `closed` — grooming sets `in_progress`, log-result sets `closed` |
+| retry counter | `attempt:N` label + comments | circuit breaker: ≥3 attempts on one issue ⇒ decompose or escalate (build agent tracks this) |
+| dependencies | `blocks` / `blocked_by` relations | `bd dep` edges; the build agent reorders around them before delegating |
+| assignment | `assignee` | set by ian; poppy closes only what is assigned to her (norm) |
+| milestone | parent issue of type `milestone` | e.g. "Playable Loop" |
 
-Declared anywhere in GAME_STATE.md before the run starts:
+## Loop feeders
 
-```
-SKIP_CONSUMER_LOOP=true
-```
+Tasks added mid-run by a gate are created as new tracker issues with the
+feeding loop's `type` (`bug`, `vision`, `critique`, `polish`) — created by
+whichever role has create rights for that type (rachel: `bug`, pootie:
+`critique`, ian: any). No prose status notes anywhere; discussion goes in
+issue comments.
 
-Skips the consumer loop (benchmark comparability). MUST be recorded in
-the completion report when active.
+## Migration mapping (backend swaps)
 
-## Append rules (loop feeders)
+| Tracker field | GitHub Projects | Trello | Jira |
+|---|---|---|---|
+| status | item state (Todo/In Progress/Done) | list membership | status category |
+| labels | labels | labels | labels/components |
+| type | custom field or label | label | issue type |
+| assignee | assignee | member | assignee |
+| comments | comments | card comments | comments |
+| blocks/blocked_by | blocked-by relation | (plugin) | issue links |
 
-Tasks added mid-run by a gate use **non-conflicting next N**, preserving
-grammar exactly:
-
-```
-- [ ] Task 17: Fix ball tunneling through paddle at high speed [bug:qa-func] (see: plans/17-...)
-- [ ] Task 18: Realign title screen with arcade-on-chrome vision [vision:drift]
-- [ ] Task 19: Increase juice on score events [critique:consumer]
-```
-
-No prose-only lines in the backlog section — free-text status notes go above
-the backlog heading.
-
-## Migration mapping (when a PM tool replaces the files)
-
-| Grammar field | GitHub Projects equivalent |
-|---------------|---------------------------|
-| `[ ]`/`[x]` status | item state (Todo/Done) |
-| `Task N` | issue title prefix or custom ID field |
-| `[origin-tag]` | label |
-| `(attempt: K)` | comment history |
-| `(see: plans/...)` | linked artifact / repo file link |
-| priority (line order) | board rank |
-
-Until migration, the flat file IS the tool — do not maintain parallel state.
+Every backend is documented with its own command mapping (current:
+[adapter.md](../../plugins/tracker/beads/adapter.md)); the concepts above
+are the stable vocabulary.

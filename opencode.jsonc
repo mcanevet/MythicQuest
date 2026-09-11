@@ -10,14 +10,18 @@
       // plus maintainer follow-ups — all fork pins for those retired
       // (lifecycle: docs/upstream-backlog.md).
       //
-      // TEMPORARY local checkout pin (start 2026-09-08): local disk path to
-      // Erodenn/godot-mcp-runtime branch repro/ext-resource-id-collision
-      // @ a787f89 (includes d388852 — fix for silent data loss:
-      // set_node_properties on nodes inside an instanced child reported
-      // success but pack() dropped the override; tests 75/75 green).
-      // Pre-PR testing only. REVERT condition: replace with the published
-      // package version once the PR is merged and released (>= v3.3.1),
-      // then retire the entry in docs/upstream-backlog.md.
+      // TEMPORARY local checkout pin (start 2026-09-11): local disk path to
+      // Erodenn/godot-mcp-runtime branch main @ 53b7937 (built locally).
+      // Contains, all MERGED upstream but UNRELEASED beyond v3.5.0:
+      //   - PR #38 (5d613f8+): persist property overrides on nodes inside
+      //     instanced children (fix for silent data loss)
+      //   - PR #39 (6753147+): JSON-absent stdout classified as early exit
+      //   - PR #40 (88063dc+): condensed stop_project payload
+      //   - PR #41 (fe8d52f+): guard scene mutations against live runtime
+      //     sessions
+      // Suite 1162/1162 green at 53b7937. REVERT condition: replace with the
+      // published npm package once a version > v3.5.0 containing 53b7937 is
+      // released, then retire the entry in docs/upstream-backlog.md.
       "command": ["node", "/Users/mcanevet/src/github.com/Erodenn/godot-mcp-runtime/dist/index.js"],
       "enabled": true,
       // DEBUG=true routes [DEBUG] spawn/port/bridge telemetry from the MCP

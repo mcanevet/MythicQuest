@@ -1,31 +1,18 @@
 ---
 name: genesis
-description: Create GAME_STATE.md with game vision, mechanics, and 10-20 flat tasks (plus a README.md skeleton). Use when starting a new game project to define what gets built.
+description: Create GAME_STATE.md charter (game vision, mechanics, art style), seed the tracker queue with 10-20 tasks via the tracker skill, and create a README.md skeleton. Use when starting a new game project to define what gets built.
 ---
 
 ## What I do
 
-Creates two files:
+Creates the project's founding artifacts:
 
-### 1. `GAME_STATE.md` (development backlog)
-Contains:
-1. **Game title** — Memorable name (not "My Game")
-2. **Vision statement** — One sentence capturing emotional core
-3. **Core mechanics** — 3-7 gameplay systems listed
-4. **Art style** — Visual direction (pixel/vector/minimalist)
-5. **Task Backlog** — 10-20 concrete tasks in priority order (flat list, no epics)
-
-### 2. `README.md` (player-facing manual)
-Contains:
-1. **Game title and one-liner** — What is this game?
-2. **Controls section** — Empty skeleton, filled by log-result as features are built
-3. **Rules section** — Empty skeleton
-4. **Scoring section** — Empty skeleton
-5. **Game Flow section** — Empty skeleton
-6. **Difficulty section** — Empty skeleton
-7. **Art Style section** — Empty skeleton
-
-**README.md is always player-facing.** No task numbers, no WIP markers, no backlog references. It grows incrementally: each log-result fills in the relevant section. At any point it reflects only what's actually built and working.
+1. **`GAME_STATE.md`** — the charter: game title, vision, core mechanics,
+   art style. Read-only after this skill; it contains **no task lines**
+   (the task queue lives in the tracker).
+2. **Tracker queue** — 10-20 concrete tasks seeded into the tracker
+   (milestone + issues) via the tracker skill.
+3. **`README.md`** — player-facing manual skeleton.
 
 ## Execution
 
@@ -35,15 +22,14 @@ Contains:
 2. Write vision statement (emotional core, not just description)
 3. List 3-7 core mechanics serving the vision
 4. Define art style direction
-5. Create 10-20 flat tasks prioritized by dependency
+5. Draft 10-20 flat tasks prioritized by dependency
    - First 7 tasks should create playable loop
-   - Mix of [core], [optional], [future] tags
-6. Mark all as `[ ]` (unchecked)
-7. **Create README.md skeleton** with empty sections (filled by log-result later)
+   - Mix of types: `core` (must-have), `polish`/`vision` (optional/future)
+6. Create README.md skeleton with empty sections (filled by log-result later)
 
-### How to create GAME_STATE.md
+### Step 2: Write the GAME_STATE.md charter
 
-Use the **write** tool to create/update `GAME_STATE.md`. Format:
+Use the **write** tool, complete content in one go:
 
 ```markdown
 # [Game Title]
@@ -58,22 +44,34 @@ Use the **write** tool to create/update `GAME_STATE.md`. Format:
 
 ## Art Style
 [Visual direction]
-
-## Task Backlog
-- [ ] Task 1: [description] [core]
-- [ ] Task 2: [description] [core]
-- ... (10-20 total)
 ```
 
-**Format is load-bearing (do not deviate):** every backlog line MUST start `- [ ] Task N: description`. Downstream tooling matches this literally — backlog-grooming parses it to claim tasks and log-result's validator greps `Task N:` to confirm completion. A bare `- [ ] description` list breaks the validator and sends implementing agents into a failed-validation spiral.
+The charter never changes after this step — later phases read it for
+vision alignment; all task state lives in the tracker.
 
-Create the file from scratch using the **write** tool, providing the complete content in one go.
+### Step 3: Seed the tracker
 
-### How to create README.md
+Invoke the **tracker** skill (`skill({ name: "tracker" })`) for every
+tracker operation below. One issue per create — no batching:
 
-After GAME_STATE.md is created, also create `README.md` with the game title and empty section skeletons. Use the **write** tool. Copy [reference/readme-skeleton.md](reference/readme-skeleton.md) verbatim, substituting the game title and one-line description.
+1. `init` (if `.beads/` absent) — `bd init --prefix dd` + custom types.
+2. Create one milestone for the playable-loop arc, e.g.
+   `create_milestone "Playable Loop" --description "<from concept>"`.
+3. `create_issue` for each drafted task, in dependency order:
+   `-t core|polish|vision`, `-d "<implementation-relevant summary>"`,
+   `-l reporter:ian --actor ian`, `--parent <milestone-id>` for
+   playable-loop tasks.
+Record the milestone id and issue ids from command output — plan files
+will be named from them (`plans/<id>-<slug>.md`).
 
-**Important:** The README is NOT a development document. It is a player-facing manual. Sections use `*Filled in as...*` placeholders because at genesis time, nothing exists yet. These placeholders are replaced with polished content during log-result steps.
+### Step 4: Create README.md
+
+Copy [reference/readme-skeleton.md](reference/readme-skeleton.md) verbatim,
+substituting the game title and one-line description (write tool).
+
+**Important:** The README is NOT a development document. It is a
+player-facing manual. Sections use `*Filled in as...*` placeholders because
+at genesis time, nothing exists yet.
 
 ## Success Criteria ✅
 
@@ -83,21 +81,25 @@ After running this skill, run validation (mandatory):
 ./.opencode/skills/genesis/scripts/validate.sh
 ```
 
-Run from the project root. Exit code must be 0 before declaring success. If it fails, fix the missing files and re-run until it passes.
+Run from the project root. Exit code must be 0 before declaring success.
+If it fails, fix the missing files/state and re-run until it passes.
 
 **Validation checks (deterministic, no interpretation):**
-- ✅ README.md exists with section skeletons
-- ✅ `GAME_STATE.md` exists with required sections (Vision, Core Mechanics, Task Backlog)
+- ✅ `GAME_STATE.md` exists with required sections (Vision, Core Mechanics)
+- ✅ Tracker has ≥10 issues, all `open` status, each with a `reporter:` label
 - ✅ `README.md` exists at project root
 
 ## Critical Rules
 
-1. **Flat backlog only** — NO epics, direct task list
-2. **Concrete tasks** — Each must be independently implementable
-3. **Dependency order** — First tasks should enable later ones
-4. **Playable loop first** — Tasks 1-7 create basic gameplay
-5. **Execute without questions** — Invention happens autonomously
-6. **Real names** — Not placeholders like "Player", use specific names if appropriate
+1. **Charter has no task lines** — GAME_STATE.md ends at Art Style; the
+   queue lives in the tracker. A `- [ ]` line in GAME_STATE.md breaks the
+   division of state and confuses readers expecting the old scheme.
+2. **Flat backlog only** — NO epics, direct task list in the tracker
+3. **Concrete tasks** — Each must be independently implementable
+4. **Dependency order** — First tasks should enable later ones
+5. **Playable loop first** — First 7 issues create basic gameplay
+6. **Execute without questions** — Invention happens autonomously
+7. **Real names** — Not placeholders like "Player", use specific names if appropriate
 
 ---
 *First creative step. Defines everything that follows.*

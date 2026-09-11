@@ -1,99 +1,96 @@
 #!/bin/bash
 # Log-result validation — operates on cwd (project root)
-# Usage: ./validate.sh [TASK_ID]
+# Usage: ./validate.sh [ISSUE_ID]
+#   ISSUE_ID: the tracker issue id of the task being logged (opaque, e.g. dd-yan).
 # Exit codes: 0 = success, 1 = failure
+# Reads the tracker backend directly (bd; provided by mise).
 set -e
 
-TASK_ID="${1:-}"
-# Strip leading zeros (e.g. "06" -> "6"): GAME_STATE task numbering is unpadded,
-# and grep -E treats 06 literally (run 10: an agent burned a diagnostic cycle on this)
-TASK_ID=$(echo "$TASK_ID" | sed 's/^0*//' )
+ISSUE_ID="${1:-}"
 errors=0
 
 echo "=== Log-Result Validation ==="
 
-# Check 1: GAME_STATE.md exists (hard requirement — log-result always operates on it)
-if [ ! -f "GAME_STATE.md" ]; then
-    echo "❌ FAIL: GAME_STATE.md missing" >&2
+# Check 1: bd available
+if ! command -v bd >/dev/null 2>&1; then
+    echo "❌ FAIL: bd not on PATH — run via mise (project mise.toml)" >&2
     exit 1
 fi
-echo "✓ OK: GAME_STATE.md exists"
 
-# Check 2: No task should still be [in progress] after log-result ran.
-# Scope: tasks OTHER than the one being logged (batched delegations
-# legitimately groom the next task to [in progress] before validating the
-# current one — otherwise validating a batched task requires reverting the
-# other to unchecked first, risking loss of the plan-file link). With TASK_ID given, only an
-# in-progress line matching THAT task is a failure. Without TASK_ID, any
-# in-progress line fails (unchanged global check).
-if [ -n "$TASK_ID" ]; then
-    if grep -E "^- \[in progress\] (Task (#)?${TASK_ID}:|#?${TASK_ID}[.:] )" GAME_STATE.md | grep -q .; then
-        echo "❌ FAIL: Task ${TASK_ID} still [in progress] — log-result did not complete its status update" >&2
+# Check 2: The logged issue must be closed; no OTHER issue may still be
+# in_progress (batched delegations legitimately groom the next task before
+# the current one validates — but the groomed issue is open-for-planning,
+# and if it was set in_progress the NEXT log-result will cover it; here we
+# only fail when the issue being logged is not closed, or — without an id —
+# when any issue is in_progress).
+open_json=$(bd list --json 2>/dev/null || echo "[]")
+in_prog_count=$(printf '%s' "$open_json" | grep -c '"status": *"in_progress"' || true)
+
+if [ -n "$ISSUE_ID" ]; then
+    issue_json=$(bd show "$ISSUE_ID" --json 2>/dev/null || echo "[]")
+    if [ "$issue_json" = "[]" ] || [ -z "$issue_json" ]; then
+        echo "❌ FAIL: issue '$ISSUE_ID' not found in tracker" >&2
         errors=$((errors+1))
-    else
-        others=$(grep -c '\[in progress\]' GAME_STATE.md || true)
-        if [ "$others" -gt 0 ]; then
-            echo "ℹ️  INFO: $others other task(s) [in progress] (batched delegation) — not a Task ${TASK_ID} failure" >&2
+    elif printf '%s' "$issue_json" | grep -q '"status": *"closed"'; then
+        if [ "$in_prog_count" -gt 0 ]; then
+            echo "ℹ️  INFO: $in_prog_count other issue(s) in_progress (batched delegation) — not an '$ISSUE_ID' failure" >&2
         fi
-        echo "✓ OK: Task '${TASK_ID}' not left [in progress]"
+        echo "✓ OK: issue '$ISSUE_ID' closed"
+    else
+        echo "❌ FAIL: issue '$ISSUE_ID' is not closed — log-result did not complete its tracker close" >&2
+        errors=$((errors+1))
     fi
 else
-    if grep -q '\[in progress\]' GAME_STATE.md; then
-        echo "❌ FAIL: GAME_STATE.md still has a task marked [in progress] — log-result did not complete the status update" >&2
+    if [ "$in_prog_count" -gt 0 ]; then
+        echo "❌ FAIL: $in_prog_count issue(s) still in_progress — log-result did not complete the status update" >&2
         errors=$((errors+1))
     else
-        echo "✓ OK: No task left [in progress]"
+        echo "✓ OK: No issue left in_progress"
     fi
 fi
 
-# Check 3: If TASK_ID provided, that specific task line must be marked [x]
-# Accepts both mandated formats — "Task N:" prefix (canonical, per genesis) and bare
-# numbered lines ("- [x] 1." / "- [x] #1") — plus plain "- [x]" as fallback when only
-# one task exists. Genesis requires "Task N:" but deviations have been observed (09-03);
-# the validator must not fail a correctly-completed task over format drift.
-if [ -n "$TASK_ID" ]; then
-    task_line=$(grep -E "^- \[[ x]\] (Task (#)?${TASK_ID}:|#?${TASK_ID}[.:] )" GAME_STATE.md || true)
-    if [ -z "$task_line" ]; then
-        # Fall back to matching any completed line when the task can't be located by ID
-        # (format drift beyond the above patterns). Only sound when exactly one [x] exists.
-        done_count=$(grep -cE '^- \[x\]' GAME_STATE.md || true)
-        inprog_count=$(grep -cE '^- \[in progress\]' GAME_STATE.md || true)
-        open_count=$(grep -cE '^- \[ \]' GAME_STATE.md || true)
-        if [ "$done_count" -ge 1 ] && [ "$inprog_count" -eq 0 ]; then
-            echo "⚠️  WARN: no 'Task ${TASK_ID}:' line found in GAME_STATE.md (format drift?), but $done_count task(s) marked [x] and none [in progress] — treating as complete" >&2
-        else
-            echo "❌ FAIL: No task line found matching 'Task $TASK_ID:' in GAME_STATE.md and fallback inconclusive" >&2
-            errors=$((errors+1))
-        fi
-    elif ! echo "$task_line" | grep -q '^- \[x\]'; then
-        echo "❌ FAIL: Task '$TASK_ID' is not marked [x]: $task_line" >&2
-        errors=$((errors+1))
+# Check 3: If ISSUE_ID provided, its plan must be archived (.completed.md exists)
+if [ -n "$ISSUE_ID" ]; then
+    if ls plans/"$ISSUE_ID"-*.completed.md >/dev/null 2>&1; then
+        echo "✓ OK: plan for '$ISSUE_ID' archived to .completed.md"
     else
-        echo "✓ OK: Task '$TASK_ID' marked [x]"
+        echo "❌ FAIL: no plans/$ISSUE_ID-*.completed.md — archive step did not run" >&2
+        errors=$((errors+1))
     fi
-else
-    echo "ℹ️  INFO: No TASK_ID provided, skipping task-specific status check" >&2
 fi
 
-# Check 4: At least one archived (.completed.md) plan file must exist if plans/ was ever used
-# Tombstones (single-line "Archived to ..." redirects from the retired pre-script archive
-# workaround) still count as archived — kept for backward compatibility with older sandboxes.
+# Check 4: No orphaned active plan files for closed issues
+# (An issue closed by log-result must not still have a live .md plan.)
+closed_ids=$(printf '%s' "$open_json" >/dev/null 2>&1 && bd list --json --all 2>/dev/null \
+    | python3 -c '
+import json,sys
+try:
+    rows=json.load(sys.stdin)
+except Exception:
+    rows=[]
+for r in rows:
+    if isinstance(r,dict) and r.get("status")=="closed":
+        print(r.get("id",""))
+' 2>/dev/null || true)
+for cid in $closed_ids; do
+    if ls plans/"$cid"-*.md >/dev/null 2>&1 && ! ls plans/"$cid"-*.completed.md >/dev/null 2>&1; then
+        echo "❌ FAIL: closed issue '$cid' still has an active (non-.completed) plan file" >&2
+        errors=$((errors+1))
+    fi
+done
+if [ -n "$closed_ids" ]; then
+    echo "✓ OK: no orphaned active plans for closed issues"
+fi
+
+# Check 5: At least one archived (.completed.md) plan file must exist if plans/ was ever used
 if [ -d "plans" ]; then
     completed_count=$(find plans -maxdepth 1 -name "*.completed.md" | wc -l | tr -d ' ')
-    active_count=0
-    tombstone_count=0
-    while IFS= read -r f; do
-        if [ "$(wc -l < "$f" | tr -d ' ')" -le 1 ] && grep -qi '^Archived to ' "$f"; then
-            tombstone_count=$((tombstone_count+1))
-        else
-            active_count=$((active_count+1))
-        fi
-    done < <(find plans -maxdepth 1 -name "*.md" ! -name "*.completed.md")
+    active_count=$(find plans -maxdepth 1 -name "*.md" ! -name "*.completed.md" | wc -l | tr -d ' ')
     if [ "$completed_count" -eq 0 ] && [ "$active_count" -gt 0 ]; then
         echo "❌ FAIL: plans/ has active plan file(s) but none archived to .completed.md — archive step did not run" >&2
         errors=$((errors+1))
     else
-        echo "✓ OK: plan archiving state consistent ($completed_count archived, $active_count active, $tombstone_count tombstoned)"
+        echo "✓ OK: plan archiving state consistent ($completed_count archived, $active_count active)"
     fi
 else
     echo "ℹ️  INFO: No plans/ directory yet (expected for very first task)" >&2

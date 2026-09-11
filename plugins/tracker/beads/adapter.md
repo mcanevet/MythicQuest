@@ -1,18 +1,14 @@
 ---
-name: tracker-beads
-description: Create, update, comment on, or query tracker issues and milestones via the Beads (bd) CLI. Use when reporting a bug (Rachel), filing critique or vision feedback (Pootie/Ian), updating issue status or assigning work (Poppy), or coordinating tasks through the tracker instead of GAME_STATE.md. Applies per-role tracker permission rules.
+name: tracker
+description: Create, update, comment on, or query tracker issues and milestones via the Beads (bd) CLI. Use when grooming the backlog, reporting a bug (Rachel), filing critique or vision feedback (Pootie/Ian), updating issue status or assigning work (Poppy), or anytime a skill needs the tracker. Applies per-role tracker permission rules.
 ---
 
 ## What I do
 
-Implements the tracker plugin's Beads backend. There is **no adapter
-script** — agents call the `bd` CLI directly from bash. This skill defines
-the sanctioned bd invocations per tracker operation, the role-permission
-rules that constrain which ones you may run, and the transition-period
-compatibility append to `GAME_STATE.md`.
-
-Interface contract: [../README.md](../README.md) — the operation set and
-permission table below are the Beads implementation of it.
+The Beads implementation of the tracker plugin contract
+([../README.md](../README.md)). There is **no adapter script** — agents call
+the `bd` CLI directly from bash. This skill defines the sanctioned bd
+invocations per contract operation, and the role-permission rules that constrain which ones you may run.
 
 ## Execution steps
 
@@ -20,16 +16,16 @@ permission table below are the Beads implementation of it.
 
 The `bd` binary is provided by mise (repo root `mise.toml` pins
 `aqua:gastownhall/beads`) — run through `mise exec -- bd ...` or after
-`mise install`. If `tracker/` (the bd database) does not exist yet:
+`mise install`. If the bd database (`.beads/`) does not exist yet:
 
 ```bash
 bd init --prefix dd
 bd config set types.custom "vision,critique,material,animation,audio,refactor,core"
+mkdir tracker
 ```
 
 Custom types registration prints a warning; it works — verify with
-`bd types`. bd writes into `.beads/` (JSONL, git-persisted via `bd export`).
-Run `bd export` after any write so the on-disk JSONL is current.
+`bd types`.
 
 ### Step 1: Check the permission table
 
@@ -61,6 +57,7 @@ compounds):
 
 | Contract operation | bd command |
 |---|---|
+| init | `bd init --prefix dd` + `bd config set types.custom ...` |
 | create_issue | `bd create --silent "<title>" -t <type> -d "<body>" -l reporter:<agent> [-l labels] [-a assignee] [--parent <milestone-id>] --actor <agent>` |
 | create_milestone | `bd create --silent "<title>" -t milestone -d "<description>" [--due YYYY-MM-DD] --actor ian` |
 | update_issue_status | `bd update <id> -s open\|in_progress\|blocked\|closed` |
@@ -79,27 +76,14 @@ Notes:
   birth is what ian's and pootie's own-only norms key on.
 - `bd create --silent` prints just the new id. Ids are `<prefix>-<hash>`
   (e.g. `dd-yan`) — opaque, quote them, never invent or truncate one.
-- After any mutating command, run `bd export` (persistence).
-- Close is a two-command sequence (comment then close) so the resolution
-  survives as an append-only record; never close without the comment.
+- **Close is a two-command sequence** (comment then close) so the
+  resolution survives as an append-only record; never close without the
+  comment.
 
-### Step 3: Compatibility layer (create_issue only)
-
-After a successful create, append the equivalent line to `GAME_STATE.md`
-yourself (there is no script to do it):
-
-```
-- [ ] Issue <id>: <title> [<type>]
-```
-
-Exactly one line per created issue, appended at the end of the backlog
-section — no reordering, no duplicates. Removed once backlog-grooming and
-log-result read the tracker directly.
-
-### Step 4: Logical-field → bd-JSON mapping
+### Step 3: Logical-field → bd-JSON mapping
 
 The contract's issue fields map onto bd as follows (this mapping is what
-makes a future `github-projects` backend a data export, not a redesign):
+makes other backends a data export, not a redesign):
 
 | Contract field | bd representation |
 |---|---|
@@ -125,46 +109,41 @@ makes a future `github-projects` backend a data export, not a redesign):
 4. **One bash invocation per bd call** — no compounds (`;`, `&&`); the
    granular bash allowlist denies compound commands even when each part is
    allowlisted.
-5. **Never touch `.beads/` or exported JSONL with file edits** — all
-   mutations go through `bd` (read-only `read`/`grep` for debugging is
-   fine).
-6. **Report bd failures verbatim** — a non-zero bd exit is a structured
+5. **Never touch `.beads/` with file edits** — all mutations go through
+   `bd` (read-only inspection via `bd list`/`bd show` is fine).
+7. **Report bd failures verbatim** — a non-zero bd exit is a structured
    failure (`⛔ BLOCKED: bd <cmd> failed: <stderr>`), not a workaround
    situation; do not retry the identical call.
 
 ## Examples
 
+**Genesis seeds the queue (after writing the GAME_STATE.md charter):**
+
+```bash
+bd create --silent "Zone 1 Playable!" -t milestone -d "first zone" --due 2026-09-12 --actor ian
+bd create --silent "Create Player entity with movement" -t core -d "..." -l reporter:ian --actor ian
+```
+
 **Rachel files a bug found in playtest:**
 
 ```bash
 bd create --silent "Pearl counter desyncs after rapid collection" -t bug -d "Counter showed 14 after collecting 12 pearls in zone 3..." -l reporter:rachel -l qa-verified --actor rachel
-# -> dd-xyz123 ; then append "- [ ] Issue dd-xyz123: Pearl counter desyncs after rapid collection [bug]" to GAME_STATE.md
-bd export
-```
-
-**Poppy claims a bug (assigned by ian, then status):**
-
-```bash
-bd assign dd-xyz123 poppy          # run by ian
-bd update dd-xyz123 -s in_progress
-bd export
 ```
 
 **Poppy closes an issue assigned to her:**
 
 ```bash
-bd show dd-xyz123                  # verify assignee == poppy (norm)
+bd show dd-xyz123                 # verify assignee == poppy (norm)
 bd comment dd-xyz123 "[poppy] CLOSED: fixed via pearl dedup"
 bd close dd-xyz123
-bd export
 ```
 
 **Pootie files a critique; must NOT comment on rachel's bug (norm):**
 
 ```bash
 bd create --silent "Upgrade screen buries reroll" -t critique -d "..." -l reporter:pootie --actor pootie
-bd show dd-abc456                 # shows reporter:pootie label → own filing → commenting allowed
+bd show dd-abc456                 # reporter:pootie label → own filing → commenting allowed
 ```
 
 ---
-*Tracker backend skill. Interface contract: [../README.md](../README.md).*
+*Tracker backend skill (Beads). Interface contract: [../README.md](../README.md).*

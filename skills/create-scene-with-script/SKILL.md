@@ -6,7 +6,7 @@ description: Create and assemble Godot scenes with scripts and collision physics
 ## What I do
 
 Creates complete Godot scenes by:
-- Reading plan file from GAME_STATE.md link for requirements
+- Reading the plan file for requirements
 - Consulting `CONVENTIONS.md` (if present) for project-specific patterns
 - Writing `.tscn` scene files with proper node hierarchies
 - Writing `.gd` scripts with correct architecture
@@ -36,9 +36,9 @@ If this returns an error or times out → **FAIL IMMEDIATELY**. Report "MCP brid
 
 Read files in this order — stop once you have what you need:
 
-1. Plan file (linked in GAME_STATE.md's `[in progress]` line) → Task requirements (always read first)
+1. Plan file (`plans/<id>-*.md` for the current issue) → Task requirements (always read first)
 2. `CONVENTIONS.md` → Project-specific collision layers (if present, only if you need collision layer assignments)
-3. `GAME_STATE.md` → Vision context (only if the plan references visual style or feel)
+3. `GAME_STATE.md` charter → Vision context (only if the plan references visual style or feel)
 4. `./.opencode/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)
 
 Do NOT read `project.godot` unless you need to verify specific input action names.
@@ -237,7 +237,7 @@ Common errors and their fixes are tabulated in [reference/mcp-patterns.md](refer
 
 ## Critical Rules
 
-1. Read plan file from GAME_STATE.md link first, then CONVENTIONS.md if present
+1. Read the plan file first, then CONVENTIONS.md if present
 2. No post-write re-reads — if write returned no error, file was created
 3. Screenshot → `read()` → analysis before next tool call
 4. Validate each file exactly once
