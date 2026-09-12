@@ -52,12 +52,13 @@ this runs, `.godot/imported` does not exist and resource loads fail with
 and runtime do not import on their own. The import is idempotent; re-run it
 whenever new assets are added outside the editor.
 
-**Historical note** (upstream status: `import_assets` shipped 2026-09-07 on
-branch `feat/import-assets-plus-noise-masking`; pending upstream PR): before
-this tool existed, a build session lost ~6 minutes and 4 permission-denied
-probes discovering that textures fail to load on fresh projects (run-9 task 3).
-If `import_assets` is not in your toolset, report
-`⛔ BLOCKED: import_assets unavailable — MCP runtime predates the import_assets tool; upgrade godot-mcp-runtime` — do not improvise bash workarounds.
+**Historical note** (upstream status: PR #44, opened 2026-09-12,
+`feat/import-assets` rebased on v3.6.0): before this tool existed, a build
+session lost ~6 minutes and 4 permission-denied probes discovering that
+textures fail to load on fresh projects (run-9 task 3). If `import_assets`
+is not in your toolset, report `⛔ BLOCKED: import_assets unavailable —
+upgrade godot-mcp-runtime to a release containing PR #44` — do not improvise
+bash workarounds.
 
 ### Step 3b: Create Test Harness Autoload
 

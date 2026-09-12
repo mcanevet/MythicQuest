@@ -313,12 +313,15 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   background `run_project` does not run the import step. The subagent spent
   ~6 min and 4 denied-bash probes before correctly falling back to vector
   shapes (game outcome unaffected).
-- **Implemented upstream:** `import_assets` tool on branch
-  `feat/import-assets-plus-noise-masking` (Erodenn/godot-mcp-runtime),
-  TDD-covered (unit + GODOT_PATH-gated integration test reproducing the
-  run-9 failure shape: LOAD_FAILED before, LOAD_OK after, idempotent).
-  Pending upstream PR. Sandbox consumes the branch via a temporary
-  node_modules pin.
+- **Implemented upstream:** `import_assets` tool, TDD-covered (unit +
+  GODOT_PATH-gated integration test reproducing the run-9 failure shape:
+  LOAD_FAILED before, LOAD_OK after, idempotent).
+- **Status:** PR #44 OPENED 2026-09-12
+  (https://github.com/Erodenn/godot-mcp-runtime/pull/44), branch
+  `feat/import-assets` rebased onto v3.6.0 (ea82d23) and split from the
+  obsolete `fix/stdout-noise-masking` merge (superseded by PR #39's cleaner
+  fix); full verify green (1281 passed). Pending review/merge. The sandbox
+  node_modules pin stays until a release > v3.6.0 ships it.
 - **Lifecycle:** patched → pending PR → release retires the temp pin
   (test/.opencode/opencode.jsonc revert condition).
 
