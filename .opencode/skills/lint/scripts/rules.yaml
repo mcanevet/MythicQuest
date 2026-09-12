@@ -269,6 +269,37 @@
   scope: skills/**, agents/**
   enforcement: llm-review
 
+- id: post-fix-rule-retirement
+  rule: >
+    When an upstream fix ships, retire not only the workaround but also the
+    RULE that existed solely to route around the now-fixed gap. Test: would
+    an author starting the project today on the pinned (fixed) dependency
+    version, never having seen the incident, write this rule? If not,
+    delete both the rule and its incident story. Survivors are rules a
+    fresh post-fix author would still write on their own merits — generic
+    good practice, host/OS realities, or behavior the dependency does not
+    and cannot fix. Version-conditional prose ("on runtimes older than
+    vX.Y…") is banned outright: the harness pins the dependency version,
+    so version skew is a configuration error, not something agent-facing
+    instructions need to anticipate. The archive for retired incident
+    knowledge is docs/upstream-backlog.md (and the debug-harness
+    failure-modes table for diagnosis pointers), never skill prose.
+  audience: both
+  scope: skills/**, agents/**
+  enforcement: llm-review
+  notes: >
+    Judged on the would-a-fresh-author-write-it test, not on rule age or
+    citation presence. Legal survivors that LOOK like workaround rules:
+    poll-across-calls bans (context-resend waste is runtime-version-
+    independent), OS throttling caveats (host reality, not a dependency
+    bug), BLOCKED-not-improvise policy (agent behavior, not dependency
+    behavior). Illegal: "verify the write landed" checks after an error
+    contract shipped, path-hygiene rules after path resolution shipped,
+    pre-<version> hazard paragraphs, struck-through rows lingering in
+    agent-facing docs (they may linger in the archive docs). A rule that
+    teaches a real skill AND cites a fixed bug must survive on the skill
+    alone, trimmed of the bug story.
+
 - id: trigger-quality
   rule: >
     SKILL.md description states what the skill does AND when to use it,
