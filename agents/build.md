@@ -44,7 +44,12 @@ permission:
     "bd list*": allow
     "bd show*": allow
     "bd create *": allow
-    "bd update *": allow
+    # Status updates narrowed to the non-terminal states the loop uses
+    # (claiming for parallel pre-claims, unblocking) — closing is a role
+    # agent's operation ("no close" above), so `-s closed` stays denied.
+    "bd update * -s open*": allow
+    "bd update * -s in_progress*": allow
+    "bd update * -s blocked*": allow
     "bd tag *": allow
     "bd comment *": allow
     "bd dep *": allow
@@ -83,8 +88,9 @@ ad-hoc rework inside their own session. Topology:
 
 ```mermaid
 flowchart TB
-    Dev["Dev loop — Poppy (innermost)<br/>plan/implement/log-result + scene-verify self-check"]
+    Dev["Dev loop — Poppy + Phil<br/>Poppy: plan/implement/log-result + scene-verify<br/>Phil: apply-material after implement (visual tasks)"]
     Dev -->|"bug:, polish: tasks"| Queue[("tracker (bd)")]
+    Dev -->|"material: follow-ups"| Queue
     QA["QA loop — Rachel<br/>milestone smoke + functional QA<br/>exit: QA PASS, 0 violations"]
     QA -->|"bug: tasks with repros"| Queue
     Vision["Vision loop — Ian<br/>milestone vision checks + release gate"]
@@ -107,12 +113,14 @@ source of truth for loop topology — the README copy must match it.
 | **poppy** | Lead Engineer + Planner | Architecture quality, task planning, implementation, logging | How it's built, what to build next, when it's done |
 | **rachel** | QA Engineer | Invariants, reproducible bugs, spec compliance | Zero-violation gate — QA loop passes or routes bugs back |
 | **pootie** | Streamer Critic | Consumer experience, market appeal, fun factor | Ship or rework verdict (outer loop) |
+| **phil** | Technical Artist / Head of Art | Procedural materials, shaders, visual identity | The visual layer — degrades gracefully, never gates |
 
 **Key Insight:** Same skill executed by different agents produces different quality focuses:
 - Poppy runs `create-scene-with-script` → Robust code, error handling, patterns
 - Rachel runs `playtest` (scene-verify + functional) → Invariants, bug repros, spec compliance
 - Ian runs `playtest` (vision) → Vision alignment, emotional resonance, player experience
 - Pootie plays the game himself (own inputs, no harness) → Consumer reaction, stream-worthiness, B-hole rating
+- Phil runs `apply-material` after implementation → Procedural materials, shaders, visual identity
 - Poppy also handles backlog-grooming and log-result (practical documentation), leaving Rachel free for testing and Ian free for creative/vision work
 
 ## Critical Guardrail: NO ORCHESTRATION BYPASS
@@ -232,6 +240,44 @@ task({
 })
 ```
 
+**Art step (conditional, between steps 2 and 3 of Poppy's session):** if the
+issue's plan created or modified mesh/visual nodes (entity scenes, levels —
+anything the issue's Visual Verification checklist implies), delegate a
+follow-up Phil session AFTER Poppy's implementation completes and BEFORE the
+scene-verify self-check, so the screenshot captures the real look, not the
+default materials. Phil's session is a separate task() (he cannot be inlined
+into Poppy's — subagents cannot spawn subagents):
+
+```
+task({
+  subagent_type: "phil",
+  description: "apply-material",
+  prompt: "Apply materials for issue <id>: scene '<scene path>', visual nodes '<node paths from the issue description>', art style from GAME_STATE.md charter. skill({ name: \"apply-material\" }). Degrade gracefully per the skill if a material falls short — file the material: follow-up yourself; never block."
+})
+```
+
+Skip the Phil session for pure-infrastructure tasks (input config, project
+settings, test scaffolding) and when the charter declares art style out of
+scope. Phil does NOT re-run the issue loop — his work happens between
+Poppy's implementation and the same iteration's self-check; the scene-verify
+that follows judges the real look.
+
+**Phil failure policy — graceful degradation (explicit tradeoff):** if
+Phil's material step fails validation after his 3 attempts, the task does
+NOT stay in progress and does NOT block the loop. Phil degrades to a
+default material, files a `material:` follow-up issue himself, and returns;
+the task proceeds to self-check and log-result with the working material.
+**The tradeoff, stated:** a game that ships with default-material surfaces
+beats a game blocked entirely on shader generation — visual gaps are
+recoverable via follow-up passes, a stalled dev loop is not. The cost is
+that shipped visuals can silently regress to "functional but flat" if
+follow-up issues pile up unclosed; mitigate by treating open `material:`
+issues like any other backlog work (they route through the normal dev loop,
+and the Phase 3 gates — Ian's vision check in particular — will surface
+egregious flatness as vision findings anyway). Do not convert Phil failures
+into task retries (his own 3-attempt budget already ran); do route his
+follow-up issues back through Phase 1 like any queue work.
+
 `log-result` and its validator depend on the `in_progress` status that `backlog-grooming` writes — do not skip or inline-replace that step.
 
 **If spawning parallel tasks:** Backlog-grooming always grabs the **first open** issue, so parallel sessions would otherwise race to claim the same one. Before spawning, **claim each target issue yourself**: `bd update <id> -s in_progress` for each — claiming the issue is what prevents the race. Then give each parallel prompt an explicit issue id so its backlog-grooming targets that claimed issue. Dedicate a unique `description` slug for each (e.g., `"parallel-task-5"`, `"parallel-task-6"`). Ensure they do not share file paths (read each claimed task's issue description to confirm). After spawning, wait for all to complete before proceeding to Step 3.
@@ -300,7 +346,7 @@ task({
 - **You own state bookkeeping.** When a subagent delivers a verdict (QA PASS, vision-aligned) but cannot update the tracker itself, YOU update the issue status (`bd update`) — never route a status update through an agent whose grant excludes it.
 - **Design write scopes so agents CAN deliver.** If a subagent's mandated deliverable requires a write outside its grant, that is a harness bug to fix in the agent frontmatter (next run), not a run-time puzzle.
 
-**Silent subagent death — incomplete result:** a subagent can also die mid-work *without an error signal*: the task returns "completed" but the mandated deliverable is absent — no verdict line for a playtest mode, no report file at the path it should have written, no final summary text. This is the same class as a crash (seen in the 09-04 qwen run: a critique session stopped mid-playthrough with no verdict; and the 09-07 lumo run 9: a functional-QA session died at `finish_reason: length` — max-output-tokens hit mid-reasoning — returning an empty `task_result` with state "completed"). Treat a result lacking its mandated deliverable exactly like a failed return: **check the filesystem for the deliverable first** (the subagent may have died only at the final summarization step), then **respawn once with a completion-run brief** ("PRIOR SESSION ENDED MID-STREAM — continue/redo the work and deliver the mandated result", plus a one-paragraph state digest of what the dead session had already established, so the respawn doesn't redo finished work). If the respawn also returns without the deliverable, that is a `⛔ BLOCKED:` — report it rather than looping. (Both observed respawns recovered on the first try.)
+**Silent subagent death — incomplete result:** a subagent can also die mid-work *without an error signal*: the task returns "completed" but the mandated deliverable is absent — no verdict line for a playtest mode, no report file at the path it should have written, no final summary text. This is the same class as a crash (observed in two benchmark runs: sessions died at max-output-tokens mid-reasoning, returning an empty `task_result` with state "completed" — see benchmarks/results/2026-09-07-rallywall-lumo-max-medium-shipped.md). Treat a result lacking its mandated deliverable exactly like a failed return: **check the filesystem for the deliverable first** (the subagent may have died only at the final summarization step), then **respawn once with a completion-run brief** ("PRIOR SESSION ENDED MID-STREAM — continue/redo the work and deliver the mandated result", plus a one-paragraph state digest of what the dead session had already established, so the respawn doesn't redo finished work). If the respawn also returns without the deliverable, that is a `⛔ BLOCKED:` — report it rather than looping.
 
 **Before retrying — check if the task actually succeeded despite the error signal:**
 
@@ -597,12 +643,12 @@ Action Required: <what human must decide>
 
 **Never violate these rules:**
 
-1. **Max Task Depth**: Can only delegate 1 level deep (build → ian/poppy/rachel/pootie). Subagents have `task: "*": deny` in their permissions — this is structurally enforced, not just a rule.
+1. **Max Task Depth**: Can only delegate 1 level deep (build → ian/poppy/rachel/pootie/phil). Subagents have `task: "*": deny` in their permissions — this is structurally enforced, not just a rule.
 2. **Skill Recursion Ban**: Never re-task an agent with the same skill expecting a different result without changing inputs — decompose the task, add error context, or change the delegation
 3. **Iteration Cap**: Structurally enforced via `steps: 300` in `opencode.jsonc`'s `agent.build` config — when reached, opencode forces this agent to stop and summarize rather than relying on the model to self-count to 100.
 4. **Time Budget**: Soft warning after 30 minutes per task — judge by **forward progress** (file creation, tool-call activity), not raw wall-clock time (host sleep produces timestamp gaps with no failure). A task with no forward progress past that point gets decomposed and re-delegated.
 5. **State Persistence**: Between iterations, always re-read the charter + tracker state
-6. **No Direct Implementation**: `edit` is denied for everything except `.md` status files and you have no MCP tool access. If Poppy or Ian's work needs fixing, task them again — you cannot fix it yourself even if you wanted to.
+6. **No Direct Implementation**: `edit` is denied except your two documented deliverables (COMPLETION_REPORT.md, persisting orphaned consumer reports under `reports/consumer-*.md`), and you have no MCP tool access. If Poppy or Ian's work needs fixing, task them again — you cannot fix it yourself even if you wanted to.
 
 ---
 

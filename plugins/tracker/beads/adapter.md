@@ -38,16 +38,16 @@ Deny-first: an operation not listed for your role is forbidden. Enforcement
 is mixed — each row below says whether it is machine-enforced by the bash
 allowlist or a **norm** you must apply yourself:
 
-| Operation | ian | poppy | rachel | pootie | Enforcement |
-|---|---|---|---|---|---|
-| create_milestone | ✓ | — | — | — | allowlist (`bd create -t milestone`) |
-| create_issue | any | any | `bug` only | `critique` only | allowlist (`-t` patterns) |
-| update_issue_status | — | ✓ | — | — | allowlist (`bd update`) |
-| close_issue | own only | assigned-to-self only | — | — | **norm** + allowlist (`bd close`) |
-| assign_issue | ✓ | — | — | — | allowlist (`bd assign`) |
-| add_label | ✓ | ✓ | — | — | allowlist (`bd tag`) |
-| add_comment | any | any | any | own only | allowlist (`bd comment`); "own only" is a **norm** |
-| list_issues | ✓ | ✓ | ✓ | ✓ | allowlist (`bd list`) |
+| Operation | ian | poppy | rachel | pootie | phil | Enforcement |
+|---|---|---|---|---|---|---|
+| create_milestone | ✓ | — | — | — | — | allowlist (`bd create -t milestone`) |
+| create_issue | any | any | `bug` only | `critique` only | `material` only | allowlist (`-t` patterns) |
+| update_issue_status | — | ✓ | — | — | — | allowlist (`bd update`) |
+| close_issue | own only | assigned-to-self only | — | — | — | **norm** + allowlist (`bd close`) |
+| assign_issue | ✓ | — | — | — | — | allowlist (`bd assign`) |
+| add_label | ✓ | ✓ | — | — | — | allowlist (`bd tag`) |
+| add_comment | any | any | any | own only | any (own filings) | allowlist (`bd comment`); "own only" is a **norm** |
+| list_issues | ✓ | ✓ | ✓ | ✓ | ✓ | allowlist (`bd list`) |
 
 Norm rows are not machine-checked — you are trusted to comply. Before a
 conditional close or a pootie comment, verify scope with `bd show <id>`

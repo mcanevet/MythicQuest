@@ -98,11 +98,12 @@ flowchart TB
     Genesis --> Setup
     Setup --> ReadBacklog
     
-    subgraph DevLoop["Dev Loop — Poppy (innermost)"]
+    subgraph DevLoop["Dev Loop — Poppy + Phil (innermost)"]
         FindTask[Find next unchecked task]
         FindTask --> Plan[Poppy: Backlog-Grooming<br/>Creates plan file]
         Plan --> Implement[Poppy: Create-Scene-With-Script<br/>Implements task]
-        Implement --> SelfCheck[Poppy: Playtest scene-verify<br/>cheap self-check]
+        Implement --> Art[Phil: Apply-Material<br/>Visual tasks only]
+        Art --> SelfCheck[Poppy: Playtest scene-verify<br/>cheap self-check]
         SelfCheck --> Log[Poppy: Log-Result<br/>Records outcome]
     end
     

@@ -54,7 +54,7 @@ Issue fields map 1:1 onto GitHub Issues; the logical-field → backend
 representation mapping table lives in each adapter (Beads:
 [beads/adapter.md](beads/adapter.md) Step 4). Issue types: `bug`, `vision`,
 `critique`, `material`, `animation`, `audio`, `refactor`, `core` (extended
-as agents join). Statuses: `open | in_progress | blocked | closed`.
+as agents join — `material` filings belong to Phil's follow-up passes). Statuses: `open | in_progress | blocked | closed`.
 
 ## Ids and plans
 
@@ -73,17 +73,17 @@ between bash allowlists (machine-checked command patterns per agent) and
 documented norms for conditional scopes (authoritative copy in the mounted
 backend's adapter — `beads/adapter.md`):
 
-| Operation | ian | poppy | rachel | pootie |
-|---|---|---|---|---|
-| create_milestone | ✓ | — | — | — |
-| create_issue (any type) | ✓ | ✓ | — | — |
-| create_issue (type-restricted) | — | — | `bug` only | `critique` only |
-| update_issue_status | — | ✓ | — | — |
-| close_issue | own only | assigned-to-self only | — | — |
+| Operation | ian | poppy | rachel | pootie | phil |
+|---|---|---|---|---|---|
+| create_milestone | ✓ | — | — | — | — |
+| create_issue (any type) | ✓ | ✓ | — | — | — |
+| create_issue (type-restricted) | — | — | `bug` only | `critique` only | `material` only |
+| update_issue_status | — | ✓ | — | — | — |
+| close_issue | own only | assigned-to-self only | — | — | — |
 | assign_issue | ✓ | — | — | — |
-| add_label | ✓ | ✓ | — | — |
-| add_comment | any | any | any | own only |
-| list_issues | ✓ | ✓ | ✓ | ✓ |
+| add_label | ✓ | ✓ | — | — | — |
+| add_comment | any | any | any | own only | any (own filings) |
+| list_issues | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ## Authoring a new backend
 
