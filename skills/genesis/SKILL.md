@@ -64,10 +64,11 @@ Do not run init commands yourself.
 1. Create one milestone for the playable-loop arc, e.g.
    `create_milestone "Playable Loop" --description "<from concept>"`.
 2. `create_issue` for each drafted task, in dependency order:
-   `-t core|polish|vision`, `-l reporter:ian --actor ian`, `--parent <milestone-id>` for
+   `-t core|polish|vision`, `-l reporter:<caller> --actor <caller>` (identity
+   supplied by the calling role, not assumed), `--parent <milestone-id>` for
    playable-loop tasks.
    **The `-d "<description>"` is the implementation plan** — there are no
-   plan files; the description IS what poppy implements from and what
+   plan files; the description IS what the implementer works from and what
    log-result validates against. Follow the structure in
    [reference/plan-template.md](reference/plan-template.md)
    (Task Type / Goal / Files to Create / Definition of Done /

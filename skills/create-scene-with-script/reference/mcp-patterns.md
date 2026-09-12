@@ -92,21 +92,15 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 > coordination problem — let one session finish its runtime phase before the
 > other starts. File writes (implementation) always run freely in parallel.
 
-> ℹ️ **Long `run_script` bodies are safe as of godot-mcp-runtime v3.2.4.** The
-> server emits `notifications/progress` heartbeats every 20s for the lifetime
-> of every tool call, so clients that set `resetTimeoutOnProgress` (opencode
-> does) keep long-running scripts (simulations, playtests, empirical tuning)
+> ℹ️ **Long `run_script` bodies are safe.** The server emits
+> `notifications/progress` heartbeats every 20s for the lifetime of every
+> tool call, so clients that set `resetTimeoutOnProgress` (opencode does)
+> keep long-running scripts (simulations, playtests, empirical tuning)
 > alive past the SDK's 60s default. Write long-bodied scripts as a single
-> awaited call — including the tool-level `timeout` parameter when you want an
-> explicit cap. The historical segmented-script recipe (multiple ~8s bodies
-> with state carried across calls) is **retired**: the MCP client timeout it
-> worked around no longer applies (fix merged upstream in v3.2.4, PR #30;
-> validated under sustained load in the 09-05 GLM benchmark run — zero client
-> timeouts across 5h of long QA sims). Legacy hazard note: on runtimes older
-> than v3.2.4, a timed-out long script kept executing server-side and held
-> the single command slot; if you ever see `MCP error -32001` on
-> `run_script` again, that indicates a pre-3.2.4 runtime or a non-heartbeat
-> client — report it rather than working around it with segmentation.
+> awaited call — including the tool-level `timeout` parameter when you want
+> an explicit cap. Do not segment scripts to dodge client timeouts; if
+> `MCP error -32001` ever appears on `run_script`, report it rather than
+> working around it.
 
 > ⚠️ **GDScript compile errors (error 43) in probe scripts.** A failing
 > `run_script` costs a full engine round-trip (~10–30s). Before the FIRST
@@ -131,7 +125,7 @@ Hard rules:
 1. Probe ONCE with a trivial script (small timeout, ≤30s). If it times out while `get_debug_output` works → declare the wedge.
 2. **Escalation ladder is capped at ONE restart cycle**: stop_engine → run_project → one more trivial probe. Still wedged → `⛔ BLOCKED: MCP bridge/engine unresponsive (get_debug_output OK, run_script probes time out across restart). Likely host resource exhaustion — a fresh subagent or engine restart will inherit the same condition. Do not retry; do not restart the engine again.`
 3. **Cumulative timeout budget: 5 minutes per verification phase.** Sum your `timeout` parameters. Past budget → BLOCKED per (2). Escalating timeout sizes (60s → 120s → 600s …) is sunk-cost spiral, not diagnosis: observed 17× 600s waits = 2.8h of pure waiting in run 10.
-4. One documented recovery worth a single try before BLOCKED: `remove_autoload` TestPlayer → stop_engine → run_project → probe (run 10 tasks 12–13 escaped in minutes this way — though this may reflect eased host pressure rather than the unload itself).
+4. One documented recovery worth a single try before BLOCKED: `remove_autoload` TestPlayer → stop_engine → run_project → probe (run 10 tasks 12–13 escaped in minutes this way; causality unconfirmed — the host may simply have freed memory meanwhile).
 
 Why this must be mechanical, not judgment: the per-call error message ("Is the game running? Check get_debug_output…") always suggests an actionable next step, so every retry feels justified individually. Prose stopping conditions fail exactly when errors look recoverable but aren't. Count restarts, not reasons.
 
@@ -152,7 +146,7 @@ Why this must be mechanical, not judgment: the per-call error message ("Is the g
 - `Property 'X' does not exist` → wrong node type for the property
 - `Resource file not found` → ext_resource path incorrect
 - `Script not found` → path mismatch between scene and actual file
-- Resource-typed property (e.g. `shape`) reads back as `null` after a `set_node_properties`/`add_node` → the value was probably not a recognized Resource form. Construct inline with a typed dict `{type: "RectangleShape2D", size: {x: 20, y: 100}}` or pass a `res://` path to a saved resource (see SKILL.md Step 5a). Inner-property type violations and wrong-class constructions return explicit errors naming the property. Historical note: before this capability, dict-shaped values silently no-oped and a paddle task burned ~8 min probing four serialization formats — **do not probe alternate dict formats**; >2 failed attempts = report `⛔ BLOCKED` with the tool error text.
+- Resource-typed property (e.g. `shape`) reads back as `null` after a `set_node_properties`/`add_node` → the value was probably not a recognized Resource form. Construct inline with a typed dict `{type: "RectangleShape2D", size: {x: 20, y: 100}}` or pass a `res://` path to a saved resource (see SKILL.md Step 5a). Wrong-class constructions and inner-property type violations return explicit errors naming the property — treat the tool error as the diagnosis; if a Resource value still fails to apply, report `⛔ BLOCKED` with the tool error text.
 
 **Validation strategy:**
 - Before `run_project`: Call `godot-mcp-runtime:validate()` on all .tscn/.gd files

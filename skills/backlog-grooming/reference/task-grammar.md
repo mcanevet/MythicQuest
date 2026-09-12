@@ -23,17 +23,17 @@ understanding prose.
 | implementation plan | `description` | the structured plan body (Task Type / Goal / Files to Create / DoD / Visual Verification / Hints / Dependencies) — must be seeded at issue creation; a thin description is a genesis defect, not the implementer's problem |
 | origin loop | `labels` (`reporter:<agent>`) plus issue `type` | genesis `core`, QA `bug`, vision `vision`, consumer `critique`, dev self-check `polish` |
 | status | `status` | `open` \| `in_progress` \| `blocked` \| `closed` — grooming sets `in_progress`, log-result sets `closed` |
-| retry counter | `attempt:N` label + comments | circuit breaker: ≥3 attempts on one issue ⇒ decompose or escalate (build agent tracks this) |
-| dependencies | `blocks` / `blocked_by` relations | `bd dep` edges; the build agent reorders around them before delegating |
-| assignment | `assignee` | set by ian; poppy closes only what is assigned to her (norm) |
+| retry counter | `attempt:N` label + comments | circuit breaker: ≥3 attempts on one issue ⇒ decompose or escalate (orchestrator tracks this) |
+| dependencies | `blocks` / `blocked_by` relations | `bd dep` edges; the orchestrator reorders around them before delegating |
+| assignment | `assignee` | set by the delegating role; implementers close only what is assigned to them (norm) |
 | milestone | parent issue of type `milestone` | e.g. "Playable Loop" |
 
 ## Loop feeders
 
 Tasks added mid-run by a gate are created as new tracker issues with the
 feeding loop's `type` (`bug`, `vision`, `critique`, `polish`) — created by
-whichever role has create rights for that type (rachel: `bug`, pootie:
-`critique`, ian: any). No prose status notes anywhere; discussion goes in
+whichever role holds create rights for that type (see the tracker permission
+table). No prose status notes anywhere; discussion goes in
 issue comments.
 
 ## Migration mapping (backend swaps)

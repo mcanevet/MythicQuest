@@ -44,7 +44,7 @@ requirements on the caller's behalf.
 
 ### Step 3: Claim the issue in the tracker
 
-Mark the issue in progress (tracker skill, poppy-pattern command):
+Mark the issue in progress (tracker skill, the standard claim command):
 
 ```bash
 bd update <id> -s in_progress

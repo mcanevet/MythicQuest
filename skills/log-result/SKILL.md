@@ -39,7 +39,7 @@ Always update for player-visible changes (controls, scoring, rules, game flow). 
 
 ### Step 2: Comment the resolution, then close
 
-Via the **tracker** skill — poppy-pattern close (two commands, comment then
+Via the **tracker** skill — the standard close (two commands, comment then
 close):
 
 ```bash
@@ -54,9 +54,9 @@ The comment is the permanent result record — closed issues keep their
 description (the plan) and comments (the report) queryable in the tracker
 forever. Keep it complete but tight; do not paste logs wholesale.
 
-(If you are not the assignee, the caller (build) delegates the close to the
-assignee or ian — see the tracker permission table. Report the issue id
-back to the caller either way.)
+(If you are not the assignee, the caller delegates the close to the
+assignee or the tracker owner — see the tracker permission table. Report the
+issue id back to the caller either way.)
 
 ### Step 2.5: Verify Both Writes (mandatory)
 
