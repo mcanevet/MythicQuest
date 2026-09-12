@@ -113,7 +113,55 @@ PYEOF
 read -r -a MCP_PARTS <<< "$MCP_CMD"
 N=${#MCP_PARTS[@]}
 [ "$N" -ge 2 ] || fail "mcp command too short: $MCP_CMD"
+# npx-pinned command (e.g. ["npx", "godot-mcp-runtime@3.6.0"]): vendor the
+# package into the sandbox's checkout-local node_modules and rewrite the
+# sandbox's opencode.jsonc to invoke it directly — npx resolution inside
+# the sandbox would hit the network/cache per MCP server start, and the
+# original unpinned form must not silently diverge from the version the
+# benchmark records. (Local node/dir pins fall through unchanged.)
 ENTRY="${MCP_PARTS[$((N-1))]}"
+if [ "${MCP_PARTS[0]}" = "npx" ]; then
+  PKG_SPEC="$ENTRY"
+  case "$PKG_SPEC" in
+    godot-mcp-runtime@*) PKG_VER="${PKG_SPEC#godot-mcp-runtime@}" ;;
+    *) fail "unsupported npx pin: $PKG_SPEC (expected godot-mcp-runtime@<ver>)" ;;
+  esac
+  NM="$OC/node_modules/godot-mcp-runtime"
+  if [ ! -f "$NM/dist/index.js" ] || \
+     ! grep -q "\"version\": \"$PKG_VER\"" "$NM/package.json" 2>/dev/null; then
+    mkdir -p "$OC/node_modules"
+    ( cd "$OC" && npm pack "godot-mcp-runtime@$PKG_VER" >/dev/null 2>&1 ) ||
+      fail "npm pack godot-mcp-runtime@$PKG_VER failed"
+    TARBALL="$OC/godot-mcp-runtime-$PKG_VER.tgz"
+    [ -f "$TARBALL" ] || fail "npm pack produced no tarball for $PKG_VER"
+    ( cd "$OC/node_modules" && tar xzf "$TARBALL" && mv package godot-mcp-runtime ) ||
+      fail "tar extract of godot-mcp-runtime-$PKG_VER failed"
+    rm -f "$TARBALL"
+  fi
+  # Rewrite the sandbox copy to invoke the vendored entrypoint directly.
+  python3 - "$OC/opencode.jsonc" << PYEOF || fail "failed to rewrite sandbox mcp command"
+import json, re, sys
+p = sys.argv[1]
+raw = open(p).read()
+new_cmd = '["node", "node_modules/godot-mcp-runtime/dist/index.js"]'
+pattern = re.compile(r'("command":\s*)\[[^\]]*"npx"[^\]]*\]')
+rewritten, n = pattern.subn(r'\1' + new_cmd, raw, count=1)
+if n != 1:
+    print("npx command not found for rewrite", file=sys.stderr); sys.exit(1)
+open(p, "w").write(rewritten)
+PYEOF
+  # Record the rewrite as a submodule-local commit and re-point the parent:
+  # the pin must reflect the exact config the benchmark ran against, and a
+  # dirty submodule would fail the clean-tree verification below.
+  git -C "$OC" add opencode.jsonc
+  git -C "$OC" -c user.name=harness -c user.email=harness@local \
+    commit -qm "chore: vendor mcp runtime $PKG_VER into checkout-local node_modules"
+  git -C "$TEST_DIR" add .opencode
+  git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
+    commit -qm "chore: pin harness @ ${HEAD_SHA:0:8} (+vendored mcp $PKG_VER)"
+  HEAD_SHA=$(git -C "$OC" rev-parse HEAD)
+  ENTRY="$NM/dist/index.js"
+fi
 case "$ENTRY" in
   /*) ;;                                  # absolute path — use as-is
   *) ENTRY="$OC/$ENTRY" ;;                # relative — resolve against sandbox
