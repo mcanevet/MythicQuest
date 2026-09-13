@@ -26,6 +26,7 @@ permission:
     "bd comment *": allow
     "bd list*": allow
     "bd show*": allow
+    # Export used only to attach evidence excerpts to critique reports
     "bd export*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. To stop a hung engine
@@ -38,7 +39,7 @@ permission:
   websearch: deny
   # Engine-specific MCP permissions — update these patterns for your engine.
   # Pootie is a PLAYER, not a tester: the critique playthrough is
-  # agent-driven free play (skills/playtest/reference/full-modes.md,
+  # agent-driven free play (plugins/engine/godot/skills/playtest/reference/full-modes.md,
   # "Mode: critique" — simulated inputs, no harness), observed in the run-10
   # consumer critique session (benchmarks/results/2026-09-08-coilup-lumo-max-medium-shipped-with-incident.md).
   # He needs to launch the game, drive it with his own hands (simulated

@@ -1,6 +1,6 @@
 ---
 name: tracker
-description: Create, update, comment on, or query tracker issues and milestones via the Beads (bd) CLI. Use when grooming the backlog, reporting a bug (Rachel), filing critique or vision feedback (Pootie/Ian), updating issue status or assigning work (Poppy), or anytime a skill needs the tracker. Applies per-role tracker permission rules.
+description: Create, update, comment on, or query tracker issues and milestones via the Beads (bd) CLI. Use when grooming the backlog, filing a bug report, critique, or vision feedback, updating issue status or assigning work, or anytime a skill needs the tracker. Applies per-role tracker permission rules.
 ---
 
 ## What I do
@@ -14,10 +14,10 @@ invocations per contract operation, and the role-permission rules that constrain
 
 ### Step 0: One-time setup (per project — owned by setup-project)
 
-Init is owned by the **setup-project** skill (executed by poppy or solo) —
-it runs these commands as part of platform bootstrap, BEFORE genesis seeds
-the queue. Creative/QA agents (ian, rachel, pootie) never run them; if they
-find the tracker uninitialized they report
+Init is owned by the **setup-project** skill — it runs these commands as
+part of platform bootstrap, BEFORE genesis seeds the queue. Roles other
+than the implementer never run them; if they find the tracker
+uninitialized they report
 `⛔ BLOCKED: tracker not initialized — run setup-project first`.
 
 The `bd` binary is provided by mise (repo root `mise.toml` pins
@@ -38,7 +38,7 @@ Deny-first: an operation not listed for your role is forbidden. Enforcement
 is mixed — each row below says whether it is machine-enforced by the bash
 allowlist or a **norm** you must apply yourself:
 
-| Operation | ian | poppy | rachel | pootie | phil | Enforcement |
+| Operation | creator | implementer | reporter | critic | material-filer | Enforcement |
 |---|---|---|---|---|---|---|
 | create_milestone | ✓ | — | — | — | — | allowlist (`bd create -t milestone`) |
 | create_issue | any | any | `bug` only | `critique` only | `material` only | allowlist (`-t` patterns) |
@@ -50,10 +50,10 @@ allowlist or a **norm** you must apply yourself:
 | list_issues | ✓ | ✓ | ✓ | ✓ | ✓ | allowlist (`bd list`) |
 
 Norm rows are not machine-checked — you are trusted to comply. Before a
-conditional close or a pootie comment, verify scope with `bd show <id>`
-(check `assignee` for poppy-close; the `reporter:<agent>` label for
-ian-close and pootie-comment). Violating a norm is a protocol breach even
-though the command would succeed.
+conditional close or a critic comment, verify scope with `bd show <id>`
+(check `assignee` for implementer-close; the `reporter:<agent>` label for
+creator-close and critic-comment). Violating a norm is a protocol breach
+even though the command would succeed.
 
 ### Step 2: Run the bd command
 
@@ -78,7 +78,7 @@ Notes:
 - Always pass `--actor <agent>` on create and prefix comments with
   `[<agent>]` — bd has no caller identity of its own, so these are the
   reporter/author records. The `reporter:<agent>` label created at issue
-  birth is what ian's and pootie's own-only norms key on.
+  birth is what the creator's and critic's own-only norms key on.
 - `bd create --silent` prints just the new id. Ids are `<prefix>-<hash>`
   (e.g. `dd-yan`) — opaque, quote them, never invent or truncate one.
 - **Close is a two-command sequence** (comment then close) so the
@@ -107,8 +107,9 @@ makes other backends a data export, not a redesign):
 
 0. **Run bd from the project root** — the tracker database is project-local
    (`.beads/` under the cwd). A `bd` command issued from any other workdir
-   silently reads or writes the WRONG project's tracker (observed 09-11: a
-   genesis session ran `bd list` from the harness repo root). Always confirm
+   silently reads or writes the WRONG project's tracker (observed: a
+   genesis session once ran `bd list` from the
+   harness repo root). Always confirm
    cwd is the game project before any bd call.
 
 1. **Permission table is deny-first** — never run a bd command outside
@@ -128,32 +129,32 @@ makes other backends a data export, not a redesign):
 
 ## Examples
 
-**Genesis seeds the queue (after writing the GAME_STATE.md charter):**
+**Creator seeds the queue (after writing the GAME_STATE.md charter):**
 
 ```bash
-bd create --silent "Zone 1 Playable!" -t milestone -d "first zone" --due 2026-09-12 --actor ian
-bd create --silent "Create Player entity with movement" -t core -d "..." -l reporter:ian --actor ian
+bd create --silent "Zone 1 Playable!" -t milestone -d "first zone" --due 2026-09-12 --actor creator
+bd create --silent "Create Player entity with movement" -t core -d "..." -l reporter:creator --actor creator
 ```
 
-**Rachel files a bug found in playtest:**
+**Reporter files a bug found in playtest:**
 
 ```bash
-bd create --silent "Pearl counter desyncs after rapid collection" -t bug -d "Counter showed 14 after collecting 12 pearls in zone 3..." -l reporter:rachel -l qa-verified --actor rachel
+bd create --silent "Pearl counter desyncs after rapid collection" -t bug -d "Counter showed 14 after collecting 12 pearls in zone 3..." -l reporter:reporter -l qa-verified --actor reporter
 ```
 
-**Poppy closes an issue assigned to her:**
+**Assignee closes an issue assigned to them:**
 
 ```bash
-bd show dd-xyz123                 # verify assignee == poppy (norm)
-bd comment dd-xyz123 "[poppy] CLOSED: fixed via pearl dedup"
+bd show dd-xyz123                 # verify assignee == self (norm)
+bd comment dd-xyz123 "[assignee] CLOSED: fixed via pearl dedup"
 bd close dd-xyz123
 ```
 
-**Pootie files a critique; must NOT comment on rachel's bug (norm):**
+**A critique filer must NOT comment on a bug filed by another agent:**
 
 ```bash
-bd create --silent "Upgrade screen buries reroll" -t critique -d "..." -l reporter:pootie --actor pootie
-bd show dd-abc456                 # reporter:pootie label → own filing → commenting allowed
+bd create --silent "Upgrade screen buries reroll" -t critique -d "..." -l reporter:critic --actor critic
+bd show dd-abc456                 # reporter:critic label → own filing → commenting allowed
 ```
 
 ---

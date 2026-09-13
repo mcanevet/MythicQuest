@@ -41,19 +41,46 @@ MythicQuest/                    # Reusable agent library
 │   ├── poppy.md               # Lead Engineer + Planner
 │   ├── rachel.md              # QA Engineer (invariant gate)
 │   └── pootie.md              # Streamer Critic (consumer gate)
-├── skills/                     # Skill implementations
+├── skills/                     # Engine-agnostic skills
 │   ├── genesis/
-│   ├── setup-project/
-│   ├── create-scene-with-script/
 │   ├── backlog-grooming/
-│   ├── log-result/
-│   └── playtest/
+│   └── log-result/
+├── plugins/                    # Pluggable components (one choice per slot)
+│   ├── engine/godot/skills/    # Engine-specific skills: setup-project,
+│   │                           # create-scene-with-script, apply-material, playtest
+│   └── tracker/beads/          # Tracker backend adapter (SKILL.md, name: tracker)
 ├── opencode.jsonc              # MCP/LSP configuration
 └── test/                        # Benchmark sandbox (disposable; prepared by the benchmark-prep skill)
     └── .opencode/              # git submodule -> this repo, pinned at a committed SHA
 ```
 
 **To consume this library in a real game project, an `.opencode/` runtime view must exist at the consumer project's root** — either a git submodule pointing at this repo (production; the layout `test/` above uses), or a directory of symlinks (`agents`, `skills`, `opencode.jsonc`) back to a checkout of this repo (development only). Full setup recipes — including the path conventions that make skill cross-references resolve — are documented in [AGENTS.md § Library Consumption Pattern](AGENTS.md#library-consumption-pattern).
+
+### Plugin System
+
+Two plugin slots exist today; each takes exactly one choice per project, selected in the consumer-owned **`mythic-quest.json`** at the project root (the `.opencode/` submodule is read-only for consumers, so selection never lives inside it):
+
+```json
+{ "engine": "godot", "tracker": "beads" }
+```
+
+The consumer-root `opencode.json` (also consumer-owned) mounts the chosen plugin directories as skill sources — opencode concatenates `skills` arrays across config files, so this composes with the submodule's config without touching it:
+
+```json
+{
+  "skills": [
+    ".opencode/plugins/engine/godot",
+    ".opencode/plugins/tracker/beads"
+  ]
+}
+```
+
+| Slot | Choices | Skills provided | Stable names |
+|---|---|---|---|
+| `engine` | `godot` (more later: unity, unreal) | setup-project, create-scene-with-script, apply-material, playtest | unchanged across engines |
+| `tracker` | `beads` (more later: github-projects) | tracker adapter (`name: tracker`) | one `tracker` skill |
+
+Swapping an engine or tracker backend = editing these two files' entries; agents and generic skills never change. `setup-project` creates both consumer files with defaults (`godot`, `beads`) if absent; benchmark-prep derives them from the benchmark prompt's overrides. Agents read `mythic-quest.json` to learn which backend's command grammar applies, and invoke the stable skill names — never a plugin-internal path.
 
 | Agent | Role |
 |-------|------|

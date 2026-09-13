@@ -75,7 +75,9 @@ Do not run init commands yourself.
    Visual Verification Needed / Implementation Hints / Dependencies) —
    compressed to the essentials per task, not copied wholesale: pin exact
    file paths, concrete pass/fail DoD items (5-7), and named input actions.
-   A thin one-liner description blocks the implementer (they must fail
+   The engine plugin provides concrete scaffolds (Godot:
+   `./.opencode/plugins/engine/godot/skills/genesis/plan-template-example.md`). A thin
+   one-liner description blocks the implementer (they must fail
    loudly rather than invent requirements).
 3. Record the milestone id and issue ids from command output — the caller
    cites them in delegation prompts (`bd show <id>` retrieves the plan).

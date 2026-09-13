@@ -41,7 +41,7 @@ start_test(scenario={
 })
 ```
 
-**Rule names matter:** the harness matches `rule` exactly — an unknown name is a silent no-op (verification appears to pass while nothing is checked). See `./.opencode/skills/setup-project/reference/testing-patterns.md` for the canonical rule list. `no_fatal_errors` is a marker for process-level crash detection verified externally (crash kills the engine before the harness could check) — the other invariants do the in-run work.
+**Rule names matter:** the harness matches `rule` exactly — an unknown name is a silent no-op (verification appears to pass while nothing is checked). See `./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md` for the canonical rule list. `no_fatal_errors` is a marker for process-level crash detection verified externally (crash kills the engine before the harness could check) — the other invariants do the in-run work.
 
 ### Step 2: Get structured report
 
@@ -67,7 +67,7 @@ var report = await tp.await_test_done(scenario_duration + 30)
 Run the report renderer (deterministic — the JSON-to-table transform is script territory, not prose):
 
 ```
-./.opencode/skills/playtest/scripts/render_report.py <report.json>
+./.opencode/plugins/engine/godot/skills/playtest/scripts/render_report.py <report.json>
 ```
 
 It emits the standard table (Invariant | Status | Evidence rows for crash, physics stability, FPS p99, engine stalls, FPS floor, input responsiveness, plus one row per violation), an **Overall: PASS/FAIL** line, and the violation count. Exit code 1 when any violation is present. Columns present in `metrics` but not listed here are ignored; missing metrics simply omit their row. The engine-stalls row is **telemetry, not an invariant**: `stall_ticks_over_100ms` / `worst_frame_ms` / `warmup_resets` quantify host-side stalls (background throttle, display sleep, memory pressure — 10-12s frames observed overnight, run 12). A non-zero count renders as ⚠️ INFO with a pointer to the background-throttle gotcha; it never flips the PASS/FAIL verdict, and percentile metrics exclude stalled ticks by design.
@@ -78,10 +78,10 @@ When violations appear and you need follow-up probes (`run_script` state queries
 
 ### Probe-authoring rules (learned the hard way)
 
-- **Probe step 0: reset, then assert not paused.** Every probe begins with `scene_tree.paused = false` (if a lose/win handler pauses the tree) plus `reload_current_scene()` — a paused tree freezes physics while `await physics_frame` still resolves, so a probe run against a paused tree returns all-zero displacement readings that look like a broken game (observed run 13, 2026-09-09 OrbField: a QA probe chain diagnosed "steering broken" for multiple rounds; the tree had been paused by an accidental lose since the previous call). Assert your precondition (`paused == false`, score == 0, ball on floor) in the returned dict so a bad reset is visible, not silent.
+- **Probe step 0: reset, then assert not paused.** Every probe begins with `scene_tree.paused = false` (if a lose/win handler pauses the tree) plus `reload_current_scene()` — a paused tree freezes physics while `await physics_frame` still resolves, so a probe run against a paused tree returns all-zero displacement readings that look like a broken game (observed run 13, benchmarks/results/2026-09-09-orbfield-lumo-max-medium-3d-shipped-run13.md: a QA probe chain diagnosed "steering broken" for multiple rounds; the tree had been paused by an accidental lose since the previous call). Assert your precondition (`paused == false`, score == 0, ball on floor) in the returned dict so a bad reset is visible, not silent.
 - **Hold node PATHS, not node refs, across gameplay events.** A stored node variable dies with `queue_free()` — collecting/pickup handlers commonly free the entity, and reading `.visible` on a freed ref errors mid-probe (run 13: orb-collection verification failed twice on exactly this). Resolve `get_node_or_null(path)` fresh after each event, and guard with `is_instance_valid()` where an event may have freed the node.
 - **Batch the whole mechanic suite into ONE awaited script.** The mature pattern (validated run 13): one script that reloads the scene, then sequentially verifies steering → collection → win → restart → lose → restart, reloading/re-centering between segments and sampling state after each input burst inside the same call. Inter-call gaps are where background throttle and idle-state drift corrupt results; inside one awaited call the engine ticks at full rate.
-- **Long nested-dict scripts can arrive corrupted.** Multi-line nested dictionaries in inline `run_script` source have arrived at the engine with structural errors (`closing } with no opening`) that the author's copy did not contain (run 13, suspected transport mangling; upstream status: unconfirmed, repro pending). If a script errors at a line that looks syntactically fine in your source, do not debug your logic first — simplify the formatting (flatten nested dicts to single lines, split into multiple statements) and resend before concluding anything about the game.
+- **Long nested-dict scripts can arrive corrupted.** Multi-line nested dictionaries in inline `run_script` source have arrived at the engine with structural errors (`closing } with no opening`) that the author's copy did not contain (run 13, suspected transport mangling; upstream status: unconfirmed, repro pending — see docs/upstream-backlog.md for the repro plan and retirement condition). If a script errors at a line that looks syntactically fine in your source, do not debug your logic first — simplify the formatting (flatten nested dicts to single lines, split into multiple statements) and resend before concluding anything about the game.
 
 ### Success Criteria
 - Full scenario runs for specified duration (no premature exit)
@@ -211,9 +211,9 @@ behavior and present it as observed. If a fact matters to your critique but
 you didn't capture it, say so explicitly ("score display not captured —
 couldn't verify") rather than filling the gap. Fabricated observations poison
 the REWORK gate downstream: an inferred "bug" can trigger a rebuild of working
-code. Signature (run 11, benchmarks/results/2026-09-08-rallywall-lumo-max-medium-shipped-run11.md): background-mode idle advance to GAME_OVER between MCP calls meant every screenshot showed the post-game default — seeding a false "HUD stuck at 0" verdict claim; the functional-QA probe evidence contradicted it, caught only by root cross-check. An honest "HUD unverified — captures all post-game" note would have cost nothing.
+code. Signature (benchmarks/results/2026-09-09-orbfield-lumo-max-medium-3d-shipped-run13.md): background-mode idle advance to GAME_OVER between MCP calls meant every screenshot showed the post-game default — seeding a false "HUD stuck at 0" verdict claim; the functional-QA probe evidence contradicted it, caught only by root cross-check. An honest "HUD unverified — captures all post-game" note would have cost nothing.
 
-**Narration-screenshot correspondence (mandatory):** your narration timeline and your screenshot timeline must correspond one-to-one. Anything you describe as having happened SINCE your last capture must be visible in the NEXT capture, or you retract the description before continuing (observed run 13, 2026-09-09 OrbField: narrated score counts contradicted by the captures themselves — every frame since a first fall showed the frozen Game Over screen, caught only when the counter appeared to go DOWN; several narrated events retracted mid-report). The practical habit: never describe an event you have not yet captured; if you acted since the last capture and haven't re-captured, say "took action, result not yet on screen" instead of narrating an outcome.
+**Narration-screenshot correspondence (mandatory):** your narration timeline and your screenshot timeline must correspond one-to-one. Anything you describe as having happened SINCE your last capture must be visible in the NEXT capture, or you retract the description before continuing (observed run 13, benchmarks/results/2026-09-09-orbfield-lumo-max-medium-3d-shipped-run13.md: narrated score counts contradicted by the captures themselves — every frame since a first fall showed the frozen Game Over screen, caught only when the counter appeared to go DOWN; several narrated events retracted mid-report). The practical habit: never describe an event you have not yet captured; if you acted since the last capture and haven't re-captured, say "took action, result not yet on screen" instead of narrating an outcome.
 
 #### Part B: Probe gate for failure claims (mandatory)
 
@@ -261,6 +261,6 @@ If game crashes: stop immediately, hand off with abort reason and violation deta
 - 6-10 screenshots at the critic's chosen moments, narration grounded in what they show
 - All six critique sections produced (incl. Probe results)
 - Every failure claim in the verdict backed by a Part B probe
-- **Recommendation** (not verdict) reported in task result: `RECOMMEND_SHIP` or `RECOMMEND_REWORK` + B-hole rating. The ship/rework/vision-revision decision belongs to the orchestrating roles per their own instructions, not to the critic — the critique is one input to that disposition, never the disposition itself.
+- **Recommendation** (not verdict) reported in task result: `RECOMMEND_SHIP` or `RECOMMEND_REWORK` + a one-line hole-severity summary. The ship/rework/vision-revision decision belongs to the orchestrating roles per their own instructions, not to the critic — the critique is one input to that disposition, never the disposition itself.
 - **Audio blindness disclosed:** the critic experiences the game via screenshots and state readback and cannot hear. The report must not narrate sound effects or music as lived experience; audio observations (if any) go in a clearly-marked NOTE based only on README promises or code/configuration evidence, never on invented listening.
 

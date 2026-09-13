@@ -58,7 +58,7 @@ first.
 
 Assign directly through the engine MCP tools with inline Resource
 construction (`set_node_properties` / `batch_scene_operations`; see
-`skills/create-scene-with-script/reference/mcp-patterns.md` Step 5a
+`./.opencode/plugins/engine/godot/skills/create-scene-with-script/reference/mcp-patterns.md` Step 5a
 patterns — same typed-dict construction):
 
 ```
@@ -212,6 +212,6 @@ thread; the issue is the durable record.
 
 ---
 *Art-layer skill. Conventions (node identification, validation, engine
-tool patterns): `skills/create-scene-with-script/reference/mcp-patterns.md`.
+tool patterns): `./.opencode/plugins/engine/godot/skills/create-scene-with-script/reference/mcp-patterns.md`.
 Actor identity is supplied by the caller; graceful degradation is encoded
 here, role choreography belongs to the orchestrator.*

@@ -199,13 +199,13 @@ While Ian defines *what* should be built, I ensure it's built *right*:
 
 ## Testing Requirements — Genre-Agnostic Framework
 
-Testing implementation follows the **engine-agnostic framework** documented in `./.opencode/skills/setup-project/reference/testing-patterns.md` (full schema: bot types, invariant rules, metrics) and `./.opencode/skills/playtest/SKILL.md` (execution modes). Consult those directly rather than relying on a summary here — schema details (rule names, bot config fields) change independently of this file.
+Testing implementation follows the engine-agnostic framework in the setup-project skill's `reference/testing-patterns.md` (full schema: bot types, invariant rules, metrics) and the **playtest** skill's execution modes (invoke: `skill({ name: "playtest" })`). Consult those directly rather than relying on a summary here — schema details (rule names, bot config fields) change independently of this file.
 
 ### Validation Checklist
 Before marking complete:
 - [ ] Nodes added to the testing framework's discovery group (per schema doc)
 - [ ] Test state accessor implemented (per schema doc)
-- [ ] Scenario data created per the testing schema (`./.opencode/skills/setup-project/reference/testing-patterns.md`)
+- [ ] Scenario data created per the testing schema (`./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md`)
 - [ ] Invariants declared using the schema's invariant vocabulary
 - [ ] Bot archetype configured (per schema doc's archetypes)
 - [ ] Scenario executed
@@ -213,7 +213,7 @@ Before marking complete:
 
 ## Visual Inspection Workflow
 
-When visual inspection is required, use the runtime capture → image analysis workflow documented in `./.opencode/skills/playtest/SKILL.md`. The skill handles engine-specific tool calls and screenshot management.
+When visual inspection is required, use the runtime capture → image analysis workflow of the **playtest** skill (invoke it: `skill({ name: "playtest" })`). It handles engine-specific tool calls and screenshot management.
 
 Key principle: Use structured runtime testing (scenario runner) as primary verification, with visual inspection reserved for diagnostic follow-ups when violations occur.
 
@@ -229,7 +229,7 @@ Key principle: Use structured runtime testing (scenario runner) as primary verif
 
 ## Scene Creation & Resource Management
 
-Scene creation follows engine-specific patterns. Consult `./.opencode/skills/create-scene-with-script/SKILL.md` and its reference docs for:
+Scene creation follows engine-specific patterns via the **create-scene-with-script** skill (`skill({ name: "create-scene-with-script" })`) and its reference docs:
 - MCP tool usage (path format, batch operations)
 - Resource instantiation patterns (shapes, textures, shaders)
 - Control vs spatial node creation strategies

@@ -111,18 +111,21 @@ This repo is a **reusable agent library**. When consumed by a game project, agen
 GameProject/                    # Consumer project
 ├── .opencode/                  # Runtime view (symlinks or git submodule)
 │   ├── agents    -> .../MythicQuest/agents
-│   ├── skills    -> .../MythicQuest/skills
+│   ├── skills    -> .../MythicQuest/skills        (engine-agnostic skills)
+│   ├── plugins   -> .../MythicQuest/plugins       (engine + tracker plugins)
 │   └── opencode.jsonc -> .../MythicQuest/opencode.jsonc
+├── mythic-quest.json           # Consumer-owned plugin selection { engine, tracker }
+├── opencode.json               # Consumer-owned config: mounts chosen plugins as skill sources
 ├── GAME_STATE.md
 ├── plans/
 └── project.godot
 ```
 
 **Two contexts, one source of truth:**
-- **Harness-build sessions** (developing this library) work directly in `./skills/` and `./agents/` — the source of truth.
-- **Game-build sessions** (consumers) see the same files at `./.opencode/skills/` and `./.opencode/agents/` — the runtime view via symlink or git submodule.
+- **Harness-build sessions** (developing this library) work directly in `./skills/`, `./plugins/`, and `./agents/` — the source of truth.
+- **Game-build sessions** (consumers) see the same files at `./.opencode/skills/`, `./.opencode/plugins/`, and `./.opencode/agents/` — the runtime view via symlink or git submodule.
 
-**Consequence:** All cross-references inside `SKILL.md` files, skill `reference/` docs, and agent files use `./.opencode/skills/...` paths — these are **runtime-resolvable paths** (correct from the consumer project's perspective), not repo-relative paths. Do not "fix" them to `./skills/` — that breaks every consumer.
+**Consequence:** All cross-references inside `SKILL.md` files, skill `reference/` docs, and agent files use `./.opencode/skills/...` or `./.opencode/plugins/...` paths — these are **runtime-resolvable paths** (correct from the consumer project's perspective), not repo-relative paths. Do not "fix" them to `./skills/` or `./plugins/` — that breaks every consumer.
 
 **Setup for new consumer projects** (the benchmark sandbox `test/`, prepared by the `benchmark-prep` skill, uses the production layout):
 
@@ -130,7 +133,8 @@ GameProject/                    # Consumer project
 # Option 1: Git submodule (production — recommended)
 # Pins the library to a specific commit; consumers update deliberately.
 # The whole repo becomes the submodule at .opencode/ — the loader resolves
-# .opencode/agents and .opencode/skills from the checked-out tree directly.
+# .opencode/agents, .opencode/skills and .opencode/plugins from the
+# checked-out tree directly.
 git submodule add <library-url> .opencode
 
 # Option 2: Direct symlinks (development/testing only)
@@ -138,10 +142,13 @@ git submodule add <library-url> .opencode
 mkdir -p .opencode
 ln -s /path/to/MythicQuest/agents .opencode/agents
 ln -s /path/to/MythicQuest/skills .opencode/skills
+ln -s /path/to/MythicQuest/plugins .opencode/plugins
 ln -s /path/to/MythicQuest/opencode.jsonc .opencode/opencode.jsonc
 ```
 
-**Gotcha:** The symlinks must exist before `opencode run`. "Skill not found" errors usually mean `.opencode/skills` doesn't resolve — verify with `ls -la .opencode/skills`.
+**Plugin selection** (consumer-owned, never inside `.opencode/`): the consumer writes `mythic-quest.json` choosing one plugin per slot (`{"engine": "godot", "tracker": "beads"}`), and a consumer-root `opencode.json` mounting the chosen plugin directories into opencode's skill-discovery paths (`{"skills": [".opencode/plugins/engine/godot", ".opencode/plugins/tracker/beads"]}`). opencode concatenates `skills` arrays across config documents, so the mount composes with the submodule's config. opencode's default discovery also scans each config directory's `.opencode/skills/` and `.opencode/skill/` — the plugin mount adds the pluggable trees on top. `setup-project` creates both files with defaults if absent; see the README's **Plugin System** section.
+
+**Gotcha:** The symlinks must exist before `opencode run`. "Skill not found" errors usually mean `.opencode/skills` doesn't resolve — verify with `ls -la .opencode/skills`. A `tracker`/engine skill that fails to resolve usually means the consumer-root `opencode.json` skills array is missing the plugin mount — verify with `ls .opencode/plugins`.
 
 ---
 
@@ -223,7 +230,7 @@ When a build or benchmark exposes a bug or missing feature in one of them:
    A workaround whose upstream fix has shipped is tech debt — retire it on the
    next run that touches the affected skill.
 
-Example: the relative-`projectPath` bug (09-01) — reproduced, patched with a
+Example: the relative-`projectPath` bug (observed in the 2026-09-01 rallywall run; documented in benchmarks/results/2026-09-02-baseline-rallywall.md) — reproduced, patched with a
 regression test on a fork branch, PR-ready upstream, released in
 godot-mcp-runtime v3.2.3, and `opencode.jsonc` repointed from the fork to the
 published package. That is the model to follow.
@@ -247,8 +254,8 @@ Estimated effort: 2-4 hours per new engine (mostly skill rewrites).
 
 ### ✅ Completed
 - Agent instructions refactored (all Godot-specific implementation removed)
-- Testing framework generalized (references `skills/playtest` for engine details)
-- Scene creation patterns extracted to `skills/create-scene-with-script/reference/`
+- Testing framework generalized (references the engine plugins `playtest` skill for engine details)
+- Scene creation patterns extracted to `plugins/engine/godot/skills/create-scene-with-script/reference/`
 - Process cleanup instructions moved from agent logic into skills (agent permission rules still gate the skill-invoked `pkill`/`sleep` commands)
 - Performance guidance in agent files uses engine-agnostic real-time budgets (frame time, tick rate, scene complexity) — no engine API specifics
 - Stopping-condition guidance and ACI (tool-layer) design principles adopted per Anthropic's "Building Effective Agents"
@@ -365,10 +372,11 @@ control"*). Guidance:
 
 Rule text lives in the **`lint` skill's registry** (`.opencode/skills/lint/scripts/rules.yaml`; entries `sanctioned-paths-only`, `no-improvised-alternatives`) — including the wording red flags, exemptions, and enforcement. Summary: skills define the one sanctioned path per phase; failures end in a structured `⛔ BLOCKED:` report, never a fallback. An unblocking hack that silently skips validation is worse than a failure — treat work done outside the sanctioned path as not done.
 
-Known incidents that motivated this rule: the engine-stop pkill-suicide chain, the
-shadow test-infrastructure (shell scripts reimplementing engine tools), and the
-attach-dance improvisation around a failing `run_project` — each converted a diagnosable
-failure into silent infra drift.
+Motivating failure signatures: killing the engine by pattern killed the MCP
+server sharing its command line; shell reimplementations of engine tools
+created unauditable shadow infrastructure; improvised attach-workflows
+papered over launch failures. In each, a diagnosable failure was converted
+into silent infra drift.
 
 ---
 
@@ -397,7 +405,7 @@ Run `godot --headless --script tests/run_all.gd` to validate.
 
 ### ✅ Good (Engine-Agnostic in Agent)
 ```markdown
-Consult `skills/create-scene-with-script/SKILL.md` for scene creation patterns.
+Invoke the **create-scene-with-script** skill (`skill({ name: "create-scene-with-script" })`) for scene creation patterns.
 Follow the skill's engine-specific collision setup guide.
 Execute the skill's validation script before marking complete.
 ```

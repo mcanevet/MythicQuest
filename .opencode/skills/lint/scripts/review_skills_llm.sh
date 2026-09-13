@@ -33,9 +33,10 @@ if [ "$#" -gt 0 ]; then
   FILES=$(printf '%s\n' "$@")
 else
   FILES=$( { git diff --name-only HEAD 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } \
-    | grep -E '^(skills/.*\.md|agents/.*\.md|AGENTS\.md)$' || true)
+    | grep -E '^(skills/.*\.md|plugins/.*\.md|agents/.*\.md|AGENTS\.md)$' || true)
   if [ -z "$FILES" ]; then
     FILES=$( { ls skills/*/SKILL.md skills/*/reference/*.md 2>/dev/null; \
+               ls plugins/*/*/SKILL.md plugins/*/*/skills/*/SKILL.md plugins/*/*/skills/*/reference/*.md plugins/*/README.md 2>/dev/null; \
                ls agents/*.md 2>/dev/null; echo AGENTS.md; } )
   fi
 fi
@@ -81,7 +82,7 @@ print('\n'.join(out) if out else '(no llm-review rules registered — check the 
 EOF
 )
 
-JUDGE_PROMPT="You are reviewing an agent-swarm library (skills/, agents/, AGENTS.md) for architectural rule violations. For EACH file, judge the SEMANTIC rules below (do not flag style, typos, or things a grep could catch — the deterministic lint already covers those). Apply each rule only to files matching its scope (skills/, agents/, AGENTS.md respectively).
+JUDGE_PROMPT="You are reviewing an agent-swarm library (skills/, plugins/, agents/, AGENTS.md) for architectural rule violations. For EACH file, judge the SEMANTIC rules below (do not flag style, typos, or things a grep could catch — the deterministic lint already covers those). Apply each rule only to files matching its scope (skills/**, plugins/**, agents/**, AGENTS.md respectively).
 
 $RUBRIC
 

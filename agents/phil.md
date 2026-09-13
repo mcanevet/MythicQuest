@@ -175,8 +175,8 @@ the current engine's material classes:
 Write the shader/material, then assign it through the engine's validated
 mutation tools — never by editing scene files (they're denied to me, by
 design). Exact procedures, assignment syntax, and validation requirements
-live in the **apply-material** skill (`skills/apply-material/SKILL.md`) —
-load and follow it; it is the sanctioned path for this work.
+live in the **apply-material** skill — invoke it
+(`skill({ name: "apply-material" })`); it is the sanctioned path for this work.
 
 ### Step 4: Verify, then report
 

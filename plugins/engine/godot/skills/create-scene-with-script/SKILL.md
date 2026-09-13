@@ -17,7 +17,7 @@ Creates complete Godot scenes by:
 - **Physics nodes & collision** → [reference/physics-nodes.md](reference/physics-nodes.md)
 - **MCP tool usage & error recovery** → [reference/mcp-patterns.md](reference/mcp-patterns.md)
 - **Worked examples** (player entity, pickup trigger, physics projectile — exact node hierarchies + script skeletons): [reference/examples.md](reference/examples.md) — read the one matching your entity type before Step 3
-- **Testing & validation** → `./.opencode/skills/setup-project/reference/testing-patterns.md` (canonical schema: bot types, invariant rules, metrics, test hooks)
+- **Testing & validation** → `./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md` (canonical schema: bot types, invariant rules, metrics, test hooks)
 - **Godot architecture best practices** → [reference/godot-best-practices.md](reference/godot-best-practices.md) — consult when designing hierarchy, node coupling, autoloads, or choosing process callbacks
 
 ## Execution Flow
@@ -39,7 +39,7 @@ Read files in this order — stop once you have what you need:
 1. Issue description (`bd show <id>` for the current issue) → Task requirements, the plan (always read first)
 2. `CONVENTIONS.md` → Project-specific collision layers (if present, only if you need collision layer assignments)
 3. `GAME_STATE.md` charter → Vision context (only if the plan references visual style or feel)
-4. `./.opencode/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)
+4. `./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)
 
 Do NOT read `project.godot` unless you need to verify specific input action names.
 Do NOT call `godot-mcp-runtime:get_project_info` more than once.
@@ -103,7 +103,15 @@ If unsure what the root node name is, call `godot-mcp-runtime:get_scene_tree()` 
 
 **Node hierarchies: MCP tools.** `godot-mcp-runtime:create_scene` / `add_node` / `batch_scene_operations` build nodes, set primitive properties, and attach scripts.
 
-**Resource-typed values: MCP tools.** Since godot-mcp-runtime gained inline Resource construction (typed-dict `{type: "ClassName", ...props}` values in `add_node`/`set_node_properties` — released upstream in v3.2.5, PR #32; see docs/upstream-backlog.md), `[sub_resource]`-backed properties (`shape`, `polygon`, fonts, materials) are set through the engine MCP tools with validated writes. Direct `.tscn` edit is **not permitted** — an operation the tools cannot express (ext_resource reordering, scene metadata, corruption repair) is reported as `⛔ BLOCKED: tool cannot express <operation>`, never routed to a hand-edit (sanctioned-paths-only). Separately: never edit a scene while a run/playtest is active (live engine sessions serialize runtime state into scene files; stop the project first).
+**Resource-typed values: MCP tools.** `[sub_resource]`-backed properties
+(`shape`, `polygon`, fonts, materials) are set through the engine MCP tools
+with validated writes (typed-dict `{type: "ClassName", ...props}` values in
+`add_node`/`set_node_properties`). Direct `.tscn` edit is **not permitted** —
+an operation the tools cannot express (ext_resource reordering, scene
+metadata, corruption repair) is reported as `⛔ BLOCKED: tool cannot
+express <operation>`, never routed to a hand-edit (sanctioned-paths-only).
+Separately: never edit a scene while a run/playtest is active (live engine
+sessions serialize runtime state into scene files; stop the project first).
 
 See [reference/mcp-patterns.md](reference/mcp-patterns.md) for:
 - Tool selection strategy (batch vs individual)
@@ -115,7 +123,7 @@ Do NOT re-read scene files after writing — trust the write succeeded.
 
 ### Step 4: Script File Creation (.gd)
 
-See `./.opencode/skills/setup-project/reference/testing-patterns.md` (_Test Hooks_) for state exposure requirements; scenario configs are covered in Step 5c below.
+See `./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md` (_Test Hooks_) for state exposure requirements; scenario configs are covered in Step 5c below.
 
 **Required for interactive entities:** join the `test_exposed` group in `_ready()` and expose a `get_test_state() -> Dictionary` returning the entity's gameplay-relevant values (position, velocity, plus entity-specific keys) — see `testing-patterns.md` (_Test Hooks for Entities_) for the exact hook contract.
 
@@ -172,7 +180,7 @@ Resource-typed values (`shape`, `polygon`, fonts, materials) are set through the
 
 ### Step 5c: Test Scenario Config
 
-For interactive entities, create `tests/scenarios/<entity_name>.json` using the canonical schema in `./.opencode/skills/setup-project/reference/testing-patterns.md` (bot types, invariant rules, metrics).
+For interactive entities, create `tests/scenarios/<entity_name>.json` using the canonical schema in `./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md` (bot types, invariant rules, metrics).
 
 - Start from the canonical scenario schema and the full example in `testing-patterns.md` (_Scenario Configuration_, _Full Scenario Example_); add a `custom` invariant per game-specific behavior (requires `get_test_state()` on the entity — see Step 4)
 - **This file is not just documentation** — `playtest`'s `functional` mode globs `tests/scenarios/*.json` and merges these invariants into the final QA scenario, so entity-specific correctness gets checked automatically at final QA, not just at scene-verify time.
@@ -180,7 +188,7 @@ For interactive entities, create `tests/scenarios/<entity_name>.json` using the 
 
 ### Step 6: Validation Matrix
 
-See `./.opencode/skills/setup-project/reference/testing-patterns.md` (_Verification Strategies_) for full testing strategies.
+See `./.opencode/plugins/engine/godot/skills/setup-project/reference/testing-patterns.md` (_Verification Strategies_) for full testing strategies.
 
 **Quick reference:**
 - **Static** — `godot-mcp-runtime:run_project(background=true)` → `godot-mcp-runtime:get_debug_output()`
@@ -194,7 +202,7 @@ See `./.opencode/skills/setup-project/reference/testing-patterns.md` (_Verificat
 **Required before marking task complete.** After visual/invariant verification passes, run the validator:
 
 ```bash
-./.opencode/skills/create-scene-with-script/scripts/validate.sh "scenes/<scene_name>.tscn" "scripts/<script_name>.gd"
+./.opencode/plugins/engine/godot/skills/create-scene-with-script/scripts/validate.sh "scenes/<scene_name>.tscn" "scripts/<script_name>.gd"
 ```
 
 **Exit code must be 0.** If the validator fails:
@@ -218,7 +226,7 @@ The validator checks:
 For a headless engine parse check (catches script errors the text validator can't):
 
 ```bash
-./.opencode/skills/create-scene-with-script/scripts/headless_check.sh
+./.opencode/plugins/engine/godot/skills/create-scene-with-script/scripts/headless_check.sh
 ```
 
 This loads the project headlessly and quits — any script parse errors will surface. Run after `validate.sh` passes, before runtime verification.

@@ -269,6 +269,71 @@
   scope: skills/**, agents/**
   enforcement: llm-review
 
+- id: plugin-stable-names
+  rule: >
+    Plugins are invoked through stable skill names and consumer-runtime
+    paths only. Agents invoke `skill({ name: "tracker" })`,
+    `skill({ name: "setup-project" })`, etc. — never a plugin-internal path
+    (plugins/engine/godot/..., plugins/tracker/beads/...) in instructions
+    they emit, and never by resolving paths against the parent harness
+    repository — the consumer's .opencode/ submodule carries the full
+    plugin tree, so everything a session needs is reachable inside it.
+    Backend/engine choice is read from the consumer-owned
+    mythic-quest.json; plugin selection lives in the consumer-root
+    opencode.json skills array, never inside .opencode/.
+  audience: both
+  scope: agents/**, skills/**, plugins/**
+  enforcement: both
+  check: plugin_internal_references
+  check-tier: tripwire
+  notes: >
+    Descriptive citations of the library layout (README, AGENTS.md
+    architecture sections) use repo-relative paths legitimately — they
+    document the library, not runtime invocation. The ban targets
+    invocation paths in agent-emitted instructions and doc-resolution
+    walks above the consumer root. Hits should be rewritten to the stable
+    skill name or the .opencode/plugins/... runtime path.
+
+- id: no-direct-skill-reads
+  rule: >
+    Agents and skills must invoke other skills via the skill tool
+    (`skill({ name: "..." })`), never by reading SKILL.md files directly.
+    Direct file reads tie execution to the current plugin layout and break
+    engine/backend agnosticism — the skill invocation mechanism abstracts
+    away which plugin provides the implementation.
+  audience: both
+  scope: agents/**, skills/**, plugins/**
+  enforcement: both
+  check: direct_skill_reads
+  check-tier: tripwire
+  notes: >
+    Pattern: "read `./opencode/plugins/.../SKILL.md`", "consult
+    `skills/.../SKILL.md`", "follow the instructions in
+    `plugins/.../SKILL.md`". Rewrite to "invoke the `<name>` skill" or
+    `skill({ name: "<name>" })`. Descriptive documentation (README,
+    AGENTS.md) that explains the library structure is exempt — the ban
+    targets operational instructions emitted for subagents.
+
+- id: plugin-boundary-isolation
+  rule: >
+    Plugins must not cross-reference other plugin implementations. A
+    tracker plugin must not read engine plugin files; an engine plugin
+    must not read tracker plugin internals. Cross-plugin coordination
+    happens only through the contract (stable skill names,
+    mythic-quest.json, documented interfaces). This preserves the ability
+    to swap any plugin independently.
+  audience: both
+  scope: plugins/**
+  enforcement: both
+  check: plugin_boundary_cross_refs
+  check-tier: tripwire
+  notes: >
+    Pattern: `plugins/engine/...` referenced from `plugins/tracker/...`
+    or vice versa in operational instructions. Exceptions: the README's
+    Plugin System section (architecture doc), and consumer-facing
+    `mythic-quest.json` / `opencode.json` examples. Internal plugin docs
+    may reference their own plugin tree.
+
 - id: post-fix-rule-retirement
   rule: >
     When an upstream fix ships, retire not only the workaround but also the

@@ -17,17 +17,41 @@ Creates bare-minimum Godot 4.x project infrastructure by:
 ### Step 0: Initialize the Tracker
 
 Platform bootstrapping starts here (before any file writes): the project's
-task queue must exist before genesis seeds it. If the tracker backend is not
-initialized (Beads: no `.beads/` directory at the project root), invoke the
-**tracker** skill (`skill({ name: "tracker" })`) and run its `init` —
-Beads: `bd init --prefix dd` + custom-types registration (adapter.md Step 0).
-Idempotent: skip silently if already initialized. If `bd` is not on PATH,
-report `⛔ BLOCKED: bd unavailable — mise-provided prerequisite missing`
+task queue must exist before genesis seeds it.
+
+**0a. Resolve the tracker backend.** Read `mythic-quest.json` at the
+project root. If absent, write it with the default:
+
+```json
+{ "tracker": "beads" }
+```
+
+Verify the consumer-root `opencode.json` exists and mounts the resolved
+backend (its `skills` array carries the plugin directory per the mount
+table in `plugins/README.md` — the plugin-mount contract, neutral to both
+plugin slots). If `opencode.json` is absent or lacks the mount entry, add
+the entry per that table (appending to an existing `skills` array, never
+replacing it). If the file exists without any tracker entry, report
+`⛔ BLOCKED: consumer opencode.json does not mount a tracker backend —
+add the entry per plugins/README.md mount table`.
+
+**0b. Initialize the backend.** Invoke the **tracker** skill
+(`skill({ name: "tracker" })`) and run its init —
+Beads: `bd init --prefix dd` + custom-types registration (the skill's
+Step 0). If the skill is unavailable despite the mount (session started
+before `opencode.json` existed), the session's skill cache is stale:
+report `⛔ BLOCKED: tracker skill unreachable — the session must be
+restarted after the consumer-root opencode.json plugin mount is written`.
+Idempotent: skip silently if already initialized (Beads: `.beads/`
+exists at project root). If `bd` is not on PATH, report
+`⛔ BLOCKED: bd unavailable — mise-provided prerequisite missing`
 (do not improvise install workarounds; mise is project-configured).
 
 All tracker commands run **from the project root** — the tracker database is
 project-local; a wrong workdir silently reads/writes the wrong project's
-tracker.
+tracker. Never resolve tracker docs by walking to the parent harness
+repository — the submodule carries the full plugin tree, and the mount
+above is the sanctioned access path.
 
 ### Step 1: Write project.godot
 
@@ -52,10 +76,10 @@ this runs, `.godot/imported` does not exist and resource loads fail with
 and runtime do not import on their own. The import is idempotent; re-run it
 whenever new assets are added outside the editor.
 
-**Historical note** (upstream status: PR #44, opened 2026-09-12,
-`feat/import-assets` rebased on v3.6.0): before this tool existed, a build
+**Historical note** (upstream status: PR #44 OPEN, not yet merged or
+released — full lifecycle in docs/upstream-backlog.md): before this tool existed, a build
 session lost ~6 minutes and 4 permission-denied probes discovering that
-textures fail to load on fresh projects (run-9 task 3). If `import_assets`
+textures fail to load on fresh projects (benchmarks/results/2026-09-07-rallywall-lumo-max-medium-shipped.md, task 3). If `import_assets`
 is not in your toolset, report `⛔ BLOCKED: import_assets unavailable —
 upgrade godot-mcp-runtime to a release containing PR #44` — do not improvise
 bash workarounds.
@@ -66,7 +90,7 @@ Create `scripts/test_player.gd` — a game-agnostic test framework autoload prov
 
 See [`scripts/test_player.gd`](scripts/test_player.gd) for the full implementation. Install it with the skill's installer — **`bash scripts/install_test_player.sh <game-project-root>`** — which copies byte-identically and refuses to overwrite a drifted file. Do not retype or regenerate the file: the harness's parse gate validates the canonical copy, so a divergent transcription can carry latent parse errors into every later playtest.
 
-> **Project organization conventions** (file/dir names `snake_case`, node names `PascalCase`, third-party code in `addons/`, `.gdignore` for non-imported folders): consult `./.opencode/skills/create-scene-with-script/reference/godot-best-practices.md` §8. The scene/architecture practices (hierarchy, coupling, autoload discipline) live there too and apply to everything built after this step.
+> **Project organization conventions** (file/dir names `snake_case`, node names `PascalCase`, third-party code in `addons/`, `.gdignore` for non-imported folders): consult `./.opencode/plugins/engine/godot/skills/create-scene-with-script/reference/godot-best-practices.md` §8. The scene/architecture practices (hierarchy, coupling, autoload discipline) live there too and apply to everything built after this step.
 
 **API surface:**
 - `start_test(scenario: Dictionary)` — begin a scenario (see schema doc below)
@@ -77,7 +101,7 @@ See [`scripts/test_player.gd`](scripts/test_player.gd) for the full implementati
 
 **Schema documentation:** Consult [`reference/testing-patterns.md`](reference/testing-patterns.md) for the complete scenario config schema (all bot types, invariant rules, metrics).
 
-**Game-specific mechanic coverage:** Rather than a separate generation step, each interactive entity gets its own `tests/scenarios/<entity_name>.json` invariant config authored directly by the implementing agent during `create-scene-with-script` (see that skill's Step 5c) — using real knowledge of the entity's actual node paths and behavior, not inference from task titles after the fact. `playtest`'s `functional` mode aggregates all `tests/scenarios/*.json` files alongside the generic baseline invariants (see `./.opencode/skills/playtest/SKILL.md`).
+**Game-specific mechanic coverage:** Rather than a separate generation step, each interactive entity gets its own `tests/scenarios/<entity_name>.json` invariant config authored directly by the implementing agent during `create-scene-with-script` (see that skill's Step 5c) — using real knowledge of the entity's actual node paths and behavior, not inference from task titles after the fact. `playtest`'s `functional` mode aggregates all `tests/scenarios/*.json` files alongside the generic baseline invariants (the **playtest** skill, `skill({ name: "playtest" })`).
 
 **Assets added later** (SVG/PNG/textures placed by `write`): always follow with an `import_assets` run — files on disk are invisible to the engine until imported (see Step 3a).
 
@@ -86,10 +110,12 @@ See [`scripts/test_player.gd`](scripts/test_player.gd) for the full implementati
 Run validation (mandatory):
 
 ```bash
-./.opencode/skills/setup-project/scripts/validate.sh
+./.opencode/plugins/engine/godot/skills/setup-project/scripts/validate.sh
 ```
 
 Run from the project root. Exit code must be 0 before declaring success.
+(This is a script invocation, not a skill invocation — the path is this
+skill's own installer-run pattern, relative to the consumer project root.)
 
 ---
 

@@ -26,10 +26,10 @@ warn() { printf '⚠️  %s\n' "$1"; issues=$((issues + 1)); }
 # vocabulary are in that entry's notes)
 # ---------------------------------------------------------------------------
 check_genre_keywords() {
-  if grep -rn "platformer\|fps_shooter\|tower_defense\|beat_em_up" skills/*/scripts/*.gd 2>/dev/null; then
+  if grep -rn "platformer\|fps_shooter\|tower_defense\|beat_em_up" skills/*/scripts/*.gd plugins/*/*/skills/*/scripts/*.gd 2>/dev/null; then
     warn "genre-specific code detected in skill scripts"
   fi
-  if grep -rn "like Pong\|similar to Breakout\|streamer reaction\|On stream\|Rage-quit\|Clip moments" skills/*/SKILL.md 2>/dev/null; then
+  if grep -rn "like Pong\|similar to Breakout\|streamer reaction\|On stream\|Rage-quit\|Clip moments" skills/*/SKILL.md plugins/*/*/skills/*/SKILL.md 2>/dev/null; then
     warn "cultural commentary detected in SKILL.md"
   fi
 }
@@ -39,9 +39,78 @@ check_genre_keywords() {
 # agent-agnostic-skills; paraphrase judgment is LLM-review territory)
 # ---------------------------------------------------------------------------
 check_agent_names_in_skills() {
-  if grep -rn "Poppy\|Ian\|Pootie" skills/ 2>/dev/null; then
+  if grep -rn "Poppy\|Ian\|Pootie" skills/ plugins/ 2>/dev/null; then
     warn "agent names in skills detected (skills must be agent-agnostic)"
   fi
+}
+
+# ---------------------------------------------------------------------------
+# check_plugin_internal_references — agents and generic skills must invoke
+# plugins via stable skill names (`skill({ name: "tracker" })`, setup-project,
+# playtest...) or consumer-runtime paths under `.opencode/plugins/...`, never
+# via plugin-internal repo paths (`plugins/engine/godot/...` in agent
+# invocation context) or parent-repo resolution (registry:
+# plugin-stable-names). Descriptive doc citations of library layout are
+# exempt (they use the repo layout, not runtime invocation).
+# ---------------------------------------------------------------------------
+check_plugin_internal_references() {
+  # Agents must not embed plugin-internal paths in instructions they emit
+  # for subagents (skill invocations); references in prose to library
+  # layout are allowed in docs only.
+  if grep -rnE '(skill\(\{|consult|invoke) [^)]*plugins/(engine|tracker)/' agents/ 2>/dev/null; then
+    warn "agent invokes a plugin via internal path — use the stable skill name instead"
+  fi
+  # Nobody may resolve tracker docs by walking above the consumer root
+  if grep -rnE '\.\./(MythicQuest|harness)|parent (repo|repository)|parent directory to find' agents/ skills/ plugins/ 2>/dev/null \
+     | grep -v "upstream-backlog\|failure-modes"; then
+    warn "parent-repo path resolution detected — plugin content is reachable inside the consumer's .opencode/"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# check_direct_skill_reads — agents/skills must invoke the skill tool
+# (`skill({ name: "..." })`), never instruct reading SKILL.md files
+# directly (registry: no-direct-skill-reads). Direct reads tie execution to
+# the plugin layout and break engine/backend agnosticism.
+# ---------------------------------------------------------------------------
+check_direct_skill_reads() {
+  # Operational read instructions targeting any SKILL.md. Allow list:
+  # pure file-location docs (bash scripts referencing script paths) and
+  # self-reference (a skill mentioning its own path for provenance) are
+  # rare; review hits manually.
+  local hits
+  hits=$(grep -rniE '(read|load|open|consult|follow|check|see|study) [^.]*(\.opencode/)?(plugins|skills)/[^ ]*/SKILL\.md' \
+    agents/ skills/ plugins/ 2>/dev/null \
+    | grep -viE 'skill\(\{ ?name|invoke|via the (tracker|engine)|SKILL\.md (for|documents)|describes|explains|documents|defines' \
+    || true)
+  if [ -n "$hits" ]; then
+    printf '%s\n' "$hits"
+    warn "direct SKILL.md read instruction found — invoke the skill tool (skill({ name: \"...\" })) instead"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# check_plugin_boundary_cross_refs — plugin files must not reference other
+# plugin trees in operational instructions (registry:
+# plugin-boundary-isolation). Cross-plugin coordination goes through the
+# contract: stable skill names, mythic-quest.json, consumer mounts.
+# ---------------------------------------------------------------------------
+check_plugin_boundary_cross_refs() {
+  local plugin_tree other
+  for plugin_tree in plugins/engine plugins/tracker; do
+    case "$plugin_tree" in
+      plugins/engine) other="plugins/tracker" ;;
+      plugins/tracker) other="plugins/engine" ;;
+    esac
+    local hits
+    hits=$(grep -rn "$other" "$plugin_tree/" 2>/dev/null \
+      | grep -vE '^[^:]+:[0-9]+:(>|#|\*)' \
+      || true)
+    if [ -n "$hits" ]; then
+      printf '%s\n' "$hits"
+      warn "$plugin_tree references $other — cross-plugin access must go through the plugin contract (stable skill names), not implementation paths"
+    fi
+  done
 }
 
 # ---------------------------------------------------------------------------
@@ -63,7 +132,7 @@ check_pkill_ban() {
 # ---------------------------------------------------------------------------
 check_alt_path_wording() {
   alt_hits=$(grep -rniE "as a (last )?(resort|fallback)|fall back to|you can alternatively|alternatively, you|if .* fails, (try|use) " \
-    skills/*/SKILL.md skills/*/reference/*.md 2>/dev/null \
+    skills/*/SKILL.md skills/*/reference/*.md plugins/*/*/skills/*/SKILL.md plugins/*/*/skills/*/reference/*.md 2>/dev/null \
     | grep -viE "no (self-)?fallback|do (not|n't) fall|forbidden|prohibit|never fall|BLOCKED|workaround.*(forbidden|banned)|alternative paths")
   if [ -n "$alt_hits" ]; then
     printf '%s\n' "$alt_hits"
@@ -122,7 +191,7 @@ check_engine_file_permissions() {
 # Opt-out marker for skills whose purpose IS editing.
 # ---------------------------------------------------------------------------
 check_actor_wording() {
-  for sm in skills/*/SKILL.md; do
+  for sm in skills/*/SKILL.md plugins/*/*/skills/*/SKILL.md; do
     [ -f "$sm" ] || continue
     if grep -q '<!-- lint: this skill edits files by design -->' "$sm"; then
       continue
@@ -165,7 +234,7 @@ check_gdscript_parse() {
   fi
   gd_tmp=$(mktemp -d)
   printf 'config_version=5\n[application]\nconfig/name="lint-gd-check"\n' > "$gd_tmp/project.godot"
-  for gd in skills/*/scripts/*.gd; do
+  for gd in skills/*/scripts/*.gd plugins/*/*/skills/*/scripts/*.gd; do
     [ -e "$gd" ] || continue
     cp "$gd" "$gd_tmp/check_target.gd"
     err="$("$GODOT_BIN" --headless --path "$gd_tmp" --check-only --script res://check_target.gd 2>&1)"
@@ -199,7 +268,7 @@ check_embedded_gdscript_parse() {
     echo "ℹ️  godot binary not found — skipped embedded-GDScript parse check"
     return
   fi
-  md_files=$( { ls skills/*/SKILL.md skills/*/reference/*.md .opencode/skills/*/SKILL.md .opencode/skills/*/reference/*.md 2>/dev/null; } | sort -u )
+  md_files=$( { ls skills/*/SKILL.md skills/*/reference/*.md plugins/*/*/skills/*/SKILL.md plugins/*/*/skills/*/reference/*.md .opencode/skills/*/SKILL.md .opencode/skills/*/reference/*.md 2>/dev/null; } | sort -u )
   [ -z "$md_files" ] && return
   gd_tmp=$(mktemp -d)
   printf 'config_version=5\n[application]\nconfig/name="lint-md-gd-check"\n' > "$gd_tmp/project.godot"
@@ -281,7 +350,7 @@ check_doc_hygiene() {
 import glob, re, sys
 
 issues = 0
-for f in sorted(glob.glob("skills/*/SKILL.md") + glob.glob(".opencode/skills/*/SKILL.md")):
+for f in sorted(glob.glob("skills/*/SKILL.md") + glob.glob("plugins/*/*/skills/*/SKILL.md") + glob.glob(".opencode/skills/*/SKILL.md")):
     src = open(f, encoding="utf-8").read()
     if src.count("\n") + 1 > 500:
         print(f"⚠️  Review: {f} exceeds 500 lines (progressive-disclosure cap)")
@@ -359,6 +428,9 @@ fi
 
 check_genre_keywords
 check_agent_names_in_skills
+check_plugin_internal_references
+check_direct_skill_reads
+check_plugin_boundary_cross_refs
 check_pkill_ban
 check_alt_path_wording
 check_permission_deny_baseline

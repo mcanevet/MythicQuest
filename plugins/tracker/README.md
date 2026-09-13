@@ -6,7 +6,7 @@ GitHub-Projects-compatible semantics (fields map 1:1 to GitHub Issues), so
 migrating between backends (Beads → GitHub Projects → Trello → Jira) is a
 data export, not a redesign.
 
-Current backend: **Beads (`bd`)** — [beads/adapter.md](beads/adapter.md).
+Current backend: **Beads (`bd`)** — [beads/SKILL.md](beads/SKILL.md).
 Prerequisite: bd provided via mise (`aqua:gastownhall/beads`, pinned in the
 project root `mise.toml`).
 
@@ -28,8 +28,12 @@ single source of truth.
 Exactly one backend is mounted per project. Whichever is active, its adapter
 skill is frontmattered **`name: tracker`** — skills and agents always invoke
 `skill({ name: "tracker" })` and read this README's contract, never a
-backend-specific name. Swapping backends = mounting a different plugin
-directory; zero edits elsewhere.
+backend-specific name. Swapping backends = changing the `tracker` key in the
+consumer's `mythic-quest.json` and the matching `skills` entry in the
+consumer-root `opencode.json`; zero edits elsewhere.
+
+See the library README's **Plugin System** section for the mount mechanism
+(`mythic-quest.json` + consumer-root `opencode.json` `skills` entries).
 
 ## Operations (the contract)
 
@@ -52,9 +56,10 @@ but must accept these inputs and produce equivalent observable effects:
 
 Issue fields map 1:1 onto GitHub Issues; the logical-field → backend
 representation mapping table lives in each adapter (Beads:
-[beads/adapter.md](beads/adapter.md) Step 4). Issue types: `bug`, `vision`,
+[beads/SKILL.md](beads/SKILL.md) Step 4). Issue types: `bug`, `vision`,
 `critique`, `material`, `animation`, `audio`, `refactor`, `core` (extended
-as agents join — `material` filings belong to Phil's follow-up passes). Statuses: `open | in_progress | blocked | closed`.
+as agents join — each type is restricted to the role authorized to file
+it, per the permission model below). Statuses: `open | in_progress | blocked | closed`.
 
 ## Ids and plans
 
@@ -71,16 +76,16 @@ across backends (GitHub/Jira have no filesystem equivalent to mirror to).
 Backend operations are gated by **role**, not by path. Enforcement is split
 between bash allowlists (machine-checked command patterns per agent) and
 documented norms for conditional scopes (authoritative copy in the mounted
-backend's adapter — `beads/adapter.md`):
+backend's adapter — `beads/SKILL.md`):
 
-| Operation | ian | poppy | rachel | pootie | phil |
+| Operation | creator | implementer | reporter | critic | material-filer |
 |---|---|---|---|---|---|
 | create_milestone | ✓ | — | — | — | — |
 | create_issue (any type) | ✓ | ✓ | — | — | — |
 | create_issue (type-restricted) | — | — | `bug` only | `critique` only | `material` only |
 | update_issue_status | — | ✓ | — | — | — |
 | close_issue | own only | assigned-to-self only | — | — | — |
-| assign_issue | ✓ | — | — | — |
+| assign_issue | ✓ | — | — | — | — |
 | add_label | ✓ | ✓ | — | — | — |
 | add_comment | any | any | any | own only | any (own filings) |
 | list_issues | ✓ | ✓ | ✓ | ✓ | ✓ |

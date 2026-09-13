@@ -58,7 +58,7 @@ case "$TEST_DIR" in
 esac
 
 # 5. Kill leftover engine processes through the sanctioned stopper
-STOP="$REPO_ROOT/skills/create-scene-with-script/scripts/stop_engine.sh"
+STOP="$REPO_ROOT/plugins/engine/godot/skills/create-scene-with-script/scripts/stop_engine.sh"
 [ -x "$STOP" ] && "$STOP" >/dev/null 2>&1 || true
 
 # Mirror maintenance — submodule remote is a bare clone of the harness repo
@@ -92,6 +92,22 @@ if ! grep -qx 'node_modules' "$GD/info/exclude" 2>/dev/null; then
   mkdir -p "$GD/info"
   printf 'node_modules/\npackage-lock.json\npackage.json\n' > "$GD/info/exclude"
 fi
+
+# Consumer-owned plugin selection + mount. The submodule is read-only for
+# consumers, so plugin choice lives at the consumer project root: one plugin
+# per slot in mythic-quest.json, and a root opencode.json mounting the chosen
+# plugin directories as skill sources (opencode concatenates skills arrays
+# across config documents, composing with the submodule's config). Overrides:
+# MYTHIC_ENGINE / MYTHIC_TRACKER env vars.
+ENGINE="${MYTHIC_ENGINE:-godot}"
+TRACKER="${MYTHIC_TRACKER:-beads}"
+[ -d "$OC/plugins/engine/$ENGINE" ] || fail "unknown engine plugin: $ENGINE"
+[ -d "$OC/plugins/tracker/$TRACKER" ] || fail "unknown tracker plugin: $TRACKER"
+printf '{ "engine": "%s", "tracker": "%s" }\n' "$ENGINE" "$TRACKER" > "$TEST_DIR/mythic-quest.json"
+printf '{\n  "skills": [\n    ".opencode/plugins/engine/%s",\n    ".opencode/plugins/tracker/%s"\n  ]\n}\n' "$ENGINE" "$TRACKER" > "$TEST_DIR/opencode.json"
+git -C "$TEST_DIR" add mythic-quest.json opencode.json
+git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
+  commit -qm "chore: select plugins engine=$ENGINE tracker=$TRACKER"
 
 # Verification — fail loudly rather than let a session start broken
 [ -d "$OC/agents" ] && [ -d "$OC/skills" ] && [ -f "$OC/opencode.jsonc" ] ||

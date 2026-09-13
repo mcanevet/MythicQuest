@@ -81,7 +81,7 @@ Do not commit fixes that would only apply to `test/` sandboxes.
 - **Status:** not filed. Motivation partly removed by granting pootie
   `write: reports/**` (commit 55a3fe5), but the gate weakness stands.
 - **Retire:** once upstream gates semantically, note it in
-  skills/playtest/SKILL.md report-persistence gotcha.
+  plugins/engine/godot/skills/playtest/SKILL.md report-persistence gotcha.
 
 ### MCP client transport timeout is not configurable
 - **Observed:** 09-04 Run 5 (qwen, session nfd7fn). The tool-level `timeout`
@@ -324,6 +324,16 @@ Do not commit fixes that would only apply to `test/` sandboxes.
   node_modules pin stays until a release > v3.6.0 ships it.
 - **Lifecycle:** patched → pending PR → release retires the temp pin
   (test/.opencode/opencode.jsonc revert condition).
+
+### Archived: .tscn section order (ext_resource must precede sub_resource)
+- **Retired 2026-09-12 (plugin refactor LLM review):** direct `.tscn`
+  hand-editing is permission-denied and resource-typed properties go
+  through the MCP tools (inline Resource construction since v3.2.5, PR
+  #32), so no in-harness path can produce the misordered file. Historical
+  case: paddle integration into main.tscn once put ext_resource after
+  sub_resource → `Unknown tag 'ext_resource' in file`; fix was pure block
+  reordering. Off-harness editors producing that error should check block
+  ORDER first (gd_scene → ext_resource → sub_resource → node).
 
 ## Open: batch_scene_operations uninformative error for missing 'operation' key
 - **Observed:** 09-11 rallywall run (lumo-max, test/ sandbox, kind-island

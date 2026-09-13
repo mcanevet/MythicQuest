@@ -6,7 +6,7 @@ Use **batch operations first**, individual tools for simple cases:
 
 - **3+ nodes** → `godot-mcp-runtime:batch_scene_operations` (saves ~3s per operation)
 - **1-2 nodes** → `godot-mcp-runtime:create_scene` + `godot-mcp-runtime:add_node`
-- **Update properties** → `godot-mcp-runtime:set_node_properties` (primitives, Vector/Color dicts, and Resource-typed dicts — `{type: "ClassName", ...props}` constructs the resource inline, including nested resources; `res://` paths load saved ones. Type-incompatible assignments return an explicit error as of godot-mcp-runtime v3.2.4; inline construction per SKILL.md Step 5a)
+- **Update properties** → `godot-mcp-runtime:set_node_properties` (primitives, Vector/Color dicts, and Resource-typed dicts — `{type: "ClassName", ...props}` constructs the resource inline, including nested resources; `res://` paths load saved ones. Type-incompatible assignments return an explicit error; inline construction per SKILL.md Step 5a)
 - **Attach script** → `godot-mcp-runtime:attach_script`
 - **Check hierarchy** → `godot-mcp-runtime:get_scene_tree`
 - **Wire signals** → `godot-mcp-runtime:connect_signal`
@@ -112,7 +112,7 @@ Before the first engine tool call in a session, call `godot-mcp-runtime:get_proj
 
 **If `godot-mcp-runtime:run_project` fails (bridge timeout, "did not respond", "process exited"):**
 1. Call `godot-mcp-runtime:get_debug_output()` immediately — read actual error
-2. Kill lingering engine process: `bash("./.opencode/skills/create-scene-with-script/scripts/stop_engine.sh")` — the blessed stop script (kills only `godot --path …`, waits for port release). **NEVER run pkill yourself** (see warning below)
+2. Kill lingering engine process: `bash("./.opencode/plugins/engine/godot/skills/create-scene-with-script/scripts/stop_engine.sh")` — the blessed stop script (kills only `godot --path …`, waits for port release). **NEVER run pkill yourself** (see warning below)
 3. Fix specific issue in source files
 4. Retry once. If same error → **STOP** and report to caller: `⛔ BLOCKED: runtime phase failed after sanctioned recovery (debug → stop_engine → fix → retry). Do not self-launch Godot or use attach_project.`
    - **DO NOT invent workarounds**: manual launch scripts, `attach_project`, custom validation hooks, shell-based test runners, or "background mode" hacks. These look equivalent but bypass the sanctioned verification path (no captured debug output, unsanctioned infra; mimo run 5, Task 11 subagent built tmp launch/kill scripts and attached-mode tested after 4 bridge timeouts instead of reporting BLOCKED).

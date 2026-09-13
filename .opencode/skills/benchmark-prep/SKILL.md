@@ -24,13 +24,20 @@ The AGENTS.md **"Option 1: git submodule (production)"** consumer layout —
 
 ```
 <sandbox>/                  # its own fresh git repo (opencode cwd anchor)
+├── mythic-quest.json       # consumer-owned plugin selection { engine, tracker }
+├── opencode.json           # consumer-owned config: mounts chosen plugins
 └── .opencode/              # git SUBMODULE -> this harness repo, pinned at HEAD
     ├── agents/             # checked out from the harness repo
-    ├── skills/             # checked out (loader resolves .opencode/skills directly)
-    ├── opencode.jsonc       # checked out
-    └── node_modules/       # godot-mcp-runtime 3.2.3 (checkout-local git excludes —
-                            #   invisible to both repos' status)
+    ├── skills/             # checked out (engine-agnostic skills)
+    ├── plugins/            # engine + tracker plugins (checked out)
+    └── opencode.jsonc       # checked out
 ```
+
+Plugin selection defaults to `{ "engine": "godot", "tracker": "beads" }`;
+override via the `MYTHIC_ENGINE` / `MYTHIC_TRACKER` env vars (both verified
+against the plugin tree before prep proceeds). The consumer-root
+`opencode.json` mounts the chosen plugin directories as opencode skill
+sources — the submodule is never written.
 
 Why pinning matters: the consumer repo's history records **which harness
 commit a benchmark ran against** — reproducible A/B comparison across models
