@@ -101,6 +101,14 @@ git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
 [ -f "$TEST_DIR/AGENTS.md" ] || fail "sandbox AGENTS.md missing after bd setup"
 
 # 3. bd ledger init — game sessions expect .beads/ ready (genesis relies on it)
+(cd "$TEST_DIR" && bd init --quiet --stealth) >/dev/null 2>&1 ||
+  fail "bd init failed in sandbox (is bd on PATH?)"
+[ -d "$TEST_DIR/.beads" ] || fail "sandbox .beads/ missing after bd init"
+# Commit the generated AGENTS.md so the dirty-files verification passes
+# (its managed Beads section is part of the benchmark baseline).
+git -C "$TEST_DIR" add AGENTS.md
+git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
+  commit -qm "chore: managed Beads AGENTS.md (bd setup opencode)"
 
 GD=$(git -C "$OC" rev-parse --absolute-git-dir)
 if ! grep -qx 'node_modules' "$GD/info/exclude" 2>/dev/null; then
