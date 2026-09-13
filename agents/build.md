@@ -184,14 +184,14 @@ Once a bead is claimed, its description and acceptance criteria are **law** unti
 ---
 
 ### Iteration Steps
+#### Step 0: Clear previous state — reclaim dead-worker claims
 
-#### Step 0: Clear previous state
-No engine-specific cleanup needed at agent level — skills handle their own process management when launching tests. If you encounter "port in use" or "bridge timeout" errors from a task, that's a signal for the implementing skill to handle recovery via its own cleanup routines.
+Run `bd reclaim` (a no-op when no lease has gone stale). A prior session that died mid-task leaves its bead `in_progress` forever without this; reclaim reverts stale-lease beads to ready so the dev loop can pick them up. No engine-specific cleanup needed at agent level — skills handle their own process management when launching tests. If you encounter "port in use" or "bridge timeout" errors from a task, that's a signal for the implementing skill to handle recovery via its own cleanup routines.
 
 #### Step 1: Read Current State
 1. `bd ready --json` — get claimable beads. Select the first by (priority, creation order). If the caller context pins a specific bead, target it.
-2. Note the bead ID and title. Track this mentally: you are currently working on **Bead `<id>`: `<title>`**.
-3. Run `bd show <id> --json` to extract the task description, acceptance criteria, and any explicit file paths mentioned. Save these for error recovery (Step 5).
+2. Note the bead ID and title. Track this mentally: you are currently working on **Bead `<id>`: `<title>`**. While the delegated session runs, you hold the claim — `bd heartbeat <id>` on each main-loop iteration keeps the lease alive across long delegations.
+3. Run `bd show <id> --json` to extract the task description, acceptance criteria, and any explicit file paths mentioned. Save these for error recovery (Step 5). Then `bd heartbeat <id>` to refresh your lease on the bead (prevents reclaim from stealing it back during long delegations).
 4. **Circuit-breaker check (before delegating):** Count retries for the current task via `bd show <id> --json` (metadata `attempts=N`). If N ≥ 3, the 3-retry budget is already exhausted — this is a systemic issue. Decompose the task into smaller pieces (create child beads with `bd create --parent <id>`, higher priority) and try the smallest piece first. If that fails 3 times, report "Systemic blocker: Bead <id> cannot be automated" and stop.
 5. **Dependency Analysis (Task Reordering):** the ledger enforces `blocks` edges — blocked beads never appear in `ready`. Before delegating, additionally scan ready beads for foundational infrastructure (input configuration, project settings, core systems) that later tasks assume — if present, it must run FIRST regardless of priority ties. Dependent work is already gated by deps; your judgment only covers implicit (unwired) foundations.
 
@@ -577,10 +577,13 @@ denied bash call; the root saw nothing).
 **Detection:** judge by *activity asymmetry*, not wall-clock. If the task has run
 well past its expected duration and the ledger shows **no state changes and
 no logged progress** for the current task, suspect a silent stall. (During a healthy
-run you will see scene/script files and ledger states updating.)
+run you will see scene/script files and ledger states updating.) Cross-check
+with lease age: `bd show <id> --json` → `lease_expires_at` in the past + no
+recent `heartbeat_at` means the holder died without heartbeating — `bd reclaim`
+frees the bead for re-delegation.
 
 **Response (one bounded cycle):**
-1. Check `bd list --status in_progress` (bead `updated_at`) and `glob()` the plan's expected outputs — nothing new in a long window = suspected stall.
+1. Check `bd list --status in_progress` (bead `updated_at`) and `glob()` the plan's expected outputs — nothing new in a long window = suspected stall. If the bead's lease has expired (`bd show <id> --json` → `lease_expires_at` in the past), run `bd reclaim` to free it, then re-claim via `backlog-grooming`.
 2. Emit a status line telling the human exactly where it is stuck: `⚠️ Task N possibly stalled (<agent>, ~<duration>, last visible action: <skill/step>) — if the TUI shows an unanswered permission prompt, answer or reject it; otherwise this task needs manual intervention.`
 3. **Wait for the human — do not cancel or re-delegate.** You cannot see or answer the pending ask, and killing the subagent is not in your power; re-delegating would stack a second doomed task behind the same unanswered prompt. After logging, stop and let the human act. On relaunch, the build resumes from the ledger (Phase 0 fast-path).
 
