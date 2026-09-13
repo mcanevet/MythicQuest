@@ -1,10 +1,10 @@
 # Game Build Four Loops Formula
 #
 # Encodes the four-loop topology from build.md:
-# - Dev loop (Poppy): claim → implement → playtest-verify → log-result
-# - QA loop (Rachel): milestone smoke + functional QA → bug beads back to dev
-# - Vision loop (Ian): milestone vision checks + release gate → vision beads back to dev
-# - Consumer loop (Pootie): streamer critique → recommendation → Ian's disposition
+# - Dev loop (developer): claim → implement → playtest-verify → log-result
+# - QA loop (quality): milestone smoke + functional QA → bug beads back to dev
+# - Vision loop (creative): milestone vision checks + release gate → vision beads back to dev
+# - Consumer loop (critic): streamer critique → recommendation → creative disposition
 #
 # Usage:
 #   bd mol pour game-four-loops
@@ -19,10 +19,10 @@ description = """
 MythicQuest game build workflow - four-loop orchestration.
 
 Loops:
-1. Dev loop (Poppy): claim/backlog-grooming → create-scene-with-script → playtest(scene-verify) → log-result
-2. QA loop (Rachel): milestone smoke tests + functional QA gates → bug beads → back to dev
-3. Vision loop (Ian): milestone vision checks + release gate → vision beads → back to dev
-4. Consumer loop (Pootie): streamer critique → recommendation → Ian disposition → rework or ship
+1. Dev loop (developer): claim/backlog-grooming → create-scene-with-script → playtest(scene-verify) → log-result
+2. QA loop (quality): milestone smoke tests + functional QA gates → bug beads → back to dev
+3. Vision loop (creative): milestone vision checks + release gate → vision beads → back to dev
+4. Consumer loop (critic): streamer critique → recommendation → creative disposition → rework or ship
 
 Release gate chain:
 - Release bead (label: release, P0) blocked by three human gates: qa → vision → consumer
@@ -44,7 +44,7 @@ required = false
 default = "MythicQuest Game"
 
 # =============================================================================
-# Dev Loop (Poppy) - Continuous
+# Dev Loop (developer) - Continuous
 # =============================================================================
 
 [[steps]]
@@ -80,7 +80,7 @@ If not closed, retry log-result (max 3 retries total).
 """
 
 # =============================================================================
-# QA Loop (Rachel) - Milestone Gates
+# QA Loop (quality) - Milestone Gates
 # =============================================================================
 
 [[steps]]
@@ -89,7 +89,7 @@ title = "Milestone smoke test"
 needs = ["dev-verify-close"]
 description = """
 Every 3-7 tasks (adaptive based on cross-references):
-- Rachel runs playtest (scene-verify mode)
+- QA engineer runs playtest (scene-verify mode)
 - Report to reports/milestone-smoke-test.md
 - Verdict: QA PASS (0 violations) → continue; QA FAIL → file bug beads, stop
 
@@ -105,13 +105,13 @@ title = "Functional QA gate"
 needs = ["qa-milestone"]
 description = """
 At end of Phase 1 (all dev beads closed):
-- Rachel runs playtest (functional mode)
+- QA engineer runs playtest (functional mode)
 - Report to reports/functional-qa.md
 - Verdict: QA PASS → proceed to vision gate; QA FAIL → file bug beads, return to dev loop
 """
 
 # =============================================================================
-# Vision Loop (Ian) - Coarser Cadence
+# Vision Loop (creative) - Coarser Cadence
 # =============================================================================
 
 [[steps]]
@@ -120,7 +120,7 @@ title = "Milestone vision check"
 needs = ["qa-milestone"]
 description = """
 Every OTHER milestone (half the QA cadence):
-- Ian runs playtest (vision mode)
+- Creative director runs playtest (vision mode)
 - Report to reports/milestone-vision-<n>.md
 - Verdict: aligned → continue; drifted → file vision beads, freeze feature work, fix first
 """
@@ -131,13 +131,13 @@ title = "Vision alignment gate"
 needs = ["qa-functional"]
 description = """
 At release gate:
-- Ian runs playtest (vision mode)
+- The creative director runs playtest (vision mode)
 - Report to reports/vision-qa.md
 - Verdict: aligned → proceed to consumer gate; drifted → file vision beads, return to dev loop
 """
 
 # =============================================================================
-# Consumer Loop (Pootie) - Outer Gate
+# Consumer Loop (critic) - Outer Gate
 # =============================================================================
 
 [[steps]]
@@ -146,22 +146,22 @@ title = "Consumer streamer critique"
 needs = ["vision-gate"]
 description = """
 Skipped if SKIP_CONSUMER_LOOP flag exists.
-- Pootie plays the game as a consumer (no spec, no reports)
+- The consumer critic plays the game as a player (no spec, no reports)
 - Delivers recommendation: RECOMMEND_SHIP or RECOMMEND_REWORK (+ B-hole rating)
 - Report to reports/consumer-critique-<n>.md
 """
 
 [[steps]]
 id = "consumer-disposition"
-title = "Ian's disposition"
+title = "Creative disposition of consumer critique"
 needs = ["consumer-critique"]
 description = """
-Route Pootie's critique to Ian:
+Route the streamer critic's report to the creative director:
 - CONFIRM_SHIP → proceed to release
 - ORDER_REWORK → file critique beads, return to dev loop
 - REVISE_VISION → update VISION.md, queue revision tasks, return to dev loop
 
-Rework cap: 2 cycles max. Third rework = taste divergence → BLOCKED.
+Rework cap: 2 cycles max. Third rework = taste divergence → escalate to human.
 """
 
 # =============================================================================
