@@ -64,7 +64,6 @@ permission:
     "bd dep add*": allow
     "bd update*": allow
     "bd close*": allow
-    "bd show*": allow
     "bd count*": allow
     "bd stats*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
@@ -164,7 +163,7 @@ while ledger_has_open_beads():
 
 **Context efficiency:** Read the ledger state once per iteration and rely on what is in context — do not re-query on subsequent steps.
 
-Before ANY main loop iteration (first time only), run these checks in order. **Use `bd` directly — no wrapper. Empty ledgers return `[]`, which is a normal "no work" state, not an error.** Use `glob()` to check file existence for markdown files.
+Before ANY main loop iteration (first time only), run these checks in order. Use `glob()` to check file existence for markdown files.
 
 > **Note on the blocks below:** these are checklists to follow step by step, not literal shell scripts. Do not attempt to execute them as bash.
 >
@@ -233,7 +232,7 @@ Pass the bead ID (`Bead <id>: <title>`) in the delegation prompt so backlog-groo
 **If spawning parallel tasks:** the atomic claim in backlog-grooming prevents races — parallel sessions each target a DIFFERENT bead, and a lost claim is rejected loudly (the losing session re-runs `ready` and picks the next bead). You do NOT need to pre-claim anything. Give each parallel prompt its explicit bead ID. Dedicate a unique `description` slug for each (e.g., `"parallel-task-<bead-id>"`). Ensure they do not share file paths. After spawning, wait for all to complete before proceeding to Step 3.
 
 **Validate output — check all of:**
-1. Bead status is `closed` (`bd show <id> --json | python3 -c 'import json,sys;print(json.load(sys.stdin)["status"])'`).
+1. Bead status is `closed` (`bd show <id> --json` → `status`).
 
 3. No in_progress beads remain that you didn't expect (`bd list --status in_progress`).
 

@@ -35,13 +35,13 @@ Always update for player-visible changes (controls, scoring, rules, game flow). 
 
 Exit 0 required. Closing releases dependents — beads blocked on this one become `ready` for the next grooming pass automatically (no manual status flipping).
 
-If the implementation took retries, close still proceeds — the attempt count lives in bead metadata (`bd show --json | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("metadata",{}).get("attempts","0"))'`), incremented by the caller on retry delegations.
+If the implementation took retries, close still proceeds — the attempt count lives in bead metadata (`bd show <id> --json` → `metadata.attempts`), incremented by the caller on retry delegations.
 
 ### Step 2.5: Verify Close Landed (mandatory)
 
 Before validating, confirm the close landed:
 
-- `bd show --json <bead-id> --field status` returns `closed`
+- `bd show <bead-id> --json` → `status` is `closed`
 
 If missing, fix it before proceeding. Returning after only a partial close is the most common failure of this skill.
 
@@ -69,7 +69,7 @@ Non-zero = report but do not fail the task — the close already landed; note it
 
 Your `<task_result>` must contain:
 
-- [x] BEAD_ID closed in ledger (**confirmed by show --field status**)
+- [x] BEAD_ID closed in ledger (**confirmed by `bd show <id> --json`**)
 - [x] Validation script exit code (0 = success)
 - [x] List of files created/modified
 - [x] Any gotchas encountered
