@@ -319,7 +319,7 @@ for path in sorted(glob.glob('agents/*.md')):
     ro = {'ready','show','list','search','query','children','prime','history','count','stats','dep tree','dep list'}
     filings = {'create','note','comment','q','dep add'}
     claimclose = {'update','unclaim','close'}
-    gates = {'gate list','gate show','gate check','gate resolve','gate discover'}
+    gates = {'gate list','gate show','gate check','gate resolve','gate create','gate discover'}
     depremove = {'dep remove'}
     cls = CLASS_RANK[allowed_class]
     for v in verbs:

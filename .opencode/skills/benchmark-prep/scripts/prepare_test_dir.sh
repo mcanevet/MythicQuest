@@ -63,7 +63,10 @@ STOP="$REPO_ROOT/skills/create-scene-with-script/scripts/stop_engine.sh"
 
 # Mirror maintenance — submodule remote is a bare clone of the harness repo
 if [ -d "$MIRROR" ]; then
-  git --git-dir="$MIRROR" fetch -q "$REPO_ROOT" "refs/heads/*:refs/heads/*" ||
+  # '+' forces: the mirror is disposable and must track harness HEAD even
+  # across history rewrites; a plain fetch goes non-fast-forward and wedges
+  # every future prep run on the stale ref.
+  git --git-dir="$MIRROR" fetch -q "$REPO_ROOT" "+refs/heads/*:refs/heads/*" ||
     fail "mirror fetch failed — check $MIRROR"
 else
   # --no-local: the harness worktree has ignored dirs that break local clones
@@ -71,7 +74,7 @@ else
     fail "could not create bare mirror at $MIRROR"
 fi
 HEAD_SHA=$(git rev-parse HEAD)
-git --git-dir="$MIRROR" fetch -q "$REPO_ROOT" "$HEAD_SHA:refs/heads/benchmark-pin" ||
+git --git-dir="$MIRROR" fetch -q "$REPO_ROOT" "+$HEAD_SHA:refs/heads/benchmark-pin" ||
   fail "could not pin HEAD ($HEAD_SHA) into mirror"
 
 # 1. Wipe the sandbox (disposable by contract — includes any prior game build)

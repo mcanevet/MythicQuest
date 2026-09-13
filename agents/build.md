@@ -62,6 +62,7 @@ permission:
     "bd gate show*": allow
     "bd gate check*": allow
     "bd gate resolve*": allow
+    "bd gate create*": allow
     "bd create*": allow
     "bd dep add*": allow
     "bd count*": allow
@@ -170,12 +171,14 @@ while ledger_has_open_beads():
 
 **Context efficiency:** Read the ledger state and the linked plan file once per iteration and rely on what is in context — do not re-query on subsequent steps.
 
-Before ANY main loop iteration (first time only), run these checks in order. **The ledger helper script (`bd_ledger.sh`, reachable via your skill-script bash allows) is your ONLY ledger access — never call `bd` directly; its low-level verbs sit outside your permission profile. Use `glob()` to check file existence for markdown files.**
+Before ANY main loop iteration (first time only), run these checks in order. **The ledger helper script lives at `.opencode/skills/genesis/scripts/bd_ledger.sh` — that is the ONLY sanctioned ledger entrypoint for build; never call `bd` directly except for the few verbs explicitly allowlisted below.** Use `glob()` to check file existence for markdown files.
 
 > **Note on the blocks below:** these are checklists to follow step by step, not literal shell scripts. Do not attempt to execute them as bash.
+>
+> **Command discipline:** keep each tool call a SINGLE simple command (no `&&`, no pipes to `grep`/`head`). Compound commands confuse the tool-layer pattern matcher and fail. If you need multiple steps, do them in separate tool calls.
 
 **Step 1: Check genesis state**
-1. `glob("VISION.md")` and run `bd_ledger.sh ready` — if VISION.md exists and ready returns beads, skip to Phase 1.
+1. `glob("VISION.md")` and run `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` — if VISION.md exists and ready returns beads, skip to Phase 1.
 2. If missing:
    // CRITICAL: Extract the user's original request from session context (the first user message). Forward it to Ian verbatim so genesis respects constraints like "minimal", "MVP", "{GENRE}-style", etc.
    ```
@@ -185,7 +188,7 @@ Before ANY main loop iteration (first time only), run these checks in order. **T
      prompt: "User request: '<paste user's original prompt verbatim>'. skill({ name: \"genesis\" }) — DO NOT implement anything. Create vision document, beads backlog, and README skeleton only. Honor all constraints from the user request above: genre, scope, mechanics, art style, and any explicit limits (e.g. 'minimal', 'MVP', 'no polish')."
    })
    ```
-3. `glob("VISION.md")` again and `bd_ledger.sh ready`. If **still missing**, this is unrecoverable — report the failure to the user and stop. Do not retry silently.
+3. `glob("VISION.md")` again and `./.opencode/skills/genesis/scripts/bd_ledger.sh ready`. If **still missing**, this is unrecoverable — report the failure to the user and stop. Do not retry silently.
 4. `glob("README.md")`. If missing, this is a non-fatal warning only — README gets filled in during `log-result`. Note it and continue.
 ---
 
@@ -193,7 +196,7 @@ Before ANY main loop iteration (first time only), run these checks in order. **T
 
 **Task Counter:** Track completions via `bd list --status closed` count.
 
-**Loop Condition:** While the ledger has open/in_progress task beads (`bd_ledger.sh complete_check` exits 1)...
+**Loop Condition:** While the ledger has open/in_progress task beads (`./.opencode/skills/genesis/scripts/bd_ledger.sh complete_check` exits 1)...
 
 #### **Task Anchoring Rule**
 Once a plan file is created in `plans/`, that plan is **law** until `log-result` confirms the bead closed. Do not re-derive requirements mid-cycle.
@@ -206,10 +209,10 @@ Once a plan file is created in `plans/`, that plan is **law** until `log-result`
 No engine-specific cleanup needed at agent level — skills handle their own process management when launching tests. If you encounter "port in use" or "bridge timeout" errors from a task, that's a signal for the implementing skill to handle recovery via its own cleanup routines.
 
 #### Step 1: Read Current State
-1. `bd_ledger.sh ready` — get claimable beads. Select the first by (priority, creation order). If the caller context pins a specific bead, target it.
+1. `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` — get claimable beads. Select the first by (priority, creation order). If the caller context pins a specific bead, target it.
 2. Note the bead ID and title. Track this mentally: you are currently working on **Bead `<id>`: `<title>`**.
-3. Run `bd_ledger.sh show <id> --field metadata` to recover the plan file path (`plan=` key) if one exists. If no plan file is linked, Poppy will create one at Step 2 (via backlog-grooming's slug derivation). Extract all backtick-quoted file paths from the plan (scene files, scripts, assets — any implementation file). Save these for error recovery (Step 5) — log-result archives the plan file mid-session, and you'll need the original paths to verify after a timeout.
-4. **Circuit-breaker check (before delegating):** Count retries for the current task via `bd_ledger.sh attempts <id>` (metadata `attempts=N`). If N ≥ 3, the 3-retry budget is already exhausted — this is a systemic issue. Decompose the task into smaller pieces (create child beads with `bd create --parent <id>`, higher priority) and try the smallest piece first. If that fails 3 times, report "Systemic blocker: Bead <id> cannot be automated" and stop.
+3. Run `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id> --field metadata` to recover the plan file path (`plan=` key) if one exists. If no plan file is linked, Poppy will create one at Step 2 (via backlog-grooming's slug derivation). Extract all backtick-quoted file paths from the plan (scene files, scripts, assets — any implementation file). Save these for error recovery (Step 5) — log-result archives the plan file mid-session, and you'll need the original paths to verify after a timeout.
+4. **Circuit-breaker check (before delegating):** Count retries for the current task via `./.opencode/skills/genesis/scripts/bd_ledger.sh attempts <id>` (metadata `attempts=N`). If N ≥ 3, the 3-retry budget is already exhausted — this is a systemic issue. Decompose the task into smaller pieces (create child beads with `bd create --parent <id>`, higher priority) and try the smallest piece first. If that fails 3 times, report "Systemic blocker: Bead <id> cannot be automated" and stop.
 5. **Dependency Analysis (Task Reordering):** the ledger enforces `blocks` edges — blocked beads never appear in `ready`. Before delegating, additionally scan ready beads for foundational infrastructure (input configuration, project settings, core systems) that later tasks assume — if present, it must run FIRST regardless of priority ties. Dependent work is already gated by deps; your judgment only covers implicit (unwired) foundations.
 
 #### Step 2: Plan, Build, Playtest, Log (Poppy — all in one session)
@@ -237,7 +240,7 @@ Pass the bead ID (`Bead <id>: <title>`) in the delegation prompt so backlog-groo
 **If spawning parallel tasks:** the atomic claim in backlog-grooming prevents races — parallel sessions each target a DIFFERENT bead, and a lost claim is rejected loudly (the losing session re-runs `ready` and picks the next bead). You do NOT need to pre-claim anything. Give each parallel prompt its explicit bead ID. Dedicate a unique `description` slug for each (e.g., `"parallel-task-<bead-id>"`). Ensure they do not share file paths (check each bead's plan file if one exists). After spawning, wait for all to complete before proceeding to Step 3.
 
 **Validate output — check all of:**
-1. Bead status is `closed` (`bd_ledger.sh show <id> --field status`).
+1. Bead status is `closed` (`./.opencode/skills/genesis/scripts/bd_ledger.sh show <id> --field status`).
 2. The plan file (from bead metadata `plan=`) exists with `.completed.md` extension.
 3. No in_progress beads remain that you didn't expect (`bd list --status in_progress`).
 
@@ -245,13 +248,13 @@ Pass the bead ID (`Bead <id>: <title>`) in the delegation prompt so backlog-groo
 
 Step 2 already calls log-result as the last sub-step. Verify it completed fully:
 
-1. `bd_ledger.sh show <id> --field status` — must be `closed`.
+1. `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id> --field status` — must be `closed`.
 2. `glob(<plan-file-from-bead-metadata>)` — must exist with `.completed.md` extension (archived, not deleted). This is the dual-check — a task is only considered logged if ledger and filesystem agree.
 
-**If any check fails:** Before retrying, check the bead (`bd_ledger.sh show <id>`) and the plan file for clues about what went wrong.
+**If any check fails:** Before retrying, check the bead (`./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>`) and the plan file for clues about what went wrong.
 
 1. If the bead is still `in_progress` or `open` — indicates log-result didn't complete. Retry with explicit instructions.
-2. Check `bd_ledger.sh attempts <id>`. If N ≥ 3, trigger the circuit breaker (see Step 5) instead of retrying again.
+2. Check `./.opencode/skills/genesis/scripts/bd_ledger.sh attempts <id>`. If N ≥ 3, trigger the circuit breaker (see Step 5) instead of retrying again.
 
 Then retask Poppy with explicit instructions naming what was skipped:
 
@@ -269,9 +272,9 @@ task({
 
 **However, to help the auto-compaction work efficiently, do this after Step 3:**
 
-> Tool note: the `grep` tool searches **recursively from the given path** — given a directory path it also matches inside `plans/*.completed.md`. Pass exact FILE paths, and prefer ledger queries over grepping plan files — `bd_ledger.sh ready` is already filtered to open beads.
+> Tool note: the `grep` tool searches **recursively from the given path** — given a directory path it also matches inside `plans/*.completed.md`. Pass exact FILE paths, and prefer ledger queries over grepping plan files — `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` is already filtered to open beads.
 
-1. Re-run `bd_ledger.sh ready` and re-read the current plan file from disk (discard your cached mental state).
+1. Re-run `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` and re-read the current plan file from disk (discard your cached mental state).
 2. `bd list --status open,in_progress` to see remaining work (JSON, compact).
 3. Scan `bd list` for beads labeled `blocked` or with ⛔ in titles (empty result means none).
 
@@ -309,7 +312,7 @@ task({
 1. `glob()` each saved file path from Step 1.4. If **all expected files exist**, the task completed before a non-fatal timeout. Skip retry and go directly to Step 3 (post-log verification).
 2. If Step 2 returned empty text but expected files exist — the subagent's session timed out after completing the work. This is still a success. Skip retry.
 3. If Step 2 returned empty text AND expected files are missing — the subagent produced no output. This is a genuine failure.
-4. Check `bd_ledger.sh attempts <id>` (bead metadata `attempts=N`). **It counts retries** — `N` starts at 1 on the *first retry*, and is incremented before each subsequent retry (below). If N ≥ 3, the 3-retry budget is exhausted. **Decompose the task** into smaller pieces (half the scope), retry with the smallest piece first.
+4. Check `./.opencode/skills/genesis/scripts/bd_ledger.sh attempts <id>` (bead metadata `attempts=N`). **It counts retries** — `N` starts at 1 on the *first retry*, and is incremented before each subsequent retry (below). If N ≥ 3, the 3-retry budget is exhausted. **Decompose the task** into smaller pieces (half the scope), retry with the smallest piece first.
 5. Check if the returned text contains `⛔ BLOCKED:` — this is a **structured failure** from the subagent (diagnosis + retries already attempted + evidence), not a transient error. Do NOT replay the same prompt. Classify it, then **decompose the task or change the approach** before any retry. Only a retry of the same prompt with a changed input is ever justified (see Anti-Recursion Guard #2). A structured failure is the subagent doing its job — treat it as your diagnostic signal for decomposition, not a reason to re-run.
 
 If the count < 3, proceed with retry.
@@ -328,7 +331,7 @@ If the count < 3, proceed with retry.
            validation), task Ian with playtest in vision mode as the 3rd attempt.
 ```
 
-**Attempt counter (single source of truth):** bead metadata `attempts=N` (via `bd_ledger.sh bump_attempts <id>`) counts *retries*, not total attempts. The initial delegation has **no** count. **Before each retry, increment it** — 1 before the 1st retry, 2 before the 2nd, 3 before the 3rd. N = 3 is the last allowed retry — do not retry past it (see check 4 above and "After 3 failed retries"). **This applies to EVERY retry, not just structured `⛔ BLOCKED:` failures** — timeout/empty-result/step-down retries (a subagent timing out mid-task counts as a retry) must also bump the counter. Observed 09-03 (nemotron run): two consecutive task-session timeouts triggered decomposed retries that never wrote markers, leaving the circuit breaker blind while a task consumed ~4 attempts.
+**Attempt counter (single source of truth):** bead metadata `attempts=N` (via `./.opencode/skills/genesis/scripts/bd_ledger.sh bump_attempts <id>`) counts *retries*, not total attempts. The initial delegation has **no** count. **Before each retry, increment it** — 1 before the 1st retry, 2 before the 2nd, 3 before the 3rd. N = 3 is the last allowed retry — do not retry past it (see check 4 above and "After 3 failed retries"). **This applies to EVERY retry, not just structured `⛔ BLOCKED:` failures** — timeout/empty-result/step-down retries (a subagent timing out mid-task counts as a retry) must also bump the counter. Observed 09-03 (nemotron run): two consecutive task-session timeouts triggered decomposed retries that never wrote markers, leaving the circuit breaker blind while a task consumed ~4 attempts.
 
 **Reuse partial work (mandatory on retry):** before re-delegating, glob the plan's expected file paths — a timed-out subagent often leaves valid artifacts (scenes, scripts, plan files). Include them in the retry brief: "Prior attempt created the scene file at `<path>` (validated OK) — read it and build on it; do not recreate from scratch." Also glob `plans/` — if the plan file already exists, tell the new session it's already claimed (`[in progress]` + plan link present) and to skip backlog-grooming entirely. Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
 
@@ -339,7 +342,7 @@ If the count < 3, proceed with retry.
 4. If this was the final (3rd) attempt and it still failed, proceed to "After 3 failed retries" below.
 
 **After 3 failed retries:**
-1. `bd_ledger.sh show <id>` for task title and context; read the plan file if more context is needed.
+1. `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>` for task title and context; read the plan file if more context is needed.
 2. **Decompose the task** into smaller subtasks: `bd create` child beads with `--parent <id>` (higher priority, label inherited). Wire `blocks` deps so pieces run smallest-first.
 3. Skip the original task (set it `--status blocked` with a note pointing at its children) — the next iteration picks up the smaller pieces first.
 
@@ -389,7 +392,7 @@ its release-gate form. Same gate, two cadences.)
 
 ### Phase 3: Release Gates (Rachel → Ian → Pootie)
 
-When the ledger has no open task beads (`bd_ledger.sh complete_check` exits 0),
+When the ledger has no open task beads (`./.opencode/skills/genesis/scripts/bd_ledger.sh complete_check` exits 0),
 enter Phase 3. Each FAIL routes back to the task queue (Phase 1) and restarts
 Phase 3 from the failed gate after fixes.
 
@@ -400,10 +403,11 @@ YOU own this chain — Rachel/Ian/Pootie deliver verdicts; you create and resolv
 the gates (your frontmatter is the only profile with final-gate authority):
 
 1. **Entry (once per Phase 3 entry, before Step 1):** check for an existing open
-   release chain first (`bd_ledger.sh gate_list` — a re-entered Phase 3 continues
-   the existing chain; never stack a second chain). Otherwise create it:
+   release chain first (`./.opencode/skills/genesis/scripts/bd_ledger.sh gate_list` —
+   a re-entered Phase 3 continues the existing chain; never stack a second
+   chain). Otherwise create it:
    ```
-   read RID G1 G2 G3 <<< "$(bd_ledger.sh release_entry)"
+   read RID G1 G2 G3 <<< "$(./.opencode/skills/genesis/scripts/bd_ledger.sh release_entry)"
    ```
    `release_entry` creates the release bead (`label: release`, P0) blocked by
    three human gates (qa/vision/consumer). The SEQUENCE is enforced by your
@@ -411,9 +415,9 @@ the gates (your frontmatter is the only profile with final-gate authority):
    a CONFIRM_SHIP disposition. The release bead is invisible to the dev loop
    (`ready` suppresses gated beads; `complete_check` excludes `release`-labeled
    beads so rework cycles re-enter Phase 3 cleanly).
-2. **On each PASS verdict:** `bd_ledger.sh gate_close <gate-id> "<verdict>"` — the audit trail records who passed what, and `bd gate list` shows exactly which gate the release sits at.
+2. **On each PASS verdict:** `./.opencode/skills/genesis/scripts/bd_ledger.sh gate_close <gate-id> "<verdict>"` — the audit trail records who passed what, and `bd gate list` shows exactly which gate the release sits at.
 3. **On a FAIL verdict:** do NOT resolve the gate. File fix beads (per-loop conventions below), return to Phase 1, and on the next Phase 3 entry re-use the same unresolved gate (do not stack a second gate chain on one release bead — check `bd gate list` first; a re-entered Phase 3 continues the existing chain).
-4. **Ship:** when all three gates are closed, `bd_ledger.sh close "$RID" "All gates resolved — shipped"`.
+4. **Ship:** when all three gates are closed, `./.opencode/skills/genesis/scripts/bd_ledger.sh close "$RID" "All gates resolved — shipped"`.
 
 **Why procedural (not formula-poured):** the release is driven by verdicts from subagents, not by a static DAG; milestone cadence varies (3/5/7 tasks); and poured steps would surface as task beads that Poppy could wrongly claim. A single gated bead encodes the same blocking semantics without polluting the dev loop's ready queue.
 
@@ -435,7 +439,7 @@ task({
 ```
 
 If the report contains FAIL items: file each specific failure as a `bug` bead
-(`bd_ledger.sh file_finding <game-or-milestone-bead> bug "<title>" "<repro>"`,
+(`./.opencode/skills/genesis/scripts/bd_ledger.sh file_finding <game-or-milestone-bead> bug "<title>" "<repro>"`,
 or `bd create` with `--deps blocks:<bead>` when ordering matters), prioritized P0.
 Then delegate back to Poppy — **do not debug or
 edit code yourself.** Your `edit`/`bash`/engine-tool permissions are
@@ -474,12 +478,12 @@ task({
 ```
 
 If vision drifted: Ian's findings become `vision` beads
-(`bd_ledger.sh file_finding <release-or-game-bead> vision "<title>" "<finding>"`,
+(`./.opencode/skills/genesis/scripts/bd_ledger.sh file_finding <release-or-game-bead> vision "<title>" "<finding>"`,
 or he may have filed them himself — dedupe before re-filing), fixes go to
 Poppy, then re-run Phase 3 from Step 1.
 
 **Vision halt (feature-work freeze on drift):** on a `drifted` verdict, gate
-the remaining feature beads: `bd_ledger.sh gate_create <bead-id> vision-halt "Vision drift: feature work frozen until realigned"`
+the remaining feature beads: `./.opencode/skills/genesis/scripts/bd_ledger.sh gate_create <bead-id> vision-halt "Vision drift: feature work frozen until realigned"`
 for each claimable feature bead still open (bug-fix beads stay ungated).
 Vision fixes ride through the normal dev loop first — do not continue
 building on a drifting foundation. Resolve the halt gates only when Ian's
@@ -519,7 +523,7 @@ task({
 
 - Disposition **CONFIRM_SHIP** → proceed to Step 4.
 - Disposition **ORDER_REWORK** → file Ian's task list as `critique` beads
-  (`bd create` or `bd_ledger.sh file_finding`) — Pootie's hand-off flags of outright-broken behavior
+  (`bd create` or `./.opencode/skills/genesis/scripts/bd_ledger.sh file_finding`) — Pootie's hand-off flags of outright-broken behavior
   should double-check against Rachel's reports to avoid duplicating known
   bugs. Return to Phase 1 main loop; after fixes, re-run Phase 3 from
   Step 1 (full gates — Rachel re-verifies the fixes, Ian re-checks, Pootie

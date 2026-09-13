@@ -253,7 +253,7 @@ Run these checks mentally before making changes:
 
 ✅ **Prerequisites Met**
    - Parent directories exist? (Use `glob()` to verify)
-   - Dependencies completed? (The ledger gates this — blocked beads are not claimable; check `bd_ledger.sh ready`)
+   - Dependencies completed? (The ledger gates this — blocked beads are not claimable; check `./.opencode/skills/genesis/scripts/bd_ledger.sh ready`)
    - Assets/resources available or placeholders defined?
 
 ✅ **Architecture Alignment**  
