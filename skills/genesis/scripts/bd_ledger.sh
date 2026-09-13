@@ -19,7 +19,7 @@
 #  file_finding <parent-id> <type> <title> <description>
 #                                     — create bug/vision/critique/polish bead with
 #                                       discovered-from provenance (P0/P1 by type)
-#   plan_link <id> <plan-file>        — set metadata plan=<plan-file> on the bead
+#   plan_link <id> <plan-file>        — set metadata plan=<plan-file> on the bead (DEPRECATED — plans/ removed; kept temporarily as no-op marker)
 #   show    <id> [--field <name>]     — full bead JSON or single field value
 #   backup                            — bd backup snapshot into .beads/backups/
 #   gate_create <blocked-id> <name> <reason>
@@ -66,9 +66,15 @@ case "$cmd" in
     need_bd
     # Only actionable task/bug beads, excluding gates (issue_type gate),
     # excluding human-escalation beads — they are for the operator, not agents.
-    bd ready --json 2>/dev/null | python3 -c '
+    # Graceful: if no .beads yet, return empty array (not an error).
+    raw=$(bd ready --json 2>&1) || true
+    [ -z "$raw" ] && echo "[]" && exit 0
+    echo "$raw" | python3 -c '
 import json, sys
-data = json.load(sys.stdin)
+try:
+    data = json.load(sys.stdin)
+except json.JSONDecodeError:
+    print("[]"); sys.exit(0)
 beads = [b for b in data if b.get("issue_type") not in ("gate",)]
 print(json.dumps(beads))'
     ;;
@@ -161,9 +167,8 @@ print(md.get('attempts', 0) if isinstance(md, dict) else 0)")
     echo "$id"
     ;;
   plan_link)
-    need_bd
-    [ $# -ge 2 ] || die "plan_link requires <id> <plan-file>"
-    bd update "$1" --set-metadata "plan=$2" >/dev/null 2>&1 || die "could not set plan metadata on $1"
+    # DEPRECATED — plans/ removed. No-op for backward compat.
+    exit 0
     ;;
   show)
     need_bd

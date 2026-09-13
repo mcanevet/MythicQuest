@@ -6,7 +6,7 @@ description: Create and assemble Godot scenes with scripts and collision physics
 ## What I do
 
 Creates complete Godot scenes by:
-- Reading plan file (path carried in the claimed bead's metadata `plan=` key) for requirements
+- Reading the claimed bead's description and acceptance criteria for requirements
 - Consulting `CONVENTIONS.md` (if present) for project-specific patterns
 - Writing `.tscn` scene files with proper node hierarchies
 - Writing `.gd` scripts with correct architecture
@@ -36,7 +36,7 @@ If this returns an error or times out → **FAIL IMMEDIATELY**. Report "MCP brid
 
 Read files in this order — stop once you have what you need:
 
-1. Plan file (path from the claimed bead's `plan=` metadata — recover via `bd_ledger.sh show <bead-id> --field metadata` if the caller didn't pass it) → Task requirements (always read first)
+1. The claimed bead's description (recover via `bd_ledger.sh show <bead-id>` if the caller didn't pass it) → Task requirements (always read first)
 2. `CONVENTIONS.md` → Project-specific collision layers (if present, only if you need collision layer assignments)
 3. `VISION.md` → Vision context (only if the plan references visual style or feel)
 4. `./.opencode/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)
@@ -44,7 +44,7 @@ Read files in this order — stop once you have what you need:
 Do NOT read `project.godot` unless you need to verify specific input action names.
 Do NOT call `godot-mcp-runtime:get_project_info` more than once.
 
-Extract from the plan file:
+Extract from the bead description:
 - Component name and type (Player, Enemy, Item, System)
 - Root node type (CharacterBody2D, Area2D, Control, etc.)
 - Required child nodes
@@ -57,7 +57,7 @@ Extract from `CONVENTIONS.md` (if present):
 - Signal naming conventions
 - Node organization standards
 
-**Standard entity scaffolding:** For CharacterBody2D-based entities (player, enemies, NPCs), the plan file's `player.gd` excerpt (see `backlog-grooming`'s `reference/plan-template.md`) is the canonical scaffold. Adapt it to the specific entity's behavior — and always add the mandatory test hooks from Step 4 — rather than rewriting from scratch.
+**Standard entity scaffolding:** For CharacterBody2D-based entities (player, enemies, NPCs), the `player.gd` excerpt in `reference/` (standard scaffold) is the canonical scaffold. Adapt it to the specific entity's behavior — and always add the mandatory test hooks from Step 4 — rather than rewriting from scratch.
 
 **Built-in gotchas (check before marking task complete):** the full annotated list with failure evidence lives in [reference/gotchas.md](reference/gotchas.md). Triggers — verify each before closing a task:
 - Instanced node identification (use groups, not `.name`)
@@ -237,7 +237,7 @@ Common errors and their fixes are tabulated in [reference/mcp-patterns.md](refer
 
 ## Critical Rules
 
-1. Read plan file (path from the claimed bead's `plan=` metadata) first, then CONVENTIONS.md if present
+1. Read the claimed bead's description first, then CONVENTIONS.md if present
 2. No post-write re-reads — if write returned no error, file was created
 3. Screenshot → `read()` → analysis before next tool call
 4. Validate each file exactly once

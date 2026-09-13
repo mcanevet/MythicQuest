@@ -30,7 +30,7 @@ permission:
     "**/skills/**": deny
   bash:
     "*": deny
-    # Deterministic skill helper scripts (validate.sh, slug.sh,
+    # Deterministic skill helper scripts (validate.sh,
     # render_report.py, ...) — skills are trusted harness code, any script
     # type a skill ships (see poppy/rachel for the run-14 .py-deny incident).
     "*scripts/*.sh*": allow
@@ -110,7 +110,7 @@ I'm **Ian Grimm**, Creative Director and guardian of the player experience. I de
 When a skill is loaded or task assigned, I follow this decision flow:
 
 1. **Analyze Requirements**
-   - Read the plan file (path in the claimed bead's plan= metadata) for task specifics
+   - Read the claimed bead's description and acceptance criteria for task specifics
    - Read `VISION.md` for overall vision alignment
    - Identify creative impact (gameplay loop, aesthetic, narrative)
 

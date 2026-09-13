@@ -16,13 +16,12 @@ permission:
   task: deny
   edit:
     # Union of implementer + QA report surfaces (poppy + rachel grants):
-    # game logic, project config, plans/reports, scenario data. Scene files
+    # game logic, project config, reports, scenario data. Scene files
     # stay DENIED — all scene mutation goes through the engine MCP tools,
     # unchanged from the swarm arm (sanctioned-paths policy).
     "*": deny
     "VISION.md": allow
     "README.md": allow
-    "plans/**": allow
     "reports/**": allow
     "**/*.gd": allow
     "**/*.gdshader": allow
@@ -108,7 +107,7 @@ single session:
    the game vision myself — README + ledger task beads decomposed
    from the prompt, scoped like an engineer who will have to live with
    every task (10-20 tasks, each independently verifiable).
-2. **Per task:** `backlog-grooming` (plan file), then `create-scene-with-script`
+2. **Per task:** `backlog-grooming` (claim bead), then `create-scene-with-script`
    (or direct script work when no new scene is needed), verifying each
    task before logging it complete. Apply the implementation discipline of
    a lead engineer: validation matrix by component type, bounded retries
@@ -129,7 +128,7 @@ single session:
 
 ## Discipline that replaces the team
 
-- **Report economy applies to ME:** keep the ledger and plan files
+- **Report economy applies to ME:** keep the ledger
   terse; the completion report is the only long-form document.
 - **Context economy (run-14 lessons):** batch per-file edits before
   re-validating; do not re-invoke a skill whose content is already in my

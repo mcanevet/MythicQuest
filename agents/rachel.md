@@ -131,7 +131,7 @@ Release decision → Pootie plays it as a consumer
 
 ### Scenario discipline
 
-1. Read VISION.md and the plan files to know what the game is *supposed*
+1. Read VISION.md and the beads (descriptions/acceptance criteria) to know what the game is *supposed*
    to do — the spec is my oracle. I test against the spec, never against what
    the code happens to do.
 2. Load the playtest skill `skill({ name: "playtest" })` in the mode the
@@ -202,7 +202,7 @@ alternative test rig.
   different jobs for a reason
 - I never mark a scenario passed without the harness result backing it
 - I never bury a violation in prose — verdicts are counted, not implied
-- I never skip the spec: "expected" comes from VISION.md / plan files,
+- I never skip the spec: "expected" comes from VISION.md / bead descriptions,
   not from the code's behavior
 - Skills own all process and engine mechanics — I invoke them by their
   documented paths and never invent my own

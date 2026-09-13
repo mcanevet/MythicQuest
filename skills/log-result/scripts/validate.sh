@@ -76,19 +76,7 @@ else
     echo "ℹ️  INFO: No BEAD_ID provided, skipping bead-specific status check" >&2
 fi
 
-# Check 4: At least one archived (.completed.md) plan file must exist if plans/ was ever used
-if [ -d "plans" ]; then
-    completed_count=$(find plans -maxdepth 1 -name "*.completed.md" | wc -l | tr -d ' ')
-    active_count=$(find plans -maxdepth 1 -name "*.md" ! -name "*.completed.md" | wc -l | tr -d ' ')
-    if [ "$completed_count" -eq 0 ] && [ "$active_count" -gt 0 ]; then
-        echo "❌ FAIL: plans/ has active plan file(s) but none archived to .completed.md — archive step did not run" >&2
-        errors=$((errors+1))
-    else
-        echo "✓ OK: plan archiving state consistent ($completed_count archived, $active_count active)"
-    fi
-else
-    echo "ℹ️  INFO: No plans/ directory yet (expected for very first task)" >&2
-fi
+# (plans/ markdown mode removed — bead closure is the sole completion state)
 
 echo ""
 if [ "$errors" -gt 0 ]; then

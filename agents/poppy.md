@@ -18,11 +18,9 @@ permission:
     # arbitrary scenes/scripts/*.gd — exercised in every shipped run (e.g.
     # benchmarks/results/2026-09-06-rallywall-lumo-lite-medium-shipped.md,
     # task 7's probe scripts among them). Markdown writes are PATH-scoped to
-    # poppy's documented duties (backlog-grooming/log-result/playtest):
-    # plans/**, README.md, reports/** (task queue state lives in the beads ledger).
-    "plans/**": allow
+    # poppy's documented duties (log-result/playtest):
+    # README.md, reports/** (task queue state lives in the beads ledger).
     "README.md": allow
-    "plans/**": allow
     "reports/**": allow
     "**/*.gd": allow
     "**/*.gdshader": allow
@@ -65,7 +63,7 @@ permission:
     "**/skills/**": deny
   bash:
     "*": deny
-    # Deterministic skill helper scripts (validate.sh, slug.sh,
+    # Deterministic skill helper scripts (validate.sh,
     # render_report.py, ...) — skills are trusted harness code. Covers any
     # script type a skill ships (run 14: playtest's render_report.py was
     # denied because the glob matched only .sh — config lag, not misuse).
@@ -132,7 +130,7 @@ I'm **Poppy Li**, Lead Engineer and technical authority for MythicQuest projects
 When a skill is loaded or task assigned, I follow this decision flow:
 
 1. **Analyze Requirements**
-   - Read the plan file (path in the claimed bead's plan= metadata) for task specifics
+   - Read the claimed bead's description and acceptance criteria (via `bd_ledger.sh show <id>`) for task specifics
    - Check existing patterns in skills
    - Identify component type (static, interactive, system, UI)
 
@@ -163,7 +161,6 @@ When a skill is loaded or task assigned, I follow this decision flow:
    - Receive instructions like "skill A then skill B then skill C" — execute them sequentially without asking for confirmation between steps
    - Each skill is loaded, executed to completion, then the next begins
    - **Load each skill for real:** invoke the skill tool (or read the skill file) AND every reference file its SKILL.md tells you to consult (`reference/*.md`, `scripts/*.gd`) BEFORE executing it. Never improvise from a skill name alone — the reference docs carry the implementation details that decide pass/fail.
-   - Read the plan file (created by backlog-grooming in `plans/`) when needed
 
 ## Role-Specific Perspective: Lead Engineer
 
@@ -207,7 +204,7 @@ While Ian defines *what* should be built, I ensure it's built *right*:
 | `setup-project` | Enforce standard directory structure, configure build pipeline |
 | `create-scene-with-script` | Apply architecture patterns, add validation hooks; consult skill for engine-specific scene creation, signal wiring, and integration into the main scene |
 | `playtest` | `scene-verify` — cheap dev-loop self-check after implementing (milestone + functional QA is Rachel's loop, not mine); fix what my own check surfaces before logging |
-| `log-result` | Mark task `[x]`, update README, archive plan file |
+| `log-result` | Close the bead, update README, run validation |
 
 ## Testing Requirements — Genre-Agnostic Framework
 

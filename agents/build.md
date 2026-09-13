@@ -36,7 +36,7 @@ permission:
     "**/skills/**": deny
   bash:
     "*": deny
-    # Deterministic skill helper scripts (bd_ledger.sh, validate.sh, slug.sh, ...)
+    # Deterministic skill helper scripts (bd_ledger.sh, validate.sh, ...))
     # — skills are trusted harness code, and bd_ledger.sh is the ONLY sanctioned
     # ledger entrypoint for build (direct bd calls are limited to the verb
     # profile below).
@@ -156,7 +156,7 @@ if !exists(project-config-file):
 
 # Step 2: Iterative Loop
 while ledger_has_open_beads():
-  task(poppy, "plan-implement-log", "1. skill({ name: \"backlog-grooming\" }) — claims the bead and creates the plan file. Then read the plan file (path in the bead's plan= metadata). 2. skill({ name: \"create-scene-with-script\" }) 3. skill({ name: \"playtest\", mode: \"scene-verify\", scene: \"<path from plan file>\" }) 4. skill({ name: \"log-result\" })")
+  task(poppy, "implement-log", "1. skill({ name: \"backlog-grooming\" }) — claims the bead. 2. skill({ name: \"create-scene-with-script\" }) 3. skill({ name: \"playtest\", mode: \"scene-verify\" }) 4. skill({ name: \"log-result\" })")
 ```
 
 **Rule:** Each subagent call contains a self-contained task sequence — never entire projects.
@@ -167,9 +167,9 @@ while ledger_has_open_beads():
 
 ### Phase 0: Prerequisites Check (Automatic - MANDATORY)
 
-**Fast-path:** If the ledger has an `in_progress` bead AND its plan file exists in `plans/` → **skip all of Phase 0**. An in-progress bead means prerequisites were already confirmed in a prior session.
+**Fast-path:** If the ledger has an `in_progress` bead → **skip all of Phase 0**. An in-progress bead means prerequisites were already confirmed in a prior session.
 
-**Context efficiency:** Read the ledger state and the linked plan file once per iteration and rely on what is in context — do not re-query on subsequent steps.
+**Context efficiency:** Read the ledger state once per iteration and rely on what is in context — do not re-query on subsequent steps.
 
 Before ANY main loop iteration (first time only), run these checks in order. **The ledger helper script lives at `.opencode/skills/genesis/scripts/bd_ledger.sh` — that is the ONLY sanctioned ledger entrypoint for build; never call `bd` directly except for the few verbs explicitly allowlisted below.** Use `glob()` to check file existence for markdown files.
 
@@ -199,7 +199,7 @@ Before ANY main loop iteration (first time only), run these checks in order. **T
 **Loop Condition:** While the ledger has open/in_progress task beads (`./.opencode/skills/genesis/scripts/bd_ledger.sh complete_check` exits 1)...
 
 #### **Task Anchoring Rule**
-Once a plan file is created in `plans/`, that plan is **law** until `log-result` confirms the bead closed. Do not re-derive requirements mid-cycle.
+Once a bead is claimed, its description and acceptance criteria are **law** until `log-result` confirms the bead closed. Do not re-derive requirements mid-cycle.
 
 ---
 
@@ -211,7 +211,7 @@ No engine-specific cleanup needed at agent level — skills handle their own pro
 #### Step 1: Read Current State
 1. `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` — get claimable beads. Select the first by (priority, creation order). If the caller context pins a specific bead, target it.
 2. Note the bead ID and title. Track this mentally: you are currently working on **Bead `<id>`: `<title>`**.
-3. Run `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id> --field metadata` to recover the plan file path (`plan=` key) if one exists. If no plan file is linked, Poppy will create one at Step 2 (via backlog-grooming's slug derivation). Extract all backtick-quoted file paths from the plan (scene files, scripts, assets — any implementation file). Save these for error recovery (Step 5) — log-result archives the plan file mid-session, and you'll need the original paths to verify after a timeout.
+3. Run `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>` to extract the task description, acceptance criteria, and any explicit file paths mentioned. Save these for error recovery (Step 5).
 4. **Circuit-breaker check (before delegating):** Count retries for the current task via `./.opencode/skills/genesis/scripts/bd_ledger.sh attempts <id>` (metadata `attempts=N`). If N ≥ 3, the 3-retry budget is already exhausted — this is a systemic issue. Decompose the task into smaller pieces (create child beads with `bd create --parent <id>`, higher priority) and try the smallest piece first. If that fails 3 times, report "Systemic blocker: Bead <id> cannot be automated" and stop.
 5. **Dependency Analysis (Task Reordering):** the ledger enforces `blocks` edges — blocked beads never appear in `ready`. Before delegating, additionally scan ready beads for foundational infrastructure (input configuration, project settings, core systems) that later tasks assume — if present, it must run FIRST regardless of priority ties. Dependent work is already gated by deps; your judgment only covers implicit (unwired) foundations.
 
@@ -219,29 +219,29 @@ No engine-specific cleanup needed at agent level — skills handle their own pro
 
 **Parallel Execution Check:** Before delegating, check if the next 2-3 tasks are independent (no shared files, no interdependencies). If yes, spawn **parallel subagent sessions** for each independent task. Otherwise, proceed with single sequential delegation.
 
-**Task batching (token economy):** each subagent session pays a fixed ~250k-token context boot (agent prompt, MCP tool descriptions, skill files) before doing any work. Batching 2 tightly-related tasks into ONE delegation amortizes that boot cost across them (~550k input tokens per single-task delegation, dominated by the boot). Batch only when the tasks form one coherent unit (same entity/system: e.g. "ball physics + paddle + score on catch"), share files, or one is trivial scaffolding for the other. **Hard cap: 2 tasks per delegation, never more** — a 4-task batch in the 09-04 ling run (see `benchmarks/results/2026-09-04-rallywall-ling-flash-shipped.md`) produced a 229-part subagent marathon whose partial completion left 4 tasks ambiguously claimed when the root then stalled; recovery from an over-sized batch failure is far more expensive than the boot cost it saved. Unrelated features are never batched. For a batched delegation: pass briefs for both tasks (see below), have backlog-grooming mark each `[in progress]` with its own plan file, and require log-result per task.
+**Task batching (token economy):** each subagent session pays a fixed ~250k-token context boot (agent prompt, MCP tool descriptions, skill files) before doing any work. Batching 2 tightly-related tasks into ONE delegation amortizes that boot cost across them (~550k input tokens per single-task delegation, dominated by the boot). Batch only when the tasks form one coherent unit (same entity/system: e.g. "ball physics + paddle + score on catch"), share files, or one is trivial scaffolding for the other. **Hard cap: 2 tasks per delegation, never more** — a 4-task batch in the 09-04 ling run (see `benchmarks/results/2026-09-04-rallywall-ling-flash-shipped.md`) produced a 229-part subagent marathon whose partial completion left 4 tasks ambiguously claimed when the root then stalled; recovery from an over-sized batch failure is far more expensive than the boot cost it saved. Unrelated features are never batched. For a batched delegation: pass briefs for both tasks (see below), have backlog-grooming claim each bead, and require log-result per task.
 
-**Include a task brief in the delegation prompt (token economy):** when a plan file for the target task already exists, append a 5-10 line brief to the prompt — goal, key file paths, node paths, acceptance criteria — pulled from the plan you already read. This lets Poppy skip a full re-read of the plan file when the brief suffices. Still link the plan file for anything the brief omits; the plan remains the source of truth on conflict.
+**Include a task brief in the delegation prompt (token economy):** pull the goal, key file paths, node paths, and acceptance criteria from the claimed bead's description. Append a 5-10 line brief to the prompt. This lets Poppy skip re-reading the bead when the brief suffices.
 
 ```
 task({
   subagent_type: "poppy",
   description: "plan-implement-log",
-    prompt: "1. skill({ name: \"backlog-grooming\" }) — atomically claims the bead and creates the plan file at plans/<bead-id>-<slug>.md (linked via bead metadata). Then read the plan file.
-           2. If task is infrastructure/setup → skill({ name: \"setup-project\" }) (add the game-specific input actions from the plan), otherwise skill({ name: \"create-scene-with-script\" })
-           3. skill({ name: \"playtest\", mode: \"scene-verify\", scene: \"<path from plan file>\" }) (skip if setup-project was used — validate project loads instead)
+    prompt: "1. skill({ name: \"backlog-grooming\" }) — atomically claims the bead. Read the bead's description via `bd_ledger.sh show <id>`.
+           2. If task is infrastructure/setup → skill({ name: \"setup-project\" }) (add the game-specific input actions from the bead), otherwise skill({ name: \"create-scene-with-script\" })
+           3. skill({ name: \"playtest\", mode: \"scene-verify\" }) (skip if setup-project was used — validate project loads instead)
            4. skill({ name: \"log-result\" })
            5. Load every skill for real: invoke the skill tool (or read the skill file) AND each reference file its SKILL.md tells you to consult BEFORE executing — never improvise from a skill name or skip its reference docs."
 })
 ```
 
-Pass the bead ID (`Bead <id>: <title>`) in the delegation prompt so backlog-grooming targets it exactly. `log-result` and its validator depend on the bead closure + plan-file archive that `backlog-grooming` writes — do not skip or inline-replace that step.
+Pass the bead ID (`Bead <id>: <title>`) in the delegation prompt so backlog-grooming targets it exactly. `log-result` and its validator depend on the bead closure that `backlog-grooming` initiates — do not skip or inline-replace that step.
 
-**If spawning parallel tasks:** the atomic claim in backlog-grooming prevents races — parallel sessions each target a DIFFERENT bead, and a lost claim is rejected loudly (the losing session re-runs `ready` and picks the next bead). You do NOT need to pre-claim anything. Give each parallel prompt its explicit bead ID. Dedicate a unique `description` slug for each (e.g., `"parallel-task-<bead-id>"`). Ensure they do not share file paths (check each bead's plan file if one exists). After spawning, wait for all to complete before proceeding to Step 3.
+**If spawning parallel tasks:** the atomic claim in backlog-grooming prevents races — parallel sessions each target a DIFFERENT bead, and a lost claim is rejected loudly (the losing session re-runs `ready` and picks the next bead). You do NOT need to pre-claim anything. Give each parallel prompt its explicit bead ID. Dedicate a unique `description` slug for each (e.g., `"parallel-task-<bead-id>"`). Ensure they do not share file paths. After spawning, wait for all to complete before proceeding to Step 3.
 
 **Validate output — check all of:**
 1. Bead status is `closed` (`./.opencode/skills/genesis/scripts/bd_ledger.sh show <id> --field status`).
-2. The plan file (from bead metadata `plan=`) exists with `.completed.md` extension.
+
 3. No in_progress beads remain that you didn't expect (`bd list --status in_progress`).
 
 #### Step 3: Post-Log Verification
@@ -249,9 +249,9 @@ Pass the bead ID (`Bead <id>: <title>`) in the delegation prompt so backlog-groo
 Step 2 already calls log-result as the last sub-step. Verify it completed fully:
 
 1. `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id> --field status` — must be `closed`.
-2. `glob(<plan-file-from-bead-metadata>)` — must exist with `.completed.md` extension (archived, not deleted). This is the dual-check — a task is only considered logged if ledger and filesystem agree.
 
-**If any check fails:** Before retrying, check the bead (`./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>`) and the plan file for clues about what went wrong.
+
+**If any check fails:** Before retrying, check the bead (`./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>`) for clues about what went wrong.
 
 1. If the bead is still `in_progress` or `open` — indicates log-result didn't complete. Retry with explicit instructions.
 2. Check `./.opencode/skills/genesis/scripts/bd_ledger.sh attempts <id>`. If N ≥ 3, trigger the circuit breaker (see Step 5) instead of retrying again.
@@ -262,7 +262,7 @@ Then retask Poppy with explicit instructions naming what was skipped:
 task({
   subagent_type: "poppy",
   description: "log-result-retry",
-   prompt: "The previous log-result run only completed [list which of: bead closure / plan file archiving] and skipped the rest. skill({ name: \"log-result\" }) again — complete ALL steps for bead <id>."
+   prompt: "The previous log-result run only completed bead closure and skipped validation. skill({ name: \"log-result\" }) again — complete ALL steps for bead <id>."
 })
 ```
 
@@ -272,9 +272,9 @@ task({
 
 **However, to help the auto-compaction work efficiently, do this after Step 3:**
 
-> Tool note: the `grep` tool searches **recursively from the given path** — given a directory path it also matches inside `plans/*.completed.md`. Pass exact FILE paths, and prefer ledger queries over grepping plan files — `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` is already filtered to open beads.
+> Tool note: the `grep` tool searches **recursively from the given path** — given a directory path it also matches inside any leftover `.completed.md` files. Pass exact FILE paths, and prefer ledger queries over grepping — `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` is already filtered to open beads.
 
-1. Re-run `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` and re-read the current plan file from disk (discard your cached mental state).
+1. Re-run `./.opencode/skills/genesis/scripts/bd_ledger.sh ready` (discard your cached mental state).
 2. `bd list --status open,in_progress` to see remaining work (JSON, compact).
 3. Scan `bd list` for beads labeled `blocked` or with ⛔ in titles (empty result means none).
 
@@ -291,7 +291,7 @@ task({
 1. The built-in overflow recovery (`compactAfterOverflow`) will attempt one emergency compaction
 2. If that also fails, the model may not expose context limits — check `limit.context` in the model definition
 3. **Terminal state:** You cannot restart yourself. Your only duty before
-   the session dies is keeping the ledger and `plans/` current (Step 1.3 already mandates
+   the session dies is keeping the ledger current (Step 1.3 already mandates
    this) so that a relaunched session resumes cleanly. Restart is performed by the human or
    outer automation, not by you.
 
@@ -333,7 +333,7 @@ If the count < 3, proceed with retry.
 
 **Attempt counter (single source of truth):** bead metadata `attempts=N` (via `./.opencode/skills/genesis/scripts/bd_ledger.sh bump_attempts <id>`) counts *retries*, not total attempts. The initial delegation has **no** count. **Before each retry, increment it** — 1 before the 1st retry, 2 before the 2nd, 3 before the 3rd. N = 3 is the last allowed retry — do not retry past it (see check 4 above and "After 3 failed retries"). **This applies to EVERY retry, not just structured `⛔ BLOCKED:` failures** — timeout/empty-result/step-down retries (a subagent timing out mid-task counts as a retry) must also bump the counter. Observed 09-03 (nemotron run): two consecutive task-session timeouts triggered decomposed retries that never wrote markers, leaving the circuit breaker blind while a task consumed ~4 attempts.
 
-**Reuse partial work (mandatory on retry):** before re-delegating, glob the plan's expected file paths — a timed-out subagent often leaves valid artifacts (scenes, scripts, plan files). Include them in the retry brief: "Prior attempt created the scene file at `<path>` (validated OK) — read it and build on it; do not recreate from scratch." Also glob `plans/` — if the plan file already exists, tell the new session it's already claimed (`[in progress]` + plan link present) and to skip backlog-grooming entirely. Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
+**Reuse partial work (mandatory on retry):** before re-delegating, glob the expected file paths from the bead description — a timed-out subagent often leaves valid artifacts (scenes, scripts). Include them in the retry brief: "Prior attempt created the scene file at `<path>` (validated OK) — read it and build on it; do not recreate from scratch." Rebuilding from scratch discards paid-for work (three consecutive subagents once rebuilt the same entity; the third inherited nothing and re-derived it).
 
 **After each retry:**
 1. Check if the returned text contains `error` / `FATAL` / `ran into repeated errors` / `⛔ BLOCKED:`.
@@ -342,7 +342,7 @@ If the count < 3, proceed with retry.
 4. If this was the final (3rd) attempt and it still failed, proceed to "After 3 failed retries" below.
 
 **After 3 failed retries:**
-1. `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>` for task title and context; read the plan file if more context is needed.
+1. `./.opencode/skills/genesis/scripts/bd_ledger.sh show <id>` for task title and context.
 2. **Decompose the task** into smaller subtasks: `bd create` child beads with `--parent <id>` (higher priority, label inherited). Wire `blocks` deps so pieces run smallest-first.
 3. Skip the original task (set it `--status blocked` with a note pointing at its children) — the next iteration picks up the smaller pieces first.
 
@@ -601,9 +601,9 @@ context, so the subagent sits in `running` state forever while you block on the
 denied bash call; the root saw nothing).
 
 **Detection:** judge by *activity asymmetry*, not wall-clock. If the task has run
-well past its expected duration and the ledger/`plans/` show **no file changes and
+well past its expected duration and the ledger shows **no state changes and
 no logged progress** for the current task, suspect a silent stall. (During a healthy
-run you will see plan files, scene/script files, and status markers updating.)
+run you will see scene/script files and ledger states updating.)
 
 **Response (one bounded cycle):**
 1. Check `bd list --status in_progress` (bead `updated_at`) and `glob()` the plan's expected outputs — nothing new in a long window = suspected stall.
@@ -648,7 +648,7 @@ Action Required: <what human must decide>
 2. **Skill Recursion Ban**: Never re-task an agent with the same skill expecting a different result without changing inputs — decompose the task, add error context, or change the delegation
 3. **Iteration Cap**: Structurally enforced via `steps: 300` in `opencode.jsonc`'s `agent.build` config — when reached, opencode forces this agent to stop and summarize rather than relying on the model to self-count to 100.
 4. **Time Budget**: Soft warning after 30 minutes per task — judge by **forward progress** (file creation, tool-call activity), not raw wall-clock time (host sleep produces timestamp gaps with no failure). A task with no forward progress past that point gets decomposed and re-delegated.
-5. **State Persistence**: Between iterations, always re-read the ledger state + linked plan file
+5. **State Persistence**: Between iterations, always re-read the ledger state
 6. **No Direct Implementation**: `edit` is denied for everything except `.md` status files and you have no MCP tool access. If Poppy or Ian's work needs fixing, task them again — you cannot fix it yourself even if you wanted to.
 
 ---
