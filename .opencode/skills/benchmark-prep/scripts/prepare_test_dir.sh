@@ -90,6 +90,18 @@ git -C "$TEST_DIR" add .opencode
 git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
   commit -qm "chore: pin harness @ ${HEAD_SHA:0:8} (.opencode submodule)"
 
+# Game-session AGENTS.md — the session's instruction loader walks from the
+# session dir up to the sandbox repo root only; it never traverses .opencode/,
+# so the harness AGENTS.md is invisible to game sessions. bd setup opencode
+# installs the managed Beads section (workflow context: bd prime, claim-first,
+# no markdown TODOs) so game-builder sessions operate with the same ledger
+# conventions. It must run BEFORE opencode starts (read fresh each session).
+(cd "$TEST_DIR" && bd setup opencode) >/dev/null 2>&1 ||
+  fail "bd setup opencode failed in sandbox (is bd on PATH?)"
+[ -f "$TEST_DIR/AGENTS.md" ] || fail "sandbox AGENTS.md missing after bd setup"
+
+# 3. bd ledger init — game sessions expect .beads/ ready (genesis relies on it)
+
 GD=$(git -C "$OC" rev-parse --absolute-git-dir)
 if ! grep -qx 'node_modules' "$GD/info/exclude" 2>/dev/null; then
   mkdir -p "$GD/info"

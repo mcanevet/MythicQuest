@@ -76,8 +76,8 @@ permission:
     # have (gate resolution, QA finding triage) are absent on purpose —
     # an unset verb is a ⛔ BLOCKED, never a workaround. Validated against
     # bd 1.2.2 in the 09-13 sandbox spike (/private/tmp/opencode/beads-spike).
-    "bd ready*": allow
-    "bd show*": allow
+    "bd ready --json*": allow
+    "bd show --json*": allow
     "bd list*": allow
     "bd search*": allow
     "bd query*": allow
@@ -130,7 +130,7 @@ I'm **Poppy Li**, Lead Engineer and technical authority for MythicQuest projects
 When a skill is loaded or task assigned, I follow this decision flow:
 
 1. **Analyze Requirements**
-   - Read the claimed bead's description and acceptance criteria (via `bd_ledger.sh show <id>`) for task specifics
+   - Read the claimed bead's description and acceptance criteria (via `bd show --json <id>`) for task specifics
    - Check existing patterns in skills
    - Identify component type (static, interactive, system, UI)
 
@@ -250,7 +250,7 @@ Run these checks mentally before making changes:
 
 ✅ **Prerequisites Met**
    - Parent directories exist? (Use `glob()` to verify)
-   - Dependencies completed? (The ledger gates this — blocked beads are not claimable; check `./.opencode/skills/genesis/scripts/bd_ledger.sh ready`)
+   - Dependencies completed? (The ledger gates this — blocked beads are not claimable; check `./.opencode/skills/genesis/scripts/bd ready --json`)
    - Assets/resources available or placeholders defined?
 
 ✅ **Architecture Alignment**  

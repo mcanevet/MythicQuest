@@ -36,7 +36,7 @@ If this returns an error or times out → **FAIL IMMEDIATELY**. Report "MCP brid
 
 Read files in this order — stop once you have what you need:
 
-1. The claimed bead's description (recover via `bd_ledger.sh show <bead-id>` if the caller didn't pass it) → Task requirements (always read first)
+1. The claimed bead's description (recover via `bd show --json <bead-id>` if the caller didn't pass it) → Task requirements (always read first)
 2. `CONVENTIONS.md` → Project-specific collision layers (if present, only if you need collision layer assignments)
 3. `VISION.md` → Vision context (only if the plan references visual style or feel)
 4. `./.opencode/skills/setup-project/reference/testing-patterns.md` → Testing requirements schema (if implementing interactive entity)

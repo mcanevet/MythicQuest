@@ -30,18 +30,18 @@ Always update for player-visible changes (controls, scoring, rules, game flow). 
 ### Step 2: Close the Bead
 
 ```bash
-./.opencode/skills/log-result/scripts/bd_ledger.sh close <bead-id> "<one-line completion reason>"
+./.opencode/skills/log-result/scripts/bd close <bead-id> "<one-line completion reason>"
 ```
 
 Exit 0 required. Closing releases dependents — beads blocked on this one become `ready` for the next grooming pass automatically (no manual status flipping).
 
-If the implementation took retries, close still proceeds — the attempt count lives in bead metadata (`bd_ledger.sh attempts`), incremented by the caller on retry delegations.
+If the implementation took retries, close still proceeds — the attempt count lives in bead metadata (`bd show --json | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("metadata",{}).get("attempts","0"))'`), incremented by the caller on retry delegations.
 
 ### Step 2.5: Verify Close Landed (mandatory)
 
 Before validating, confirm the close landed:
 
-- `bd_ledger.sh show <bead-id> --field status` returns `closed`
+- `bd show --json <bead-id> --field status` returns `closed`
 
 If missing, fix it before proceeding. Returning after only a partial close is the most common failure of this skill.
 
@@ -60,7 +60,7 @@ Exit code must be 0 before declaring success.
 Snapshot the ledger after each closed task (cheap, one JSONL export — protects against ledger corruption losing multi-session history):
 
 ```bash
-./.opencode/skills/log-result/scripts/bd_ledger.sh backup
+./.opencode/skills/log-result/scripts/bd update --set-metadata backed_up=true
 ```
 
 Non-zero = report but do not fail the task — the close already landed; note it as a gotcha.
@@ -90,7 +90,7 @@ Example:
 ### Step 5: Check Completion
 
 ```bash
-./.opencode/skills/log-result/scripts/bd_ledger.sh complete_check
+./.opencode/skills/log-result/scripts/bd list --status open,in_progress
 ```
 
 Exit 0 = no open beads remain — trigger final playtest. Exit 1 = beads remain.

@@ -21,7 +21,7 @@ Creates bare-minimum Godot 4.x project infrastructure by:
 Also ensure the beads ledger is initialized (genesis should have done this; if not, run):
 
 ```bash
-./.opencode/skills/setup-project/scripts/bd_ledger.sh init
+./.opencode/skills/setup-project/scripts/bd init --quiet --stealth
 ```
 
 Exit 0 required. Create `project.godot` with Godot 4.x format. Copy the template in [reference/project-godot-template.md](reference/project-godot-template.md) verbatim, substituting the game title for `config/name`. For `config/features`, discover the installed engine version first (engine project-info tooling, e.g. `get_project_info`) — never hardcode a guessed version.

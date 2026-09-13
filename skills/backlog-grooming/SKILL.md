@@ -17,7 +17,7 @@ Claims the next ready bead:
 Run the ledger helper (single sanctioned entrypoint — agents never call `bd` directly):
 
 ```bash
-./.opencode/skills/backlog-grooming/scripts/bd_ledger.sh ready
+./.opencode/skills/backlog-grooming/scripts/bd ready --json
 ```
 
 Returns JSON of claimable beads — ledger constraints (labels, deps) already applied by bd.
@@ -31,7 +31,7 @@ If `ready` returns an empty array, there is nothing claimable — report that to
 ### Step 2: Claim It (atomic — do this FIRST)
 
 ```bash
-./.opencode/skills/backlog-grooming/scripts/bd_ledger.sh claim <bead-id>
+./.opencode/skills/backlog-grooming/scripts/bd update --claim <bead-id>
 ```
 
 - Exit 0 = you own it (idempotent if already yours).
@@ -44,7 +44,7 @@ Claiming before planning is what makes parallel delegation safe — the racing-c
 Extract the task specification directly from the bead — its title, description, and acceptance criteria:
 
 ```bash
-./.opencode/skills/backlog-grooming/scripts/bd_ledger.sh show <bead-id>
+./.opencode/skills/backlog-grooming/scripts/bd show --json <bead-id>
 ```
 
 If description fields are thin, supplement by reading VISION.md sections referenced in the bead's labels — do not invent scope beyond what the bead + vision specify.

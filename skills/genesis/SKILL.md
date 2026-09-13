@@ -48,7 +48,7 @@ Contains:
 Run the ledger helper (single sanctioned entrypoint — agents never call `bd` directly):
 
 ```bash
-./.opencode/skills/genesis/scripts/bd_ledger.sh init
+./.opencode/skills/genesis/scripts/bd init --quiet --stealth
 ```
 
 Exit 0 required. If it fails, report `⛔ BLOCKED: bd unavailable — <error>` — do not improvise markdown fallbacks.
@@ -75,7 +75,7 @@ Use the **write** tool to create `VISION.md`:
 ### Step 4: Create task beads
 
 Create each backlog task as a bead, one `bd create` per task, via the helper script
-`skills/backlog-grooming/scripts/bd_ledger.sh` `create_task` subcommand — or directly:
+`skills/backlog-grooming/scripts/bd` `create_task` subcommand — or directly:
 
 ```bash
 bd create "Create Player entity with movement and collision" \
