@@ -19,6 +19,14 @@ permission:
     "reports/**": allow
   bash:
     "*": deny
+    # bd (beads) — CODE-BLIND CRITIC PROFILE: read-only. Pootie sees the
+    # queue and task titles (enough to know what shipped), nothing else —
+    # no creating, claiming, closing, or gating. His verdict lives in
+    # reports/** (his sanctioned write surface), not in the ledger.
+    "bd ready*": allow
+    "bd show*": allow
+    "bd list*": allow
+    "bd prime*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. To stop a hung engine
     # process, run the skill's stop_engine.sh (see create-scene-with-script).

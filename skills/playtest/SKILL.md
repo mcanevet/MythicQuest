@@ -195,6 +195,14 @@ Write the full report to `reports/<mode>-<subject>.md` in the game project (evid
 - One-sentence cause for any FAIL
 - The report file path
 
+**Findings become beads (one-time modes):** in functional/vision/critique modes, actionable failures are additionally filed into the ledger as beads with provenance, so the dev loop can pick them up — run once per failure group:
+
+```bash
+./.opencode/skills/playtest/scripts/bd_ledger.sh file_finding <parent-bead-id> <bug|vision|critique|polish> "<title>" "<one-paragraph description with repro>"
+```
+
+The parent is the bead representing the game (or the milestone epic if one exists); the helper wires `discovered-from` provenance and loop labels automatically. Report-filing and bead-filing are complementary: the report holds evidence, the bead holds the actionable queue entry. Per-task fast-verify/scene-verify FAILs do NOT file beads — the verdict returns to the caller (poppy) inline, who retries within the task's attempt budget.
+
 If no file-write path exists in your session (write denied or tool absent), do NOT improvise writes through engine primitives (ConfigFile/FileAccess indirection) — return the verdict plus full report inline and state explicitly: "report could not be persisted; no write path." The caller will persist it. The orchestrator reads the file only on FAIL or when evidence is needed — a full report inline in the task result accumulates in every upstream session's context.
 
 ---

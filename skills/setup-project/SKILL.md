@@ -16,9 +16,15 @@ Creates bare-minimum Godot 4.x project infrastructure by:
 
 ### Step 1: Write project.godot
 
-**Before writing:** check if `GAME_STATE.md` exists. If it does, read its first line — it has the format `# Game Title`. Use that title as `config/name`. If `GAME_STATE.md` doesn't exist yet, use `"Untitled Game"` as a placeholder.
+**Before writing:** check if `VISION.md` exists. If it does, read its first line — it has the format `# Game Title`. Use that title as `config/name`. If `VISION.md` doesn't exist yet, use `"Untitled Game"` as a placeholder.
 
-Create `project.godot` with Godot 4.x format. Copy the template in [reference/project-godot-template.md](reference/project-godot-template.md) verbatim, substituting the game title for `config/name`. For `config/features`, discover the installed engine version first (engine project-info tooling, e.g. `get_project_info`) — never hardcode a guessed version.
+Also ensure the beads ledger is initialized (genesis should have done this; if not, run):
+
+```bash
+./.opencode/skills/setup-project/scripts/bd_ledger.sh init
+```
+
+Exit 0 required. Create `project.godot` with Godot 4.x format. Copy the template in [reference/project-godot-template.md](reference/project-godot-template.md) verbatim, substituting the game title for `config/name`. For `config/features`, discover the installed engine version first (engine project-info tooling, e.g. `get_project_info`) — never hardcode a guessed version.
 
 ### Step 2: Create Placeholder icon.svg
 
@@ -86,7 +92,7 @@ Run from the project root. Exit code must be 0 before declaring success.
 5. **Validate immediately** — Test project loads after creation
 6. **Execute without questions** — Follow minimal viable structure
 7. **Don't pre-create directories** — Let filesystem handle automatic folder creation when files are written
-8. **No default input actions** — Never pre-define `[input]` actions in `project.godot`. Leave the section empty with a comment. The first implementation task owns the input map and adds game-specific actions based on `GAME_STATE.md`.
+8. **No default input actions** — Never pre-define `[input]` actions in `project.godot`. Leave the section empty with a comment. The first implementation task owns the input map and adds game-specific actions based on `VISION.md`.
 
 ---
 *Project scaffolding. Creates foundation for Godot 4.x development.*

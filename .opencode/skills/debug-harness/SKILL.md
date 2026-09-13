@@ -52,7 +52,7 @@ sqlite3 ~/.local/share/opencode/opencode.db \
 ### 3. Correlate with filesystem state
 
 ```bash
-grep -A 3 "In Progress" GAME_STATE.md     # stuck task?
+bd_ledger.sh ready 2>/dev/null | head -30 # stuck beads? (or: bd list --status in_progress)
 ls -la plans/ scripts/                     # expected files exist?
 ls -la .opencode/skills/                   # symlinks resolve?
 find .opencode/skills -name "*.sh" -not -executable   # missing exec bits?

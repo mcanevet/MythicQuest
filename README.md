@@ -10,7 +10,7 @@ opencode run "Build a pong-like game"
 ```
 
 That's it. The build agent handles everything automatically:
-- ✅ Checks prerequisites (GAME_STATE.md, project.godot) → creates them if missing
+- ✅ Checks prerequisites (VISION.md + beads ledger, project.godot) → creates them if missing
 - ✅ Runs the dev loop (Poppy), QA loop (Rachel), and release gates (Ian → Pootie)
 - ✅ Plans, implements, self-checks each task; Rachel smoke-tests at milestones
 - ✅ Runs final QA → vision → consumer critique when complete
@@ -91,9 +91,9 @@ The build agent orchestrates the entire development lifecycle:
 ```mermaid
 flowchart TB
     Start["opencode run"] --> Check{Prerequisites?}
-    Check -->|Missing| Genesis[Ian: Genesis<br/>Creates GAME_STATE.md]
+    Check -->|Missing| Genesis[Ian: Genesis<br/>Creates VISION.md + bead backlog]
     Check -->|Missing| Setup[Poppy: Setup-Project<br/>Initializes Godot project]
-    Check -->|Present| ReadBacklog[Read GAME_STATE.md]
+    Check -->|Present| ReadBacklog[bd_ledger.sh ready]
     
     Genesis --> Setup
     Setup --> ReadBacklog
@@ -147,23 +147,22 @@ flowchart TB
 ```
 
 **Key orchestration patterns:**
-1. **Four loops, one queue** — dev loop (Poppy), QA loop (Rachel), vision loop (Ian), consumer loop (Pootie) all append tagged tasks (`bug:`, `vision:`, `critique:`) to the same `GAME_STATE.md` backlog instead of doing ad-hoc rework in their own sessions.
+1. **Four loops, one queue** — dev loop (Poppy), QA loop (Rachel), vision loop (Ian), consumer loop (Pootie) all append tagged beads (`bug`, `vision`, `critique`) to the same beads ledger instead of doing ad-hoc rework in their own sessions.
 2. **Sequential OR parallel delegation** — Build agent tasks one subagent per session, spawning parallel subagent sessions only when the next 2-3 tasks are independent (no shared files, no interdependencies).
-3. **State-driven loop** — Reads `GAME_STATE.md` to determine next action.
+3. **State-driven loop** — Queries the beads ledger (`bd ready`) to determine next action.
 4. **Automatic retry** — If validation fails, task remains unchecked and gets retried (bounded by the 3-attempt circuit breaker).
 5. **Layered quality gates** — Rachel's zero-violation gate → Ian's vision gate → Pootie's consumer verdict. Each FAIL routes new tasks back into the queue.
 6. **Bounded outer loop** — A Pootie REWORK triggers a fix-and-replay cycle capped at 2; a third REWORK verdict is taste divergence and escalates to the human. The whole cycle is also bounded by the `agent.build.steps` structural iteration cap (`opencode.jsonc`).
-7. **Consumer loop is skippable** — benchmark operators can set `SKIP_CONSUMER_LOOP=true` (recorded in GAME_STATE.md); Phase 3 then ends after the vision gate and the completion report notes the skip.
+7. **Consumer loop is skippable** — benchmark operators can create a `SKIP_CONSUMER_LOOP` file at the project root; Phase 3 then ends after the vision gate and the completion report notes the skip.
 
 ## Validation
 
 Each skill includes **embedded success criteria**. After running a skill, the build agent checks completion using its own tools — `glob()` for file existence, `read()`/`grep()` for content:
 
 ```
-# Example: verify genesis created a valid GAME_STATE.md
-glob("GAME_STATE.md")                              # ✓ File exists
-grep("## Task Backlog", "GAME_STATE.md")           # ✓ Backlog section found
-grep("^- \[ \] Task", "GAME_STATE.md")             # Should show 10-20 tasks
+# Example: verify genesis created a valid backlog
+glob("VISION.md")                                  # ✓ File exists
+bd_ledger.sh ready                                 # ✓ Ledger yields 10-20 task beads
 ```
 
 The build agent does **not** have unrestricted `bash` — its `bash` permission is scoped to a single stale-process cleanup pattern, and its `edit` permission is scoped to `.md` status files only. This is deliberate: every guardrail in this project that can be enforced by permission config is, so the orchestrator physically cannot bypass its subagents.
@@ -174,7 +173,7 @@ Common patterns and bug prevention are embedded in the skill descriptions themse
 
 ## Coordination & Memory
 
-Every generated project maintains `GAME_STATE.md` for task tracking and plan files in `plans/` for historical context. Performance metrics and agent behavior analysis are observed externally via the session database, not tracked by the game-build session itself. This split is deliberate — see [AGENTS.md § Session Types](AGENTS.md#session-types) for the game-build vs. harness-build contract, including how the harness monitors live build sessions via the SQLite session DB.
+Every generated project maintains a beads ledger (`.beads/`) for task tracking and plan files in `plans/` for historical context. Performance metrics and agent behavior analysis are observed externally via the session database, not tracked by the game-build session itself. This split is deliberate — see [AGENTS.md § Session Types](AGENTS.md#session-types) for the game-build vs. harness-build contract, including how the harness monitors live build sessions via the SQLite session DB.
 
 ## Commands
 

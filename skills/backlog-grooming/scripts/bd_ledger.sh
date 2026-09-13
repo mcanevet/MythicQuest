@@ -1,0 +1,1 @@
+../../genesis/scripts/bd_ledger.sh

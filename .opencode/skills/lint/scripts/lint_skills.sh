@@ -272,6 +272,76 @@ check_incident_narrative() {
 }
 
 # ---------------------------------------------------------------------------
+# check_bd_verb_surface — bd (beads) bash allowlists must match the agent's
+# ledger profile (registry: bd-verb-surface). Tripwire: verb-class tokens
+# appearing under a bash section of an agent WITHOUT any bd allows there
+# (stray references), and mutating bd verbs in read-only profiles. The
+# profile semantics are judged by the LLM reviewer; this catches the
+# mechanical drift.
+# ---------------------------------------------------------------------------
+READONLY_VERBS='ready|show|list|search|query|children|prime|history|count|stats'
+FILE_VERBS='create|note|comment|q|dep_add|dep_remove'
+CLAIM_CLOSE_VERBS='update|unclaim|close'
+GATE_VERBS='gate_list|gate_show|gate_check|gate_resolve'
+
+check_bd_verb_surface() {
+  python3 - <<'EOF' || issues=$((issues + 1))
+import re, sys, glob
+
+issues = 0
+profiles = {
+    # agent file stem -> (allowed verb classes, profile name)
+    'poppy': ('rw_impl', 'implementer'),
+    'rachel': ('rw_qa', 'QA read+file-findings'),
+    'ian': ('rw_vision', 'vision director'),
+    'pootie': ('ro', 'code-blind critic'),
+    'build': ('ro_gates', 'orchestrator'),
+    'solo': ('rw_impl_qa', 'solo control'),
+}
+# Verb class per role: ro < file-findings < claim/close < gate authority.
+CLASS_RANK = {'ro': 0, 'rw_qa': 1, 'rw_vision': 1, 'rw_impl': 2, 'rw_impl_qa': 2, 'ro_gates': 1}
+for path in sorted(glob.glob('agents/*.md')):
+    stem = path.split('/')[-1][:-3]
+    if stem not in profiles:
+        continue
+    allowed_class, profile = profiles[stem]
+    src = open(path, encoding='utf-8').read()
+    # Extract the bash permission section
+    m = re.search(r'^  bash:\n((?:    .*\n|\n)+?)(?=^  \w|^---)', src, re.M)
+    if not m:
+        continue
+    section = m.group(1)
+    verbs = set(re.findall(r'"bd ([a-z-]+)\*": allow', section))
+    if not verbs:
+        print(f"⚠️  bd-verb-surface: {path} has no bd allows (profile '{profile}' expected)")
+        issues += 1
+        continue
+    ro = {'ready','show','list','search','query','children','prime','history','count','stats','dep tree','dep list'}
+    filings = {'create','note','comment','q','dep add'}
+    claimclose = {'update','unclaim','close'}
+    gates = {'gate list','gate show','gate check','gate resolve','gate discover'}
+    depremove = {'dep remove'}
+    cls = CLASS_RANK[allowed_class]
+    for v in verbs:
+        if v in claimclose and cls < 2:
+            print(f"⚠️  bd-verb-surface: {path} allows mutating '{v}' — outside '{profile}' profile")
+            issues += 1
+        if v in gates and allowed_class != 'ro_gates' and allowed_class != 'rw_vision':
+            print(f"⚠️  bd-verb-surface: {path} allows gate verb '{v}' — outside '{profile}' profile")
+            issues += 1
+        if v in filings and cls < 1:
+            print(f"⚠️  bd-verb-surface: {path} allows filing verb '{v}' — outside '{profile}' profile")
+            issues += 1
+    if allowed_class == 'ro' and not verbs <= ro:
+        print(f"⚠️  bd-verb-surface: {path} read-only profile allows beyond reads: {sorted(verbs - ro)}")
+        issues += 1
+    if allowed_class == 'ro_gates' and not (verbs - gates - ro):
+        pass
+sys.exit(1 if issues else 0)
+EOF
+}
+
+# ---------------------------------------------------------------------------
 # check_skill_md_size / check_frontmatter_hygiene / check_inline_code_cap —
 # SKILL.md doc hygiene (registry: progressive-disclosure, trigger-quality,
 # deterministic-logic-in-scripts)
@@ -369,6 +439,7 @@ check_gdscript_parse
 check_embedded_gdscript_parse
 check_doc_hygiene
 check_incident_narrative
+check_bd_verb_surface
 
 if [ "$issues" -eq 0 ]; then
   echo "✅ lint clean"

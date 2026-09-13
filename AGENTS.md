@@ -113,7 +113,7 @@ GameProject/                    # Consumer project
 │   ├── agents    -> .../MythicQuest/agents
 │   ├── skills    -> .../MythicQuest/skills
 │   └── opencode.jsonc -> .../MythicQuest/opencode.jsonc
-├── GAME_STATE.md
+├── VISION.md + .beads/
 ├── plans/
 └── project.godot
 ```
@@ -270,7 +270,7 @@ Estimated effort: 2-4 hours per new engine (mostly skill rewrites).
 **Purpose:** Build a specific game from concept to completion.
 
 **Responsibilities:**
-- Track task progress via `GAME_STATE.md` and `plans/` directory
+- Track task progress via the beads ledger (`.beads/`) and `plans/` directory
 - Delegate work to poppy (implementation) and ian (creative/vision) agents
 - Ensure each task completes with validation before moving to the next
 
@@ -302,12 +302,12 @@ When invoked while a game-build session is in progress, follow the **`debug-harn
 2. **Map the session tree** — recursively find all child sessions (subagents, retries) and their statuses
 3. **Poll for liveness** — check `time_updated` on leaf sessions every 5-10 seconds; a session that hasn't updated in 60+ seconds may have stalled
 4. **Detect stall conditions** — a session with zero child spawns and no `time_updated` change for >60s likely indicates a silent failure or hang. *Caveat:* large wall-clock gaps can be host sleep — confirm via tool-call activity before intervening (see Stopping Conditions below)
-5. **Diagnose root causes** — when a stall is detected, inspect `GAME_STATE.md`, `plans/`, and the project filesystem to determine what was completed vs. what failed
+5. **Diagnose root causes** — when a stall is detected, inspect the ledger (`.beads/`), `plans/`, and the project filesystem to determine what was completed vs. what failed
 6. **Intervene or log findings** — either restart the stalled workflow manually, or document the failure pattern in session output for later harness analysis
 
 **Key Principle:** The game-build session is blind to its own performance. It just builds. You observe via the SQLite DB — both actively (during builds) and asynchronously (post-hoc) — and iterate on the harness itself.
 
-**Boundary Rule: Harness-build NEVER modifies `test/`.** The `test/` directory is the *consumer project's workspace* (the development sandbox owned by game-build sessions). Harness-build may **read** `test/` for diagnostics (GAME_STATE.md inspection, plan archaeology, playtest report ingestion), but must never write, edit, move, or delete anything inside it. Any fix discovered via `test/` belongs in `agents/`, `skills/`, or `scripts/` — if the fix would require touching `test/`, it is out of scope: document the finding and stop.
+**Boundary Rule: Harness-build NEVER modifies `test/`.** The `test/` directory is the *consumer project's workspace* (the development sandbox owned by game-build sessions). Harness-build may **read** `test/` for diagnostics (VISION.md/ledger inspection, plan archaeology, playtest report ingestion), but must never write, edit, move, or delete anything inside it. Any fix discovered via `test/` belongs in `agents/`, `skills/`, or `scripts/` — if the fix would require touching `test/`, it is out of scope: document the finding and stop.
 
 **Evidence Loop:** Process metrics (retries, session timing) are necessary but not sufficient. A skill change that reduces retries while quietly increasing invariant violations is a regression. Harness-build must correlate both axes:
 - **Efficiency axis:** retry counts, session duration, skill invocation success, stall detection
@@ -330,7 +330,7 @@ When a game-build session stalls, fails, or produces unexpected results, invoke 
 
 - Querying the opencode SQLite session DB (WAL mode, direct reads)
 - Inspecting reasoning traces (spin loops, permission denials, format errors)
-- Correlating with filesystem state (GAME_STATE.md, plans/, skill symlinks)
+- Correlating with filesystem state (VISION.md, .beads/, plans/, skill symlinks)
 - Real-time stall monitoring (`scripts/watch_session.sh`)
 - Full session-tree trace extraction for offline analysis
 - Failure-modes table (MCP suicide, silent subagent deaths, bridge contention, partial log-result, and more — `reference/failure-modes.md`)

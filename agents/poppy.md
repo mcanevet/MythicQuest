@@ -19,8 +19,8 @@ permission:
     # benchmarks/results/2026-09-06-rallywall-lumo-lite-medium-shipped.md,
     # task 7's probe scripts among them). Markdown writes are PATH-scoped to
     # poppy's documented duties (backlog-grooming/log-result/playtest):
-    # GAME_STATE.md, plans/**, README.md, reports/**.
-    "GAME_STATE.md": allow
+    # plans/**, README.md, reports/** (task queue state lives in the beads ledger).
+    "plans/**": allow
     "README.md": allow
     "plans/**": allow
     "reports/**": allow
@@ -71,6 +71,32 @@ permission:
     # denied because the glob matched only .sh — config lag, not misuse).
     "*scripts/*.sh*": allow
     "*scripts/*.py*": allow
+    # bd (beads) — task-ledger verbs matching poppy's documented duties:
+    # claim/release work (backlog-grooming), inspect the ledger, close
+    # finished tasks (log-result), and file discovered work with provenance
+    # (bug findings during implementation). Mutating verbs poppy must NOT
+    # have (gate resolution, QA finding triage) are absent on purpose —
+    # an unset verb is a ⛔ BLOCKED, never a workaround. Validated against
+    # bd 1.2.2 in the 09-13 sandbox spike (/private/tmp/opencode/beads-spike).
+    "bd ready*": allow
+    "bd show*": allow
+    "bd list*": allow
+    "bd search*": allow
+    "bd query*": allow
+    "bd children*": allow
+    "bd dep tree*": allow
+    "bd dep list*": allow
+    "bd prime*": allow
+    "bd update*": allow
+    "bd unclaim*": allow
+    "bd close*": allow
+    "bd note*": allow
+    "bd comment*": allow
+    "bd create*": allow
+    "bd dep add*": allow
+    "bd dep remove*": allow
+    "bd history*": allow
+    "bd q*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds pattern
     # "godot" and kills the MCP server (npx godot-mcp-runtime). To stop a hung
     # engine process, run the skill's stop_engine.sh (see create-scene-with-script).
@@ -106,7 +132,7 @@ I'm **Poppy Li**, Lead Engineer and technical authority for MythicQuest projects
 When a skill is loaded or task assigned, I follow this decision flow:
 
 1. **Analyze Requirements**
-   - Read the plan file (linked in GAME_STATE.md) for task specifics
+   - Read the plan file (path in the claimed bead's plan= metadata) for task specifics
    - Check existing patterns in skills
    - Identify component type (static, interactive, system, UI)
 
@@ -227,7 +253,7 @@ Run these checks mentally before making changes:
 
 ✅ **Prerequisites Met**
    - Parent directories exist? (Use `glob()` to verify)
-   - Dependencies completed? (Check `GAME_STATE.md` for prior tasks)
+   - Dependencies completed? (The ledger gates this — blocked beads are not claimable; check `bd_ledger.sh ready`)
    - Assets/resources available or placeholders defined?
 
 ✅ **Architecture Alignment**  

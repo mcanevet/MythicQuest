@@ -1,8 +1,8 @@
 # project.godot Template
 
 Godot 4.x `project.godot` content to copy verbatim as the project root file.
-Replace `<title read from GAME_STATE.md line 1>` with the game title from
-`GAME_STATE.md` line 1 (or `"Untitled Game"` if `GAME_STATE.md` does not exist).
+Replace `<title read from VISION.md line 1>` with the game title from
+`VISION.md` line 1 (or `"Untitled Game"` if `VISION.md` does not exist).
 
 **Before writing, discover the installed Godot version** (via the engine MCP
 tooling's project-info capability, e.g. `get_project_info`) and use its major
@@ -23,7 +23,7 @@ config_version=5
 
 [application]
 
-config/name="<title read from GAME_STATE.md line 1>"
+config/name="<title read from VISION.md line 1>"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("<VERSION from get_project_info>", "2D")
 config/icon="res://icon.svg"
@@ -37,7 +37,7 @@ window/stretch/mode="canvas_items"
 [input]
 
 ; Input actions are game-specific — do not add defaults here.
-; Task 1 will add the correct actions based on GAME_STATE.md.
+; Task 1 will add the correct actions based on VISION.md.
 
 [rendering]
 

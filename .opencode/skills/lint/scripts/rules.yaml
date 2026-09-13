@@ -408,3 +408,29 @@
     reconstructing an incident chronologically are the anti-pattern this
     rule retires; the failure-modes-table row + deployed protocol text is
     the surviving form.
+
+- id: bd-verb-surface
+  rule: >
+    When an agent's bash permissions allow `bd` (beads) commands, the
+    allowed verb set must match the agent's documented ledger duties and
+    no more: implementer/solo profiles may claim, close, and file
+    discovered work; QA/critic profiles may read and file findings but
+    must not claim, close, update, or resolve gates; the orchestrator may
+    read and resolve gates but must not claim or close task beads; the
+    vision director may read, file vision findings, and resolve vision
+    gates. Every `bd` allow entry carries an inline comment naming the
+    profile rationale, and a verb outside the profile is left UNSET
+    (denied by the catch-all) rather than explicitly denied one by one.
+  audience: agents
+  scope: agents/**
+  enforcement: both
+  check: bd_verb_surface
+  check-tier: tripwire
+  notes: >
+    Companion to least-privilege-permissions, scoped to the bd CLI.
+    Unset-verb convention: absence IS the deny; adding explicit
+    `bd <verb>*: deny` lines is discouraged (noise, and implies the verb
+    was considered-granted elsewhere). Modeled on the 09-13 sandbox spike
+    (bd 1.2.2) and the Phase-1 permission profiles; verify verb spellings
+    against `bd --help` before adding new ones — `bd q*` is intentionally
+    broad (quick-capture) but only for roles allowed to CREATE.

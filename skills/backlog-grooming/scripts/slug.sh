@@ -1,50 +1,46 @@
 #!/bin/bash
 # slug.sh — canonical plan-filename generator for backlog-grooming.
-# Usage: ./slug.sh "<task line>"   OR   echo "<task line>" | ./slug.sh
-#   Prints the canonical plan filename: plans/NN-<slug>.md  (NN = zero-padded task number)
+# Usage: ./slug.sh "<bead-id> <title>"   OR   echo "<bead-id> <title>" | ./slug.sh
+#   Prints the canonical plan filename:
+#     plans/<bead-id>-<slug>.md
 #
-# Deterministic implementation of the rules that used to be prose ("lowercase the
-# description, replace spaces with hyphens, strip special chars"). Every caller
-# (backlog-grooming -> build.md plan link -> log-result archive) must derive the
-# SAME name, so this is the single source of truth.
+# Deterministic implementation of the slug rules. Every caller
+# (backlog-grooming -> build.md bead lookup -> log-result archive) must derive
+# the SAME name, so this is the single source of truth. Keying by bead ID
+# (not a sequence number) means two beads with identical titles never collide
+# and the filename is recoverable from the ledger alone.
 #
-# Accepts task lines in any of these shapes:
-#   - [ ] Task 3: Create Player entity with movement and collision [core]
-#   - [in progress] Task #3: Description (see: plans/03-...md)
+# Accepts input in any of these shapes:
+#   rq-abc123 Create Player entity with movement and collision
+#   "rq-abc123: Create Player entity with movement and collision"
+#   bare title (no id) — falls back to slug-only name (legacy/manual use)
 # Exit codes: 0 = printed a filename; 1 = could not derive a slug.
 set -euo pipefail
 
 line="${1:-$(cat)}"
 
-# strip status marker: "- [ ] " / "- [in progress] " / "- [x] "  (literal, not a class)
-case "$line" in
-    "- [in progress] "*|"- [x] "*|"- [ ] "*)
-        line="${line#*- \[*\] }" ;;
-esac
+# Normalize "id: title" / "id - title" to "id title"
+line="$(printf '%s' "$line" | sed -E 's/^([A-Za-z0-9][A-Za-z0-9-]*):[[:space:]]+/\1 /')"
 
-# strip a "(see: plans/...)" link if present
-line="$(printf '%s' "$line" | sed -E 's/\(see: plans\/[^)]*\)[[:space:]]*$//')"
-
-# extract task number + description ("Task N: desc" or "Task #N: desc")
-if printf '%s' "$line" | grep -qE '^Task #?[0-9]+:'; then
-    num="$(printf '%s' "$line" | sed -E 's/^Task #?([0-9]+):.*/\1/')"
-    desc="$(printf '%s' "$line" | sed -E 's/^Task #?[0-9]+:\s*//')"
+# Extract bead id (first token matching xx-xxxx hex-ish pattern)
+bead_id=""
+if printf '%s' "$line" | grep -qE '^[a-z0-9]+(-[a-z0-9]+)*-[a-z0-9]+ '; then
+    bead_id="$(printf '%s' "$line" | awk '{print $1}')"
+    title="$(printf '%s' "$line" | cut -d' ' -f2-)"
 else
-    num="1"
-    desc="$line"
+    title="$line"
 fi
 
-# slugify description: drop [tag]/[...] and (..) tags, lowercase, non-alnum -> '-',
+# slugify title: drop [tag]/[...] and (..) tags, lowercase, non-alnum -> '-',
 # collapse runs, trim leading/trailing hyphens
-slug="$(printf '%s' "$desc" \
+slug="$(printf '%s' "$title" \
     | sed -E 's/\[[^]]*\]//g; s/\([^)]*\)//g' \
     | tr '[:upper:]' '[:lower:]' \
     | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
 
 if [ -z "$slug" ]; then
-    echo "❌ FAIL: could not derive a slug from task line: $*" >&2
+    echo "❌ FAIL: could not derive a slug from: $*" >&2
     exit 1
 fi
 
-numz="$(printf '%02d' "$num")"
-printf 'plans/%s-%s.md\n' "$numz" "$slug"
+printf 'plans/%s-%s.md\n' "$bead_id" "$slug"

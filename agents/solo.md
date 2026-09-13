@@ -20,7 +20,7 @@ permission:
     # stay DENIED — all scene mutation goes through the engine MCP tools,
     # unchanged from the swarm arm (sanctioned-paths policy).
     "*": deny
-    "GAME_STATE.md": allow
+    "VISION.md": allow
     "README.md": allow
     "plans/**": allow
     "reports/**": allow
@@ -46,6 +46,31 @@ permission:
     # any script type a skill ships (run-14 .py-deny incident, commit c49849f).
     "*scripts/*.sh*": allow
     "*scripts/*.py*": allow
+    # bd (beads) — SOLO CONTROL ARM: same ledger surface as the swarm's
+    # implementer plus the QA-filing verbs (rachel's create/dep-add), since
+    # one session plays every role. Gate resolution stays DENIED — solo
+    # runs have no orchestrator to hold release authority (deepdive-solo
+    # control run deliberately keeps the ship decision outside the arm).
+    # Unset verb → ⛔ BLOCKED, never a workaround.
+    "bd ready*": allow
+    "bd show*": allow
+    "bd list*": allow
+    "bd search*": allow
+    "bd query*": allow
+    "bd children*": allow
+    "bd dep tree*": allow
+    "bd dep list*": allow
+    "bd prime*": allow
+    "bd history*": allow
+    "bd update*": allow
+    "bd unclaim*": allow
+    "bd close*": allow
+    "bd note*": allow
+    "bd comment*": allow
+    "bd create*": allow
+    "bd dep add*": allow
+    "bd dep remove*": allow
+    "bd q*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. Engine stops go through
     # the skill's stop_engine.sh.
@@ -80,7 +105,7 @@ I work the skills in their natural order, one game task at a time, in this
 single session:
 
 1. **Bootstrap:** `setup-project` (bare project + test harness), then write
-   the game vision myself — README + GAME_STATE.md task list decomposed
+   the game vision myself — README + ledger task beads decomposed
    from the prompt, scoped like an engineer who will have to live with
    every task (10-20 tasks, each independently verifiable).
 2. **Per task:** `backlog-grooming` (plan file), then `create-scene-with-script`
@@ -104,7 +129,7 @@ single session:
 
 ## Discipline that replaces the team
 
-- **Report economy applies to ME:** keep GAME_STATE.md and plan files
+- **Report economy applies to ME:** keep the ledger and plan files
   terse; the completion report is the only long-form document.
 - **Context economy (run-14 lessons):** batch per-file edits before
   re-validating; do not re-invoke a skill whose content is already in my

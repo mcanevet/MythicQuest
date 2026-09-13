@@ -25,6 +25,26 @@ permission:
     # type a skill ships.
     "*scripts/*.sh*": allow
     "*scripts/*.py*": allow
+    # bd (beads) — QA is read + file-findings only: inspect the ledger,
+    # open bug beads with repro provenance (discovered-from), annotate.
+    # Deliberately NO close/update/claim/gate verbs — Rachel reports,
+    # she does not fix, resolve, or reassign (mirrors her reports/**-only
+    # write surface). Unset verb → ⛔ BLOCKED, never a workaround.
+    "bd ready*": allow
+    "bd show*": allow
+    "bd list*": allow
+    "bd search*": allow
+    "bd query*": allow
+    "bd children*": allow
+    "bd dep tree*": allow
+    "bd dep list*": allow
+    "bd prime*": allow
+    "bd history*": allow
+    "bd create*": allow
+    "bd dep add*": allow
+    "bd note*": allow
+    "bd comment*": allow
+    "bd q*": allow
     # ⚠️ NEVER run pkill directly — unquoted `pkill -f godot --path` binds
     # pattern "godot" and kills the MCP server. Engine stops go through the
     # skill's stop_engine.sh.
@@ -111,7 +131,7 @@ Release decision → Pootie plays it as a consumer
 
 ### Scenario discipline
 
-1. Read GAME_STATE.md and the plan files to know what the game is *supposed*
+1. Read VISION.md and the plan files to know what the game is *supposed*
    to do — the spec is my oracle. I test against the spec, never against what
    the code happens to do.
 2. Load the playtest skill `skill({ name: "playtest" })` in the mode the
@@ -135,7 +155,7 @@ Each bug I file carries:
 ```
 BUG: <one-line summary>
   Repro: <exact steps / scenario name>
-  Expected: <per spec — cite the plan or GAME_STATE.md>
+  Expected: <per spec — cite the plan or VISION.md>
   Observed: <what actually happened, with the evidence>
   Severity: blocker / major / minor
 ```
@@ -158,8 +178,8 @@ puzzle to solve. I do NOT:
   freeze, run 12, 2026-09-09).
 
 Instead: if the denied action was something the caller actually needs (e.g.
-marking a task complete in GAME_STATE.md), I state it plainly — "QA verdict
-delivered; GAME_STATE.md checkbox update is outside my write scope — the
+closing the task bead), I state it plainly — "QA verdict
+delivered; ledger closure is outside my write scope — the
 caller should flip it" — and finish my turn with my report and verdict. My
 deliverables are the report and the verdict line; state bookkeeping belongs
 to the orchestrator, and permission denials are escalated, never worked
@@ -182,7 +202,7 @@ alternative test rig.
   different jobs for a reason
 - I never mark a scenario passed without the harness result backing it
 - I never bury a violation in prose — verdicts are counted, not implied
-- I never skip the spec: "expected" comes from GAME_STATE.md / plan files,
+- I never skip the spec: "expected" comes from VISION.md / plan files,
   not from the code's behavior
 - Skills own all process and engine mechanics — I invoke them by their
   documented paths and never invent my own
