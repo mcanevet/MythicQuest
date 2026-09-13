@@ -88,65 +88,9 @@ opencode run "Build a pong-like game"
 
 The build agent orchestrates the entire development lifecycle:
 
-```mermaid
-flowchart TB
-    Start["opencode run"] --> Check{Prerequisites?}
-    Check -->|Missing| Genesis[Ian: Genesis<br/>Creates VISION.md + bead backlog]
-    Check -->|Missing| Setup[Poppy: Setup-Project<br/>Initializes Godot project]
-    Check -->|Present| ReadBacklog[bd_ledger.sh ready]
-    
-    Genesis --> Setup
-    Setup --> ReadBacklog
-    
-    subgraph DevLoop["Dev Loop — Poppy (innermost)"]
-        FindTask[Find next unchecked task]
-        FindTask --> Plan[Poppy: Backlog-Grooming<br/>Creates plan file]
-        Plan --> Implement[Poppy: Create-Scene-With-Script<br/>Implements task]
-        Implement --> SelfCheck[Poppy: Playtest scene-verify<br/>cheap self-check]
-        SelfCheck --> Log[Poppy: Log-Result<br/>Records outcome]
-    end
-    
-    ReadBacklog --> FindTask
-    Log --> Complete{All tasks done?}
-    Complete -->|No| FindTask
-    
-    Complete -->|Yes| QA[QA Loop — Rachel]
-    QA --> FunctPlaytest[Rachel: Functional QA<br/>Zero-violation gate]
-    FunctPlaytest -->|FAIL| BugTasks[bug:N tasks with repros]
-    BugTasks --> FindTask
-    
-    subgraph ReleaseGates["Release Gates — Rachel → Ian → Pootie (outermost)"]
-        VisionGate[Ian: Vision Evaluation<br/>Creative alignment]
-        VisionGate --> Critique[Pootie: Consumer Critique<br/>Plays it himself — B-hole verdict]
-    end
-    
-    FunctPlaytest -->|QA PASS| VisionGate
-    VisionGate -->|Drifted| VisionTasks[vision:N tasks]
-    VisionTasks --> FindTask
-    
-    Critique -->|SHIP| End["Game Complete!"]
-    Critique -->|REWORK ×2 max| CritiqueTasks[critique:N tasks]
-    CritiqueTasks --> FindTask
-    Critique -->|REWORK ×3| Human["⛔ Taste divergence<br/>escalate to human"]
+**Four loops, one queue** — dev loop (Poppy), QA loop (Rachel), vision loop (Ian), consumer loop (Pootie) all append tagged beads (`bug`, `vision`, `critique`) to the same beads ledger instead of doing ad-hoc rework in their own sessions. Full topology, gate chain, and retry caps are encoded in the **`game-four-loops`** bd formula (`skills/genesis/reference/game-four-loops.formula.toml`, view with `bd formula show game-four-loops`).
 
-    %% Feedback loops are bounded by agent.build.steps cap (default 300 in opencode.jsonc)
-    %% and the pootie rework-cycle cap (2) in agents/build.md.
-    
-    style Start fill:#e1f5ff
-    style End fill:#d4edda
-    style Genesis fill:#fff3cd
-    style Setup fill:#fff3cd
-    style Plan fill:#f8f9fa
-    style Implement fill:#f8f9fa
-    style SelfCheck fill:#f8f9fa
-    style Log fill:#f8f9fa
-    style FunctPlaytest fill:#d6eaf8
-    style VisionGate fill:#e2e3e5
-    style Critique fill:#f5c6cb
-    style Human fill:#f5c6cb
-```
 
-**Key orchestration patterns:**
 1. **Four loops, one queue** — dev loop (Poppy), QA loop (Rachel), vision loop (Ian), consumer loop (Pootie) all append tagged beads (`bug`, `vision`, `critique`) to the same beads ledger instead of doing ad-hoc rework in their own sessions.
 2. **Sequential OR parallel delegation** — Build agent tasks one subagent per session, spawning parallel subagent sessions only when the next 2-3 tasks are independent (no shared files, no interdependencies).
 3. **State-driven loop** — Queries the beads ledger (`bd ready`) to determine next action.

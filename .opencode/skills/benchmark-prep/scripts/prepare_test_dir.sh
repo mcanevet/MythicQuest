@@ -104,6 +104,15 @@ git -C "$TEST_DIR" -c user.name=harness -c user.email=harness@local \
 (cd "$TEST_DIR" && bd init --quiet --stealth) >/dev/null 2>&1 ||
   fail "bd init failed in sandbox (is bd on PATH?)"
 [ -d "$TEST_DIR/.beads" ] || fail "sandbox .beads/ missing after bd init"
+
+# Four-loops workflow formula — lives in the library tree (versioned with the
+# harness) and is installed into the sandbox ledger so game sessions can
+# `bd formula show game-four-loops` / `bd prime` it.
+FORMULA_SRC="$OC/skills/genesis/reference/game-four-loops.formula.toml"
+[ -f "$FORMULA_SRC" ] || fail "game-four-loops formula missing: $FORMULA_SRC"
+mkdir -p "$TEST_DIR/.beads/formulas"
+cp "$FORMULA_SRC" "$TEST_DIR/.beads/formulas/"
+git -C "$TEST_DIR" add -f .beads/formulas
 # Commit the generated AGENTS.md so the dirty-files verification passes
 # (its managed Beads section is part of the benchmark baseline).
 git -C "$TEST_DIR" add AGENTS.md

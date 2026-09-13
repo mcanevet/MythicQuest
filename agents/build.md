@@ -96,26 +96,19 @@ Build complete games autonomously by:
 
 ### The Four Loops (one task queue)
 
-All loops append beads to the SAME ledger — none of them do
-ad-hoc rework inside their own session. Topology:
+The full loop topology, gate chain, retry caps, and anti-patterns are encoded
+as a bd formula: **`game-four-loops`** (`.opencode/skills/genesis/reference/game-four-loops.formula.toml`, installed into the sandbox `.beads/formulas/` — view with `bd formula show game-four-loops`). Per managed AGENTS.md
+conventions, load workflow context via `bd prime`.
 
-```mermaid
-flowchart TB
-    Dev["Dev loop — Poppy (innermost)<br/>claim/backlog-grooming + implement + log-result"]
-    Dev -->|"bug:, polish: beads"| Queue[("beads ledger")]
-    QA["QA loop — Rachel<br/>milestone smoke + functional QA<br/>exit: QA PASS, 0 violations"]
-    QA -->|"bug: beads with repros"| Queue
-    Vision["Vision loop — Ian<br/>milestone vision checks + release gate"]
-    Vision -->|"vision: beads, halt feature work"| Queue
-    Consumer["Consumer loop — Pootie (outermost)<br/>runs only after QA + vision pass<br/>recommendation → Ian's disposition"]
-    Consumer -->|"critique: beads"| Queue
-    Consumer -->|"REWORK x3"| Human["⛔ taste divergence → escalate to human"]
-    Queue --> Dev
-```
+In brief — four loops, all appending beads to the SAME ledger:
+
+1. **Dev loop (Poppy, innermost):** claim → implement → playtest(scene-verify) → log-result
+2. **QA loop (Rachel):** milestone smoke + functional QA; exit = QA PASS, 0 violations → bug beads back
+3. **Vision loop (Ian):** milestone vision checks + release gate → vision beads, halt feature work on drift
+4. **Consumer loop (Pootie, outermost):** runs only after QA + vision pass; recommendation → Ian's disposition; rework cap 2 → taste divergence escalates to human
 
 Loop procedures live in the phases below (Phase 1 = dev loop, Phase 2 =
-QA/vision checkpoints, Phase 3 = release gates). This diagram is the single
-source of truth for loop topology — the README copy must match it.
+QA/vision checkpoints, Phase 3 = release gates).
 
 ## Subagent Roles
 
