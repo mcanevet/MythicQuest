@@ -61,6 +61,19 @@ esac
 STOP="$REPO_ROOT/skills/create-scene-with-script/scripts/stop_engine.sh"
 [ -x "$STOP" ] && "$STOP" >/dev/null 2>&1 || true
 
+# 5b. REFUSE to wipe a sandbox with a live opencode build session in it.
+# A build session whose cwd points inside the sandbox will keep writing to
+# the rebuilt ledger/filesystem after the wipe — contaminating the next run
+# (run 3 incident, 2026-09-13: run 2's zombie interleaved a RallyWall
+# VISION.md into run 3's pong ledger). Engine stopper doesn't cover
+# opencode processes; this guard does.
+SANDBOX_ABS="$REPO_ROOT/$TEST_DIR"
+LIVE_SESSIONS=$(pgrep -x opencode 2>/dev/null | while read -r pid; do
+  [ "$(lsof -p "$pid" 2>/dev/null | awk 'NR==2{print $NF}')" = "$SANDBOX_ABS" ] && echo "$pid"
+done || true)
+[ -z "$LIVE_SESSIONS" ] ||
+  fail "live opencode session(s) [$LIVE_SESSIONS] hold the sandbox — stop them before wiping ($TEST_DIR is disposable but they will corrupt the rebuilt state)"
+
 # Mirror maintenance — submodule remote is a bare clone of the harness repo
 if [ -d "$MIRROR" ]; then
   # '+' forces: the mirror is disposable and must track harness HEAD even

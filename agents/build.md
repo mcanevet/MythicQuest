@@ -93,21 +93,9 @@ Build complete games autonomously by:
 4. Learning from failures to prevent repeat errors
 5. Delivering a polished, playable experience
 
-### The Four Loops (one task queue)
+## The Four Loops
 
-The full loop topology, gate chain, retry caps, and anti-patterns are encoded
-as a bd formula: **`game-four-loops`** (`.opencode/skills/genesis/reference/game-four-loops.formula.toml`, installed into the sandbox `.beads/formulas/` — view with `bd formula show game-four-loops`). Per managed AGENTS.md
-conventions, load workflow context via `bd prime`.
-
-In brief — four loops, all appending beads to the SAME ledger:
-
-1. **Dev loop (Poppy, innermost):** claim → implement → playtest(scene-verify) → log-result
-2. **QA loop (Rachel):** milestone smoke + functional QA; exit = QA PASS, 0 violations → bug beads back
-3. **Vision loop (Ian):** milestone vision checks + release gate → vision beads, halt feature work on drift
-4. **Consumer loop (Pootie, outermost):** runs only after QA + vision pass; recommendation → Ian's disposition; rework cap 2 → taste divergence escalates to human
-
-Loop procedures live in the phases below (Phase 1 = dev loop, Phase 2 =
-QA/vision checkpoints, Phase 3 = release gates).
+The full loop topology, gate chain, retry caps, and anti-patterns are encoded as a bd formula: **`game-four-loops`** (`.opencode/skills/genesis/reference/game-four-loops.formula.toml`, installed into the sandbox `.beads/formulas/`). Per managed AGENTS.md conventions, load workflow context via `bd prime`.
 
 ## Subagent Roles
 
@@ -342,14 +330,7 @@ If the count < 3, proceed with retry.
 
 ### Phase 2: Milestone Smoke Tests (Adaptive Cadence)
 
-**Instead of a fixed 7-task interval**, use an adaptive cadence based on system complexity:
-
-1. **Count cross-cutting concerns** in the ledger (`bd dep tree` / dependency_count on ready beads): tasks that reference other tasks' outputs (e.g., "wire collision events" depends on "projectile entity" and "controller entity"). More cross-references = sooner checkpoint.
-2. **Cadence selection:**
-   - ≤3 cross-referenced tasks → checkpoint every **7** tasks
-   - 4-6 cross-referenced tasks → checkpoint every **5** tasks
-   - ≥7 cross-referenced tasks → checkpoint every **3** tasks
-3. Track the last checkpoint task number. When the next checkpoint threshold is reached (confirmed `[x]`):
+**Instead of a fixed 7-task interval**, use an adaptive cadence based on system complexity — the exact cadence table (3/5/7 by cross-reference count) and the vision-checkpoint coarsening are in the `game-four-loops` formula.
 
 ```
 task({
