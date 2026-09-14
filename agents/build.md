@@ -505,17 +505,23 @@ task({
 - Disposition **REVISE_VISION** → update VISION.md (and README) with Ian's
   revision FIRST, then queue the tasks the revision implies (also `critique`
   beads) and return to the main loop as with ORDER_REWORK.
-- **Pootie rework-cycle cap: 2** (tracked as rework beads: each ORDER_REWORK /
+- **Pootie rework-cycle cap: 2 taste-driven cycles** (tracked as rework beads: each ORDER_REWORK /
   REVISE_VISION cycle files its `critique` beads, then tags one of them
   `bd update <id> --set-metadata rework_cycle=<n>` — `bd create` has no
   `--set-metadata` flag in bd 1.2.2; count via `bd list` metadata before
-  deciding). If this is the second rework cycle, or a
-  post-fix replay still lands RECOMMEND_REWORK and Ian confirms another cycle,
+  deciding). The cap counts only *taste-driven* rework (features/juice/;
+  ORDER_REWORK / REVISE_VISION). **Bug-fix rework does not count**: a consumer
+  replay or QA pass that uncovers P0/P1 bugs (crashes, broken restarts, broken
+  mechanics) routes through the same Phase 3 restart but is ordinary defect
+  closure — the budget exists to stop taste-chasing, not bug-fixing (run 16:
+  cycle 3 was a win→restart race, correctly exempted). If this is the second
+  *taste* rework cycle, or a
+  post-fix replay still lands RECOMMEND_REWORK on non-bug grounds and Ian confirms another cycle,
   that is taste divergence — not a bug list. File a
   `⛔ BLOCKED: taste divergence after N consumer rework cycles` bead
   (`bd create` + `--status blocked`, leaving the consumer gate unresolved),
   then report to the user with Pootie's critiques and Ian's dispositions
-  attached. Do not loop a third time;
+  attached. Do not loop a third time on taste;
   an infinite taste-chasing loop burns the whole budget for marginal gains.
 
 **Step 4: Generate Completion Report**

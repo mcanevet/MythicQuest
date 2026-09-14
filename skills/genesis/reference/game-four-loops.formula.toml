@@ -161,7 +161,7 @@ Route the streamer critic's report to the creative director:
 - ORDER_REWORK → file critique beads, return to dev loop
 - REVISE_VISION → update VISION.md, queue revision tasks, return to dev loop
 
-Rework cap: 2 cycles max. Third rework = taste divergence → escalate to human.
+Rework cap: 2 cycles of *taste-driven* rework (ORDER_REWORK / REVISE_VISION for features/juice). Bug-fix rework (P0/P1 bugs discovered by consumer replay or QA) does not count toward the cap; escalate to human only on taste divergence (third ORDER_REWORK/REVISE_VISION after all known bugs are fixed).
 """
 
 # =============================================================================
